@@ -1,0 +1,14 @@
+# Ignore build & dev files
+apache-maven-*/
+apache-maven*.zip
+target/
+exported_data/
+*.py
+*.ps1
+*.cmd.bak
+temp*.js
+*.bak*
+*.txt
+*.log
+extracted_features.json
+data/*.db
