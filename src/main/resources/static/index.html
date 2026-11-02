@@ -2745,6 +2745,20 @@ function performChittaFind() {
 }
 
 // =========================================================================
+
+// =========================================================================
+// FARMER CODE FORMATTER (ENFORCES <= 4 LETTERS/CHARS)
+// =========================================================================
+function getDisplayFarmerCode(acc) {
+    if (!acc) return '';
+    let code = acc.partyId || acc.party_id || acc.id || '';
+    code = String(code).trim();
+    if (code.startsWith('P-') || code.length > 4) {
+        code = String(acc.id || '').substring(0, 4);
+    }
+    return code.substring(0, 4);
+}
+
 // REAL-TIME FARMER NAME AUTO-SUGGESTION FOR #farmerName
 // =========================================================================
 let currentFarmerSuggestMatches = [];
@@ -2971,6 +2985,185 @@ document.addEventListener('click', function(e) {
 });
 
 // =========================================================================
+
+// =========================================================================
+// REAL-TIME FARMER NAME AUTO-SUGGESTION FOR #cpPayFarmerName (CHITTA PAYMENT)
+// =========================================================================
+let currentCpFarmerSuggestMatches = [];
+let currentCpFarmerSuggestIndex = 0;
+
+function setCpFarmerSuggestHighlight(newIdx) {
+    const box = document.getElementById('cpFarmerNameSuggestBox');
+    if (!box) return;
+    const items = box.querySelectorAll('.cp-farmer-suggest-item');
+    if (!items || items.length === 0) return;
+    
+    if (newIdx < 0) newIdx = 0;
+    if (newIdx >= items.length) newIdx = items.length - 1;
+    currentCpFarmerSuggestIndex = newIdx;
+
+    items.forEach((item, idx) => {
+        if (idx === currentCpFarmerSuggestIndex) {
+            item.style.background = '#0a246a';
+            item.style.color = '#ffffff';
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.style.background = '#ffffff';
+            item.style.color = '#000000';
+        }
+    });
+}
+
+function onCpFarmerNameInput() {
+    const input = document.getElementById('cpPayFarmerName');
+    const box = document.getElementById('cpFarmerNameSuggestBox');
+    if (!input || !box) return;
+
+    const val = (input.value || '').trim().toLowerCase();
+    if (val.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        currentCpFarmerSuggestMatches = [];
+        currentCpFarmerSuggestIndex = 0;
+        return;
+    }
+
+    if (typeof accounts === 'undefined' || !accounts || accounts.length === 0) {
+        if (typeof fetchAccounts === 'function') {
+            fetchAccounts().then(() => onCpFarmerNameInput());
+        }
+        return;
+    }
+
+    const matches = accounts.filter(a => {
+        if (!a) return false;
+        const name = (a.accountName || '').toLowerCase();
+        const code = String(getDisplayFarmerCode(a) || a.partyId || a.id || '').toLowerCase();
+        const place = (a.regionalName || a.place || a.accountGroup?.groupName || '').toLowerCase();
+        return name.includes(val) || code.includes(val) || place.includes(val);
+    }).slice(0, 30);
+
+    currentCpFarmerSuggestMatches = matches;
+    currentCpFarmerSuggestIndex = 0;
+
+    if (matches.length === 0) {
+        box.innerHTML = '<div style="padding:8px 10px; color:#888; font-style:italic;">No matching accounts in master</div>';
+        box.style.display = 'block';
+        return;
+    }
+
+    box.innerHTML = '';
+    matches.forEach((acc, i) => {
+        const div = document.createElement('div');
+        div.className = 'cp-farmer-suggest-item';
+        div.dataset.index = i;
+        div.style.padding = '6px 10px';
+        div.style.cursor = 'pointer';
+        div.style.borderBottom = '1px solid #eee';
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        
+        if (i === 0) {
+            div.style.background = '#0a246a';
+            div.style.color = '#fff';
+        } else {
+            div.style.background = '#fff';
+            div.style.color = '#000';
+        }
+
+        div.onmouseenter = () => setCpFarmerSuggestHighlight(i);
+        div.onmousedown = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectCpFarmerFromSuggest(acc);
+        };
+        div.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectCpFarmerFromSuggest(acc);
+        };
+
+        const codeStr = getDisplayFarmerCode(acc);
+        const placeStr = acc.regionalName || acc.place || (acc.accountGroup ? acc.accountGroup.groupName : '') || '';
+
+        div.innerHTML = `
+            <div><strong>${acc.accountName}</strong> <span style="font-size:11px; opacity:0.8;">(${codeStr})</span></div>
+            <div style="font-size:11px; opacity:0.8;">${placeStr}</div>
+        `;
+        box.appendChild(div);
+    });
+
+    box.style.display = 'block';
+}
+
+function selectCpFarmerFromSuggest(acc) {
+    if (!acc) return;
+    const input = document.getElementById('cpPayFarmerName');
+    const idInput = document.getElementById('cpPayFarmerCode');
+    const phoneInput = document.getElementById('cpPayPhone');
+    const box = document.getElementById('cpFarmerNameSuggestBox');
+
+    if (input) input.value = acc.accountName || '';
+    if (idInput) idInput.value = getDisplayFarmerCode(acc);
+    if (phoneInput) phoneInput.value = acc.phone1 || acc.mobile || acc.phone || '';
+    if (box) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+    }
+    currentCpFarmerSuggestMatches = [];
+    currentCpFarmerSuggestIndex = 0;
+
+    loadFarmerChittasForPayment(acc);
+}
+
+function handleCpFarmerNameKey(e) {
+    const box = document.getElementById('cpFarmerNameSuggestBox');
+    if (!box || box.style.display === 'none') {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const next = document.getElementById('cpPayChittaNo') || document.getElementById('cpPayAmount');
+            if (next) next.focus();
+        }
+        return;
+    }
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentCpFarmerSuggestMatches.length > 0) {
+            setCpFarmerSuggestHighlight(currentCpFarmerSuggestIndex + 1);
+        }
+        return;
+    }
+    
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentCpFarmerSuggestMatches.length > 0) {
+            setCpFarmerSuggestHighlight(currentCpFarmerSuggestIndex - 1);
+        }
+        return;
+    }
+    
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        box.style.display = 'none';
+        return;
+    }
+    
+    if (e.key === 'Enter' || e.key === 'Tab') {
+        if (currentCpFarmerSuggestMatches && currentCpFarmerSuggestMatches.length > 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            const chosen = currentCpFarmerSuggestMatches[currentCpFarmerSuggestIndex] || currentCpFarmerSuggestMatches[0];
+            selectCpFarmerFromSuggest(chosen);
+            return false;
+        }
+    }
+}
+
 // ACCOUNT MASTER FIND DIALOG LOGIC
 // =========================================================================
 let currentAccountFindRowIndex = -1;
