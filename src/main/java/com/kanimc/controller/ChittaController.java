@@ -113,16 +113,59 @@ public class ChittaController {
     }
 
     private void hydrateReferences(Chitta chitta) {
-        if (chitta.getFarmerAccount() == null || chitta.getFarmerAccount().getId() == null)
-            throw new IllegalArgumentException("Farmer account is required");
-        chitta.setFarmerAccount(accountRepository.findById(chitta.getFarmerAccount().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Farmer account not found")));
+        if (chitta.getFarmerAccount() == null && (chitta.getPaidTo() == null || chitta.getPaidTo().trim().isEmpty())) {
+            throw new IllegalArgumentException("Farmer account or paidTo is required");
+        }
+        com.kanimc.entity.Account account = null;
+        if (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getId() != null) {
+            account = accountRepository.findById(chitta.getFarmerAccount().getId()).orElse(null);
+        }
+        if (account == null && chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getPartyId() != null && !chitta.getFarmerAccount().getPartyId().trim().isEmpty()) {
+            account = accountRepository.findByPartyId(chitta.getFarmerAccount().getPartyId().trim());
+        }
+        if (account == null && chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getAccountName() != null && !chitta.getFarmerAccount().getAccountName().trim().isEmpty()) {
+            account = accountRepository.findByAccountNameIgnoreCase(chitta.getFarmerAccount().getAccountName().trim()).orElse(null);
+        }
+        if (account == null && chitta.getPaidTo() != null && !chitta.getPaidTo().trim().isEmpty()) {
+            account = accountRepository.findByAccountNameIgnoreCase(chitta.getPaidTo().trim()).orElse(null);
+        }
+        if (account == null) {
+            account = new com.kanimc.entity.Account();
+            String fName = (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getAccountName() != null && !chitta.getFarmerAccount().getAccountName().trim().isEmpty())
+                ? chitta.getFarmerAccount().getAccountName().trim()
+                : (chitta.getPaidTo() != null && !chitta.getPaidTo().trim().isEmpty() ? chitta.getPaidTo().trim() : "GENERAL FARMER");
+            account.setAccountName(fName);
+            String pId = (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getPartyId() != null) 
+                ? chitta.getFarmerAccount().getPartyId().trim() 
+                : "";
+            if (pId.length() > 4) pId = pId.substring(0, 4);
+            account.setPartyId(pId);
+            account.setDel("   ");
+            account.setCrby("SYS");
+            account = accountRepository.save(account);
+        }
+        chitta.setFarmerAccount(account);
+        if (chitta.getPaidTo() == null || chitta.getPaidTo().trim().isEmpty()) {
+            chitta.setPaidTo(account.getAccountName());
+        }
+
         if (chitta.getItems() != null) {
             chitta.getItems().forEach(row -> {
-                if (row.getItem() == null || row.getItem().getId() == null)
-                    throw new IllegalArgumentException("Item is required for every row");
-                row.setItem(itemRepository.findById(row.getItem().getId())
-                        .orElseThrow(() -> new IllegalArgumentException("Item not found: " + row.getItem().getId())));
+                com.kanimc.entity.Item item = null;
+                if (row.getItem() != null && row.getItem().getId() != null) {
+                    item = itemRepository.findById(row.getItem().getId()).orElse(null);
+                }
+                if (item == null) {
+                    item = itemRepository.findAll().stream().findFirst().orElse(null);
+                }
+                if (item == null) {
+                    item = new com.kanimc.entity.Item();
+                    item.setDes("GOODS");
+                    item.setDel("   ");
+                    item.setCrby("SYS");
+                    item = itemRepository.save(item);
+                }
+                row.setItem(item);
             });
         }
     }

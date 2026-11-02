@@ -92,35 +92,41 @@
             return originalFetch(resource, init);
         }
 
-        
+        const urlObj = new URL(url, window.location.origin);
+        let path = urlObj.pathname;
+        if (path.startsWith('/KANIMC-WEB-APP/')) {
+            path = path.substring('/KANIMC-WEB-APP'.length);
+        } else if (path.startsWith('/KANIMC-WEB-APP')) {
+            path = path.substring('/KANIMC-WEB-APP'.length);
+        }
+        if (!path.startsWith('/')) path = '/' + path;
+
         // TRY FORWARDING TO CENTRAL SERVER FOR REAL-TIME MULTI-DEVICE SINGLE DATABASE
         const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://marcus-mattress-tions-versus.trycloudflare.com';
         if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
             try {
-                const targetUrl = centralServer.replace(/\/$/, '') + urlObj.pathname + urlObj.search;
+                const targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
                     'Bypass-Tunnel-Reminder': 'true'
                 });
                 const remoteInit = Object.assign({}, init, { headers: newHeaders });
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3500);
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
                 remoteInit.signal = controller.signal;
                 
                 const remoteRes = await originalFetch(targetUrl, remoteInit);
                 clearTimeout(timeoutId);
-                if (remoteRes && remoteRes.status < 500) {
+                if (remoteRes && remoteRes.status !== 502 && remoteRes.status !== 503 && remoteRes.status !== 504) {
                     return remoteRes;
                 }
             } catch(remoteErr) {
-                // Fall back to local mock DB if central server offline
+                console.warn('[KANIMC] Central server unreachable, falling back to local DB:', remoteErr);
             }
         }
 
         await initPromise;
 
         const method = (init && init.method ? init.method.toUpperCase() : 'GET');
-        const urlObj = new URL(url, window.location.origin);
-        const path = urlObj.pathname;
         const search = urlObj.searchParams;
 
         let reqBody = null;
@@ -153,7 +159,7 @@
             // SYNC STATUS
             if (path === '/api/sync/status') {
                 return jsonResponse({
-                    version: Date.now(),
+                    version: 1793634402291,
                     chittaCount: (db.chittas || []).length,
                     paidCount: (db.chittas || []).filter(c => c.paid).length,
                     accountCount: (db.accounts || []).length,
