@@ -94,8 +94,8 @@
 
         
         // TRY FORWARDING TO CENTRAL SERVER FOR REAL-TIME MULTI-DEVICE SINGLE DATABASE
-        const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://kanimc-mandy.loca.lt';
-        if (centralServer && !window.location.host.includes('loca.lt') && !window.location.host.includes('192.168.1.7')) {
+        const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://marcus-mattress-tions-versus.trycloudflare.com';
+        if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
             try {
                 const targetUrl = centralServer.replace(/\/$/, '') + urlObj.pathname + urlObj.search;
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
