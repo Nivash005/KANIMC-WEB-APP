@@ -32,7 +32,15 @@ public class AccountController {
     @PostMapping
     public ResponseEntity<Account> createAccount(@RequestBody java.util.Map<String, String> data) {
         Account account = new Account();
-        account.setPartyId("P-" + System.currentTimeMillis());
+        String pId = data.get("partyId");
+        if (pId != null && !pId.trim().isEmpty()) {
+            pId = pId.trim();
+            if (pId.length() > 4) pId = pId.substring(0, 4);
+        } else {
+            long next = accountRepository.count() + 1;
+            pId = String.valueOf(next > 9999 ? (next % 10000) : next);
+        }
+        account.setPartyId(pId);
         account.setAccountName(data.get("accountName"));
         account.setRegionalName(data.get("place"));
         
@@ -75,6 +83,12 @@ public class AccountController {
     public ResponseEntity<Account> updateAccount(@PathVariable Long id, @RequestBody java.util.Map<String, String> data) {
         return accountRepository.findById(id)
                 .map(account -> {
+                    String pId = data.get("partyId");
+                    if (pId != null && !pId.trim().isEmpty()) {
+                        pId = pId.trim();
+                        if (pId.length() > 4) pId = pId.substring(0, 4);
+                        account.setPartyId(pId);
+                    }
                     account.setAccountName(data.get("accountName"));
                     account.setRegionalName(data.get("place"));
                     String groupName = data.get("group") != null ? data.get("group") : "GENERAL";
