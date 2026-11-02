@@ -14,7 +14,7 @@ public interface ReceiptVoucherRepository extends JpaRepository<ReceiptVoucher, 
     @Query("SELECT r FROM ReceiptVoucher r LEFT JOIN FETCH r.account WHERE " +
            "(:startDate IS NULL OR r.voucherDate >= :startDate) AND " +
            "(:endDate IS NULL OR r.voucherDate <= :endDate) AND " +
-           "(:accountId IS NULL OR r.account.id = :accountId)")
+           "(:accountId IS NULL OR r.account.id = :accountId) ORDER BY r.voucherDate ASC, r.voucherNo ASC")
     List<ReceiptVoucher> findFiltered(@Param("startDate") LocalDate startDate, 
                                       @Param("endDate") LocalDate endDate, 
                                       @Param("accountId") Long accountId);

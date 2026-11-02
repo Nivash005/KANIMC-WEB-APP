@@ -13,7 +13,7 @@ public interface SalesBillRepository extends JpaRepository<SalesBill, Long> {
     @Query("SELECT b FROM SalesBill b LEFT JOIN FETCH b.buyerAccount WHERE " +
            "(:startDate IS NULL OR b.billDate >= :startDate) AND " +
            "(:endDate IS NULL OR b.billDate <= :endDate) AND " +
-           "(:accountId IS NULL OR b.buyerAccount.id = :accountId)")
+           "(:accountId IS NULL OR b.buyerAccount.id = :accountId) ORDER BY b.billDate ASC, b.billNo ASC")
     List<SalesBill> findFiltered(@Param("startDate") LocalDate startDate, 
                                  @Param("endDate") LocalDate endDate, 
                                  @Param("accountId") Long accountId);

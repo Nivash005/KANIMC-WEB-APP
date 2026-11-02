@@ -14,7 +14,7 @@ public interface CashVoucherRepository extends JpaRepository<CashVoucher, Long> 
     @Query("SELECT v FROM CashVoucher v LEFT JOIN FETCH v.account WHERE " +
            "(:startDate IS NULL OR v.voucherDate >= :startDate) AND " +
            "(:endDate IS NULL OR v.voucherDate <= :endDate) AND " +
-           "(:accountId IS NULL OR v.account.id = :accountId)")
+           "(:accountId IS NULL OR v.account.id = :accountId) ORDER BY v.voucherDate ASC, v.voucherNo ASC")
     List<CashVoucher> findFiltered(@Param("startDate") LocalDate startDate, 
                                    @Param("endDate") LocalDate endDate, 
                                    @Param("accountId") Long accountId);

@@ -13,7 +13,7 @@
     console.log('[KANIMC] GitHub Pages detected. Initializing client-side database adapter...');
 
     // In-memory / LocalStorage Database
-    const DB_KEY = 'KANIMC_GHPAGES_DB_V2';
+    const DB_KEY = 'KANIMC_GHPAGES_DB_V3';
     let db = {
         accounts: [],
         chittas: [],
@@ -217,11 +217,29 @@
                     }
                     return jsonResponse(list);
                 } else if (method === 'POST') {
+                    const newId = db.chittas.length > 0 ? Math.max(...db.chittas.map(c => c.id || 0)) + 1 : 1;
                     const newC = {
-                        id: db.chittas.length > 0 ? Math.max(...db.chittas.map(c => c.id || 0)) + 1 : 1,
+                        id: newId,
                         ...reqBody,
+                        paid: false,
+                        payDate: null,
+                        paidTo: null,
+                        paymentMethod: null,
                         createdAt: new Date().toISOString()
                     };
+
+                    if (newC.farmerAccount) {
+                        const acc = (db.accounts || []).find(a => 
+                            (newC.farmerAccount.id && a.id == newC.farmerAccount.id) || 
+                            (newC.farmerAccount.partyId && String(a.partyId) == String(newC.farmerAccount.partyId)) ||
+                            (newC.farmerName && (a.accountName || '').toLowerCase() === newC.farmerName.toLowerCase())
+                        );
+                        if (acc) {
+                            newC.farmerAccount = acc;
+                            newC.farmerName = acc.accountName;
+                        }
+                    }
+
                     db.chittas.push(newC);
                     saveDb();
                     return jsonResponse(newC, 201);
@@ -330,23 +348,37 @@
                 if (method === 'POST') { db.settings = reqBody; saveDb(); return jsonResponse(reqBody, 200); }
             }
 
-            // 9. REPORTS & OUTSTANDINGS (High-Speed In-Memory Filtering for GitHub Pages)
+            // 9. REPORTS & OUTSTANDINGS (High-Speed In-Memory Filtering & Chronological Sorting for GitHub Pages)
             if (path === '/api/reports/chitta-register') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
                 const accountId = search.get('accountId');
-                let list = db.chittas || [];
+                let list = (db.chittas || []).slice();
                 if (startDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.chittaDate || '').substring(0, 10);
+                    const db = String(b.chittaDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+                });
                 return jsonResponse(list);
             }
             if (path === '/api/reports/chitta-pending-register') {
                 const asOfDate = search.get('asOfDate');
+                const startDate = search.get('startDate');
                 const accountId = search.get('accountId');
                 let list = (db.chittas || []).filter(c => !c.paid && !c.payDate);
+                if (startDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) >= startDate);
                 if (asOfDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= asOfDate);
                 if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.chittaDate || '').substring(0, 10);
+                    const db = String(b.chittaDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+                });
                 return jsonResponse(list);
             }
             if (path === '/api/reports/chitta-payment-register') {
@@ -357,36 +389,60 @@
                 if (startDate) list = list.filter(c => (c.payDate || c.chittaDate) && String(c.payDate || c.chittaDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(c => (c.payDate || c.chittaDate) && String(c.payDate || c.chittaDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.payDate || a.chittaDate || '').substring(0, 10);
+                    const db = String(b.payDate || b.chittaDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+                });
                 return jsonResponse(list);
             }
             if (path === '/api/reports/bill-register') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
                 const accountId = search.get('accountId');
-                let list = db.salesBills || [];
+                let list = (db.salesBills || []).slice();
                 if (startDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(b => b.buyerAccount && (b.buyerAccount.id == accountId || String(b.buyerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.billDate || '').substring(0, 10);
+                    const db = String(b.billDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.billNo, 10) || 0) - (parseInt(b.billNo, 10) || 0);
+                });
                 return jsonResponse(list);
             }
             if (path === '/api/reports/cash-payment-register') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
                 const accountId = search.get('accountId');
-                let list = db.cashVouchers || [];
+                let list = (db.cashVouchers || []).slice();
                 if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.voucherDate || '').substring(0, 10);
+                    const db = String(b.voucherDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.voucherNo, 10) || 0) - (parseInt(b.voucherNo, 10) || 0);
+                });
                 return jsonResponse(list);
             }
             if (path === '/api/reports/receipt-register') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
                 const accountId = search.get('accountId');
-                let list = db.receiptVouchers || [];
-                if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
-                if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
-                if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
+                let list = (db.receiptVouchers || []).slice();
+                if (startDate) list = list.filter(r => r.voucherDate && String(r.voucherDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(r => r.voucherDate && String(r.voucherDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(r => r.account && (r.account.id == accountId || String(r.account.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.voucherDate || '').substring(0, 10);
+                    const db = String(b.voucherDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.voucherNo, 10) || 0) - (parseInt(b.voucherNo, 10) || 0);
+                });
                 return jsonResponse(list);
             }
             if (path.startsWith('/api/reports/')) {
