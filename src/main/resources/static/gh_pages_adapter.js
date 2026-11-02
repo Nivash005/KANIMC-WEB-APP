@@ -128,11 +128,24 @@
             // 1. ACCOUNTS
             if (path === '/api/accounts') {
                 if (method === 'GET') {
+                    if (Array.isArray(db.accounts)) {
+                        db.accounts.forEach(a => {
+                            if (!a.partyId || String(a.partyId).startsWith('P-') || String(a.partyId).length > 4) {
+                                a.partyId = String(a.id || '').substring(0, 4);
+                            }
+                        });
+                    }
                     return jsonResponse(db.accounts);
                 } else if (method === 'POST') {
+                    const nextId = db.accounts.length > 0 ? Math.max(...db.accounts.map(a => a.id || 0)) + 1 : 1;
+                    let pId = reqBody.partyId ? String(reqBody.partyId).trim() : '';
+                    if (!pId || pId.startsWith('P-') || pId.length > 4) {
+                        pId = String(nextId > 9999 ? (nextId % 10000) : nextId);
+                    }
+                    if (pId.length > 4) pId = pId.substring(0, 4);
                     const newAcc = {
-                        id: db.accounts.length > 0 ? Math.max(...db.accounts.map(a => a.id || 0)) + 1 : 1,
-                        partyId: reqBody.partyId || 'P-' + Date.now(),
+                        id: nextId,
+                        partyId: pId,
                         accountName: reqBody.accountName || '',
                         regionalName: reqBody.regionalName || reqBody.place || '',
                         accountGroup: typeof reqBody.accountGroup === 'object' ? reqBody.accountGroup : { groupName: reqBody.group || 'GENERAL' },
