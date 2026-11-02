@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>INFO-NET Accounting - Integrated</title>
 <link rel="icon" href="data:,">
-<script src="gh_pages_adapter.js?v=20261102_3"></script>
+<script src="gh_pages_adapter.js?v=20261102_4"></script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}
@@ -3768,9 +3768,10 @@ function openWin(id, targetParam){
     const el=document.getElementById(id);
     if(el) { 
         el.style.display='flex'; 
-        if (id === 'openingChitta' && typeof currentChittaIndex !== 'undefined' && currentChittaIndex === -1) {
+        if (id === 'openingChitta') {
             const chittaDateEl = document.getElementById('chittaDate');
-            if (chittaDateEl) chittaDateEl.value = getTodayDateStr();
+            if (chittaDateEl && !chittaDateEl.value) chittaDateEl.value = getTodayDateStr();
+            chittaActionNew();
         }
         const firstInput = el.querySelector('input:not([type=button]), select'); 
         if(firstInput) firstInput.focus(); 
@@ -4444,11 +4445,11 @@ async function checkSyncStatus(force = false) {
             lastSyncPaidCount = status.paidCount;
             lastSyncAccountCount = status.accountCount;
 
-            // Silently reload in background
-            if (typeof fetchChittas === 'function') await fetchChittas();
-            if (typeof fetchAccounts === 'function') await fetchAccounts();
-            if (typeof fetchCashVouchers === 'function') await fetchCashVouchers();
-            if (typeof fetchReceiptVouchers === 'function') await fetchReceiptVouchers();
+            // Silently reload data arrays without touching active edit screen
+            if (typeof fetchChittas === 'function') await fetchChittas(false);
+            if (typeof fetchAccounts === 'function') await fetchAccounts(false);
+            if (typeof fetchCashVouchers === 'function') await fetchCashVouchers(false);
+            if (typeof fetchReceiptVouchers === 'function') await fetchReceiptVouchers(false);
 
             // Refresh open registers without interrupting current editing
             refreshOpenRegistersSilently();
@@ -5250,7 +5251,7 @@ function clearChitta() {
     calcChitta();
 }
 
-async function fetchChittas() {
+async function fetchChittas(loadLast = false) {
     try {
         const dates = (typeof getActivePeriodDates === 'function') ? getActivePeriodDates() : null;
         let url = '/api/chittas';
@@ -5260,31 +5261,39 @@ async function fetchChittas() {
         const res = await fetch(url);
         if(res.ok) {
             chittas = await res.json();
-            if(chittas.length > 0) {
-                displayChitta(chittas.length - 1);
-            } else {
-                chittas = [];
-                currentChittaIndex = -1;
-                clearChitta();
-                setChittaMode('VIEW');
+            if (loadLast && chittaMode !== 'EDIT') {
+                if(chittas.length > 0) {
+                    displayChitta(chittas.length - 1);
+                } else {
+                    currentChittaIndex = -1;
+                    clearChitta();
+                    setChittaMode('VIEW');
+                }
             }
         }
     } catch(e) { console.error(e); }
 }
 
 async function saveChitta() {
-    const dateVal = document.getElementById('chittaDate').value;
-    if (!dateVal) { showToast('Please enter Chitta Date.'); return; }
+    chittaMode = 'EDIT';
+    const dateVal = document.getElementById('chittaDate')?.value || getTodayDateStr();
 
-    let chittaNoStr = (document.getElementById('chittaNo').value || '').trim();
+    let chittaNoStr = (document.getElementById('chittaNo')?.value || '').trim();
     if(!chittaNoStr) {
         await autoAssignNextChittaNo();
-        chittaNoStr = (document.getElementById('chittaNo').value || '').trim();
+        chittaNoStr = (document.getElementById('chittaNo')?.value || '').trim();
     }
     
-    const fName = (document.getElementById('farmerName').value || '').trim();
-    const fId = (document.getElementById('farmerAccountId').value || '').trim();
+    const fName = (document.getElementById('farmerName')?.value || '').trim();
+    const fId = (document.getElementById('farmerAccountId')?.value || '').trim();
     
+    if (!fName && !fId) {
+        showToast("Please enter Farmer Name or Code.");
+        const fInput = document.getElementById('farmerName');
+        if (fInput) fInput.focus();
+        return;
+    }
+
     let matchedAccount = null;
     if (fId && typeof accounts !== 'undefined' && accounts) {
         matchedAccount = accounts.find(a => String(a.partyId) === fId || String(a.id) === fId);
@@ -5295,23 +5304,26 @@ async function saveChitta() {
     if (!matchedAccount && fName && typeof accounts !== 'undefined' && accounts) {
         matchedAccount = accounts.find(a => (a.accountName || '').toLowerCase().includes(fName.toLowerCase()));
     }
-
     if (!matchedAccount) {
-        showToast("Please select a valid Farmer Name from the dropdown.");
-        return;
+        matchedAccount = {
+            id: null,
+            partyId: fId || '',
+            accountName: fName || 'GENERAL FARMER',
+            regionalName: ''
+        };
     }
 
     const farmerAccObj = {
         id: matchedAccount.id,
         partyId: matchedAccount.partyId,
-        accountName: matchedAccount.accountName,
-        regionalName: matchedAccount.regionalName,
-        phone1: matchedAccount.phone1 || matchedAccount.phone || matchedAccount.mobile
+        accountName: matchedAccount.accountName || fName,
+        regionalName: matchedAccount.regionalName || '',
+        phone1: matchedAccount.phone1 || matchedAccount.phone || matchedAccount.mobile || ''
     };
 
-    const commRate = parseFloat(document.getElementById('chittaCommPct').value) || 0;
-    const advAmt = parseFloat(document.getElementById('chittaAdvance').value) || 0;
-    const frtAmt = parseFloat(document.getElementById('chittaFreight').value) || 0;
+    const commRate = parseFloat(document.getElementById('chittaCommPct')?.value) || 0;
+    const advAmt = parseFloat(document.getElementById('chittaAdvance')?.value) || 0;
+    const frtAmt = parseFloat(document.getElementById('chittaFreight')?.value) || 0;
 
     const data = {
         chittaNo: chittaNoStr,
@@ -5332,28 +5344,31 @@ async function saveChitta() {
     let hasItems = false;
     let calcGrossTotal = 0;
     for(let i=0; i<rates.length; i++) {
-        const itemDesc = itemDescs[i].value;
+        const itemDesc = (itemDescs[i]?.value || '').trim();
         if(!itemDesc) continue; // skip empty rows
         
-        let matchingItem = items.find(it => it.des === itemDesc);
-        if(!matchingItem) {
-            alert("Invalid Item in row " + (i+1) + ". Please select a valid Item from the list.");
-            return;
+        let matchingItem = (typeof items !== 'undefined' && items) ? items.find(it => it.des && it.des.trim().toLowerCase() === itemDesc.toLowerCase()) : null;
+        if (!matchingItem && typeof items !== 'undefined' && items && items.length > 0) {
+            matchingItem = items.find(it => it.des && it.des.trim().toLowerCase().includes(itemDesc.toLowerCase())) || items[0];
         }
         
-        const q = parseFloat(qtys[i].value);
-        const r = parseFloat(rates[i].value);
+        const itemId = matchingItem ? matchingItem.id : 1;
+        const finalDesc = matchingItem ? (matchingItem.des || itemDesc) : itemDesc;
         
-        if(isNaN(q) || isNaN(r) || q <= 0 || r < 0) {
-            alert("Please enter valid positive Qty and Rate in row " + (i+1));
+        const q = parseFloat(qtys[i]?.value) || 0;
+        const r = parseFloat(rates[i]?.value) || 0;
+        
+        if (q <= 0) {
+            showToast("Please enter Qty for " + itemDesc);
+            if (qtys[i]) qtys[i].focus();
             return;
         }
         
         const lineAmt = q * r;
         calcGrossTotal += lineAmt;
         data.items.push({ 
-            item: { id: matchingItem.id, des: matchingItem.des }, 
-            itemDescription: matchingItem.des || itemDesc,
+            item: { id: itemId, des: finalDesc }, 
+            itemDescription: finalDesc,
             quantity: q, 
             rate: r,
             amount: lineAmt
@@ -5362,7 +5377,9 @@ async function saveChitta() {
     }
     
     if(!hasItems) {
-        showToast("Please enter at least one item.");
+        showToast("Please enter at least one item description and quantity.");
+        const firstGridItem = document.querySelector('#chittaGrid .grid-item');
+        if (firstGridItem) firstGridItem.focus();
         return;
     }
     
@@ -5372,29 +5389,28 @@ async function saveChitta() {
     data.netPayable = calcGrossTotal - commAmt - advAmt - frtAmt;
     
     try {
-        const endpoint = currentChittaIndex >= 0 ? `/api/chittas/${chittas[currentChittaIndex].id}` : '/api/chittas';
+        const endpoint = (currentChittaIndex >= 0 && chittas[currentChittaIndex]) ? `/api/chittas/${chittas[currentChittaIndex].id}` : '/api/chittas';
         const res = await fetch(endpoint, {
-            method: currentChittaIndex >= 0 ? 'PUT' : 'POST',
+            method: (currentChittaIndex >= 0 && chittas[currentChittaIndex]) ? 'PUT' : 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
         if(res.ok) {
             const savedChitta = await res.json().catch(() => null);
             const savedNo = (savedChitta && savedChitta.chittaNo) ? savedChitta.chittaNo : chittaNoStr;
-            showToast("Chitta Saved");
-            await fetchChittas();
-            setChittaMode('VIEW');
-
-            // Prompt user: Press 'Y' to move to Payment
-            promptPostSavePayment(savedNo);
+            showToast("Chitta #" + savedNo + " Saved Successfully!");
+            
+            await fetchChittas(false);
+            
+            // Automatically prepare next Chitta for quick entry
+            chittaActionNew();
         } else if (res.status === 400) {
             let errMsg = "This Chitta Number already exists on this date! Please choose a different number.";
             try {
                 const errJson = await res.json();
                 if (errJson && errJson.error) errMsg = errJson.error;
             } catch(e) {}
-            showToast("Duplicate Chitta Number!");
-            alert(errMsg);
+            showToast(errMsg);
         } else {
             showToast("Error saving Chitta");
         }
@@ -5769,12 +5785,12 @@ calcChitta();
 let accounts = [];
 let currentAccountIndex = -1;
 
-async function fetchAccounts() {
+async function fetchAccounts(loadFirst = false) {
     try {
         const res = await fetch('/api/accounts');
         if(res.ok) {
             accounts = await res.json();
-                        if (accounts.length > 0) loadFirstAccount();
+                        if (loadFirst && accounts.length > 0) loadFirstAccount();
             // Fast string-buffer datalist population (non-blocking)
             const dataList = document.getElementById('accountNamesList');
             if (dataList) {
