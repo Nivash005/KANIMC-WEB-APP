@@ -3473,7 +3473,7 @@ function closeAll(){
     document.querySelectorAll('.has-submenu.open').forEach(s => s.classList.remove('open'));
 }
 
-function openWin(id){
+function openWin(id, targetParam){
     if (!canAccessWindow(id)) {
         alert('Access Denied: You do not have permission to open this window.');
         return;
@@ -3512,8 +3512,8 @@ function openWin(id){
                 fetchItems().then(() => displayProduct(0));
             }
         } else if(id === 'chittaPayment') {
-            if (typeof clearChittaPaymentForm === 'function') clearChittaPaymentForm();
-            if (typeof loadAllPendingChittasForPayment === 'function') loadAllPendingChittasForPayment();
+            if (!targetParam && typeof clearChittaPaymentForm === 'function') clearChittaPaymentForm();
+            if (typeof loadAllPendingChittasForPayment === 'function') loadAllPendingChittasForPayment(targetParam);
         } else if(id === 'commission' && typeof loadCommissionRates === 'function') {
             loadCommissionRates();
         } else if(id === 'openingBalance' && typeof loadOpeningBalances === 'function') {
@@ -4350,31 +4350,64 @@ function onCpFarmerNameChange() {
 }
 
 async function onCpChittaNoChange() {
-    const no = document.getElementById('cpPayChittaNo')?.value.trim();
+    const no = document.getElementById('cpPayChittaNo')?.value?.trim();
     if(!no) return;
+    
+    const curDate = document.getElementById('cpPayDate')?.value?.trim();
+    const curFarmer = document.getElementById('cpPayFarmerName')?.value?.trim().toLowerCase();
+    
+    let pool = (window.allPendingChittas && window.allPendingChittas.length > 0) ? window.allPendingChittas : (typeof chittas !== 'undefined' ? chittas : []);
+    
     let c = null;
-    // 1. Check in allPendingChittas
-    if (window.allPendingChittas && window.allPendingChittas.length > 0) {
-        c = window.allPendingChittas.find(x => x.chittaNo && String(x.chittaNo).trim() === no);
+    // 1. Try matching by BOTH chittaNo AND curDate
+    if (curDate) {
+        c = pool.find(x => x.chittaNo && String(x.chittaNo).trim() === no && String(x.chittaDate || '').substring(0, 10) === curDate.substring(0, 10));
     }
-    // 2. Check in chittas
-    if (!c && typeof chittas !== 'undefined' && chittas) {
-        c = chittas.find(x => x.chittaNo && String(x.chittaNo).trim() === no);
+    // 2. Try matching by chittaNo AND curFarmer
+    if (!c && curFarmer) {
+        c = pool.find(x => {
+            const fName = ((x.farmerAccount && x.farmerAccount.accountName) ? x.farmerAccount.accountName : (x.farmerName || '')).trim().toLowerCase();
+            return x.chittaNo && String(x.chittaNo).trim() === no && (fName === curFarmer || fName.includes(curFarmer));
+        });
     }
-    // 3. Search via backend API
+    // 3. Match latest chitta with this number (reverse search)
+    if (!c) {
+        const matches = pool.filter(x => x.chittaNo && String(x.chittaNo).trim() === no);
+        if (matches.length > 0) {
+            c = matches[matches.length - 1];
+        }
+    }
+    // 4. Backend search
     if (!c) {
         try {
-            const res = await fetch('/api/chittas?chittaNo=' + encodeURIComponent(no));
+            let apiUrl = '/api/chittas?chittaNo=' + encodeURIComponent(no);
+            if (curDate) apiUrl += '&date=' + encodeURIComponent(curDate);
+            const res = await fetch(apiUrl);
             if (res.ok) {
                 const list = await res.json();
                 if (Array.isArray(list) && list.length > 0) {
-                    c = list[0];
+                    c = list[list.length - 1];
                 }
             }
         } catch(e) {}
     }
+
     if (c) {
         await populateChittaIntoPaymentForm(c);
+        const histBody = document.getElementById('cpPayHistoryBody');
+        if (histBody) {
+            const rows = histBody.querySelectorAll('tr');
+            rows.forEach(r => {
+                if (r.dataset.chittaNo === String(c.chittaNo).trim() && (!r.dataset.date || r.dataset.date === String(c.chittaDate).substring(0, 10))) {
+                    r.style.background = '#0a246a';
+                    r.style.color = '#fff';
+                    r.scrollIntoView({ block: 'nearest' });
+                } else {
+                    r.style.background = '';
+                    r.style.color = '';
+                }
+            });
+        }
     } else {
         showToast('Chitta No ' + no + ' not found in pending list');
     }
@@ -4456,6 +4489,7 @@ async function loadAllPendingChittasForPayment(targetChittaNo) {
             const dt = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toLocaleDateString('en-GB')) : '';
             const tr = document.createElement('tr');
             tr.dataset.chittaNo = String(c.chittaNo || '').trim();
+            tr.dataset.date = String(c.chittaDate || '').substring(0, 10);
             tr.style.cursor = 'pointer';
             tr.onclick = () => {
                 const rows = histBody.querySelectorAll('tr');
@@ -4473,13 +4507,48 @@ async function loadAllPendingChittasForPayment(targetChittaNo) {
             histBody.appendChild(tr);
         });
 
-        const targetNo = targetChittaNo || document.getElementById('cpPayChittaNo')?.value?.trim();
         let chosenChitta = null;
-        if (targetNo) {
-            chosenChitta = unpaid.find(c => String(c.chittaNo).trim() === String(targetNo).trim());
+
+        if (targetChittaNo && typeof targetChittaNo === 'object') {
+            // 1. Match by exact ID
+            if (targetChittaNo.id) {
+                chosenChitta = unpaid.find(c => c.id == targetChittaNo.id);
+            }
+            // 2. Match by BOTH chittaNo AND chittaDate
+            if (!chosenChitta && targetChittaNo.chittaNo && targetChittaNo.chittaDate) {
+                const tDate = String(targetChittaNo.chittaDate).substring(0, 10);
+                chosenChitta = unpaid.find(c => 
+                    String(c.chittaNo).trim() === String(targetChittaNo.chittaNo).trim() && 
+                    String(c.chittaDate || '').substring(0, 10) === tDate
+                );
+            }
+            // 3. Match by chittaNo AND farmerName
+            if (!chosenChitta && targetChittaNo.chittaNo && (targetChittaNo.farmerName || targetChittaNo.farmerAccount)) {
+                const tFarmer = String(targetChittaNo.farmerName || (targetChittaNo.farmerAccount ? targetChittaNo.farmerAccount.accountName : '')).trim().toLowerCase();
+                chosenChitta = unpaid.find(c => {
+                    const cFarmer = ((c.farmerAccount && c.farmerAccount.accountName) ? c.farmerAccount.accountName : (c.farmerName || '')).trim().toLowerCase();
+                    return String(c.chittaNo).trim() === String(targetChittaNo.chittaNo).trim() && (cFarmer === tFarmer || cFarmer.includes(tFarmer));
+                });
+            }
+            // 4. If targetChittaNo is newly entered/created and not yet in unpaid array
+            if (!chosenChitta && targetChittaNo.chittaNo) {
+                chosenChitta = targetChittaNo;
+            }
+        } else {
+            const targetNo = targetChittaNo || document.getElementById('cpPayChittaNo')?.value?.trim();
+            const curDate = document.getElementById('chittaDate')?.value || document.getElementById('cpPayDate')?.value;
+            if (targetNo && curDate) {
+                const dStr = curDate.substring(0, 10);
+                chosenChitta = unpaid.find(c => String(c.chittaNo).trim() === String(targetNo).trim() && String(c.chittaDate || '').substring(0, 10) === dStr);
+            }
+            if (!chosenChitta && targetNo) {
+                const matches = unpaid.filter(c => String(c.chittaNo).trim() === String(targetNo).trim());
+                if (matches.length > 0) chosenChitta = matches[matches.length - 1];
+            }
         }
+
         if (!chosenChitta && unpaid.length > 0) {
-            chosenChitta = unpaid[0];
+            chosenChitta = unpaid[unpaid.length - 1]; // Pick most recent pending chitta rather than oldest!
         }
 
         if (chosenChitta) {
@@ -4868,10 +4937,8 @@ function promptPostSavePayment(chittaNo) {
 function moveToChittaPayment(chittaNo) {
     awaitingPaymentPrompt = false;
     pendingPaymentChittaNo = null;
-    openWin('chittaPayment');
-    
-    // Load pending chittas and target THIS EXACT chitta
-    loadAllPendingChittasForPayment(chittaNo);
+    const target = (typeof pendingPaymentChitta !== 'undefined' && pendingPaymentChitta) ? pendingPaymentChitta : chittaNo;
+    openWin('chittaPayment', target);
 }
 
 // Rapid FoxPro Style Keyboard Navigation
@@ -6361,26 +6428,28 @@ async function deleteBillAction() {
 
 // --- DRILL DOWN & PAYMENT HELPERS ---
 function openChittaPaymentFromCurrent() {
-    const cNo = document.getElementById('chittaNo')?.value;
-    const fId = document.getElementById('farmerAccountId')?.value;
-    const fName = document.getElementById('farmerName')?.value;
-    openWin('chittaPayment');
-    if (cNo) {
-        if (document.getElementById('cpPayChittaNo')) {
-            document.getElementById('cpPayChittaNo').value = cNo;
-            onCpChittaNoChange();
-        }
-    } else if (fName) {
-        if (document.getElementById('cpPayFarmerName')) {
-            document.getElementById('cpPayFarmerName').value = fName;
-            onCpFarmerNameChange();
-        }
-    } else if (fId) {
-        if (document.getElementById('cpPayFarmerCode')) {
-            document.getElementById('cpPayFarmerCode').value = fId;
-            onCpFarmerCodeChange();
-        }
+    let currentChittaObj = null;
+    if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && typeof chittas !== 'undefined' && chittas && chittas[currentChittaIndex]) {
+        currentChittaObj = chittas[currentChittaIndex];
     }
+    
+    const cNo = (document.getElementById('chittaNo')?.value || '').trim();
+    const cDate = (document.getElementById('chittaDate')?.value || '').trim();
+    const fId = (document.getElementById('farmerAccountId')?.value || '').trim();
+    const fName = (document.getElementById('farmerName')?.value || '').trim();
+
+    if (!currentChittaObj && (cNo || fName)) {
+        currentChittaObj = {
+            id: null,
+            chittaNo: cNo,
+            chittaDate: cDate,
+            farmerName: fName,
+            paidTo: fName,
+            farmerAccount: { id: fId, accountName: fName }
+        };
+    }
+
+    openWin('chittaPayment', currentChittaObj);
 }
 
 async function openChittaByDocNo(docNo) {
