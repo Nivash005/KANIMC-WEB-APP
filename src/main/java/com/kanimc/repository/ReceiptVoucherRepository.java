@@ -11,7 +11,7 @@ import java.util.List;
 
 @Repository
 public interface ReceiptVoucherRepository extends JpaRepository<ReceiptVoucher, Long> {
-    @Query("SELECT r FROM ReceiptVoucher r WHERE " +
+    @Query("SELECT r FROM ReceiptVoucher r LEFT JOIN FETCH r.account WHERE " +
            "(:startDate IS NULL OR r.voucherDate >= :startDate) AND " +
            "(:endDate IS NULL OR r.voucherDate <= :endDate) AND " +
            "(:accountId IS NULL OR r.account.id = :accountId)")

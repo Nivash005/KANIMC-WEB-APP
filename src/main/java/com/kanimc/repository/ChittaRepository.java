@@ -45,7 +45,7 @@ public interface ChittaRepository extends JpaRepository<Chitta, Long> {
            "c.chittaDate >= :startDate ORDER BY c.chittaDate DESC, c.chittaNo DESC")
     List<Chitta> findByYearFrom(@Param("startDate") LocalDate startDate);
 
-    @Query("SELECT c FROM Chitta c WHERE " +
+    @Query("SELECT c FROM Chitta c LEFT JOIN FETCH c.farmerAccount WHERE " +
            "(c.del IS NULL OR c.del <> 'Y') AND " +
            "(c.paid = true OR c.payDate IS NOT NULL) AND " +
            "(:startDate IS NULL OR COALESCE(c.payDate, c.chittaDate) >= :startDate) AND " +
@@ -55,7 +55,7 @@ public interface ChittaRepository extends JpaRepository<Chitta, Long> {
                                   @Param("endDate") LocalDate endDate, 
                                   @Param("accountId") Long accountId);
 
-    @Query("SELECT c FROM Chitta c WHERE " +
+    @Query("SELECT c FROM Chitta c LEFT JOIN FETCH c.farmerAccount WHERE " +
            "(c.del IS NULL OR c.del <> 'Y') AND " +
            "(c.paid IS NULL OR c.paid = false) AND c.payDate IS NULL AND " +
            "(:asOfDate IS NULL OR c.chittaDate <= :asOfDate) AND " +
