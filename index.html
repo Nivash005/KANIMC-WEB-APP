@@ -592,6 +592,7 @@ Commission % <input id="commRatePct" value="10.00%">
 <div class="modal-footer orange" style="border-top:1px solid #fff;">
     <div style="display:flex; gap:3px;">
         <button id="btnChittaNew" onclick="chittaActionNew()" style="color:#777;">New</button>
+        <button id="btnChittaSave" onclick="saveChitta()" style="font-weight:bold; background:#0055aa; color:#fff; border:1px solid #003388; padding:3px 12px; cursor:pointer;" tabindex="1999"><u>S</u>ave (F9)</button>
         <button id="btnChittaFindSave" onclick="chittaActionFindSave()" style="font-weight:bold;" tabindex="2000"><u>F</u>ind</button>
         <button id="btnChittaChange" onclick="chittaActionChange()" style="color:#777;">Change</button>
         <button id="btnChittaDelete" onclick="deleteChittaAction()" style="color:#777;">Delete</button>
@@ -4250,7 +4251,8 @@ function setChittaMode(mode) {
     });
 
     // Handle Buttons
-    document.getElementById('btnChittaNew').disabled = (mode === 'EDIT');
+    // Allow clicking New anytime
+    document.getElementById('btnChittaNew').disabled = false;
     document.getElementById('btnChittaChange').disabled = (mode === 'EDIT');
     document.getElementById('btnChittaDelete').disabled = (mode === 'EDIT');
     document.getElementById('btnChittaTop').disabled = (mode === 'EDIT');
@@ -5361,8 +5363,17 @@ async function saveChitta() {
     let hasItems = false;
     let calcGrossTotal = 0;
     for(let i=0; i<rates.length; i++) {
-        const itemDesc = (itemDescs[i]?.value || '').trim();
-        if(!itemDesc) continue; // skip empty rows
+        let itemDesc = (itemDescs[i]?.value || '').trim();
+        const q = parseFloat(qtys[i]?.value) || 0;
+        const r = parseFloat(rates[i]?.value) || 0;
+        
+        // Auto-assign default item if user entered Qty or Rate without typing an item name
+        if (!itemDesc && (q > 0 || r > 0)) {
+            itemDesc = (typeof items !== 'undefined' && items && items.length > 0) ? (items[0].des || 'SEDI') : 'SEDI';
+            if (itemDescs[i]) itemDescs[i].value = itemDesc;
+        }
+        
+        if (!itemDesc && q <= 0 && r <= 0) continue; // genuinely empty row
         
         let matchingItem = (typeof items !== 'undefined' && items) ? items.find(it => it.des && it.des.trim().toLowerCase() === itemDesc.toLowerCase()) : null;
         if (!matchingItem && typeof items !== 'undefined' && items && items.length > 0) {
@@ -5371,9 +5382,6 @@ async function saveChitta() {
         
         const itemId = matchingItem ? matchingItem.id : 1;
         const finalDesc = matchingItem ? (matchingItem.des || itemDesc) : itemDesc;
-        
-        const q = parseFloat(qtys[i]?.value) || 0;
-        const r = parseFloat(rates[i]?.value) || 0;
         
         if (q <= 0) {
             showToast("Please enter Qty for " + itemDesc);
@@ -5394,9 +5402,9 @@ async function saveChitta() {
     }
     
     if(!hasItems) {
-        showToast("Please enter at least one item description and quantity.");
-        const firstGridItem = document.querySelector('#chittaGrid .grid-item');
-        if (firstGridItem) firstGridItem.focus();
+        showToast("Please enter at least one quantity and rate in the grid.");
+        const firstGridQty = document.querySelector('#chittaGrid .grid-qty');
+        if (firstGridQty) firstGridQty.focus();
         return;
     }
     
@@ -5406,9 +5414,12 @@ async function saveChitta() {
     data.netPayable = calcGrossTotal - commAmt - advAmt - frtAmt;
     
     try {
-        const endpoint = (currentChittaIndex >= 0 && chittas[currentChittaIndex]) ? `/api/chittas/${chittas[currentChittaIndex].id}` : '/api/chittas';
+        const isExisting = (currentChittaIndex >= 0 && chittas[currentChittaIndex] && String(chittas[currentChittaIndex].chittaNo).trim() === chittaNoStr && String(chittas[currentChittaIndex].chittaDate).substring(0, 10) === dateVal);
+        const endpoint = isExisting ? `/api/chittas/${chittas[currentChittaIndex].id}` : '/api/chittas';
+        const method = isExisting ? 'PUT' : 'POST';
+        
         const res = await fetch(endpoint, {
-            method: (currentChittaIndex >= 0 && chittas[currentChittaIndex]) ? 'PUT' : 'POST',
+            method: method,
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
@@ -5429,7 +5440,12 @@ async function saveChitta() {
             } catch(e) {}
             showToast(errMsg);
         } else {
-            showToast("Error saving Chitta");
+            let errText = "Error saving Chitta";
+            try {
+                const errJson = await res.json();
+                if (errJson && errJson.error) errText = errJson.error;
+            } catch(e) {}
+            showToast(errText);
         }
     } catch(e) {
         console.error(e);
