@@ -13,7 +13,7 @@
     console.log('[KANIMC] GitHub Pages detected. Initializing client-side database adapter...');
 
     // In-memory / LocalStorage Database
-    const DB_KEY = 'KANIMC_GHPAGES_DB_V1';
+    const DB_KEY = 'KANIMC_GHPAGES_DB_V2';
     let db = {
         accounts: [],
         chittas: [],
@@ -167,13 +167,55 @@
                 });
                 return jsonResponse({ nextNo: max + 1 });
             }
+
+            const mChittaPay = path.match(/^\/api\/chittas\/(\d+)\/payment$/);
+            if (mChittaPay) {
+                const id = parseInt(mChittaPay[1], 10);
+                const found = (db.chittas || []).find(c => c.id == id);
+                if (!found) return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
+                
+                if (method === 'POST') {
+                    const paidTo = search.get('paidTo') || (found.farmerAccount ? found.farmerAccount.accountName : '');
+                    const paymentMethod = search.get('paymentMethod') || 'CASH';
+                    const payDate = search.get('payDate') || new Date().toISOString().substring(0, 10);
+
+                    found.paid = true;
+                    found.paidTo = paidTo;
+                    found.paymentMethod = paymentMethod;
+                    found.payDate = payDate;
+                    found.status = 'PAID';
+                    saveDb();
+                    return jsonResponse(found, 200);
+                } else if (method === 'DELETE') {
+                    found.paid = false;
+                    found.paidTo = null;
+                    found.paymentMethod = null;
+                    found.payDate = null;
+                    found.status = 'PENDING';
+                    saveDb();
+                    return jsonResponse(found, 200);
+                }
+            }
+
+            const mChittaSingle = path.match(/^\/api\/chittas\/(\d+)$/);
+            if (mChittaSingle) {
+                const id = parseInt(mChittaSingle[1], 10);
+                const found = (db.chittas || []).find(c => c.id == id);
+                if (found) return jsonResponse(found, 200);
+                return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
+            }
             if (path === '/api/chittas') {
                 if (method === 'GET') {
                     const date = search.get('date');
+                    const chittaNo = search.get('chittaNo');
+                    let list = db.chittas || [];
                     if (date) {
-                        return jsonResponse(db.chittas.filter(c => c.chittaDate && c.chittaDate.substring(0, 10) === date));
+                        list = list.filter(c => c.chittaDate && c.chittaDate.substring(0, 10) === date);
                     }
-                    return jsonResponse(db.chittas);
+                    if (chittaNo) {
+                        list = list.filter(c => c.chittaNo && String(c.chittaNo).trim() === String(chittaNo).trim());
+                    }
+                    return jsonResponse(list);
                 } else if (method === 'POST') {
                     const newC = {
                         id: db.chittas.length > 0 ? Math.max(...db.chittas.map(c => c.id || 0)) + 1 : 1,
