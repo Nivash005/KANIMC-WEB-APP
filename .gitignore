@@ -1,0 +1,45 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Maven Distribution Binaries
+apache-maven-*/
+apache-maven*.zip
+
+# Database locks and traces (keep .mv.db data)
+*.lock.db
+*.trace.db
+
+# IDE & Editor
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary scripts & scratch files
+*.py
+*.ps1
+*.cmd.bak
+temp*.js
+*.bak*
+*.txt
+*.log
+extracted_features.json
+scratch/
