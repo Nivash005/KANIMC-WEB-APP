@@ -32,7 +32,7 @@ public class CashVoucherController {
 
     @PostMapping
     public ResponseEntity<CashVoucher> createVoucher(@RequestBody CashVoucher voucher) {
-        CashVoucher savedVoucher = cashVoucherRepository.save(voucher);
+        CashVoucher savedVoucher = cashVoucherRepository.save(voucher); SyncController.bumpVersion();
         return new ResponseEntity<>(savedVoucher, HttpStatus.CREATED);
     }
 }

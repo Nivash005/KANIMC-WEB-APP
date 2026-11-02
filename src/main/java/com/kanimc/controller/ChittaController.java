@@ -33,7 +33,7 @@ public class ChittaController {
             hydrateReferences(chitta);
             Account cash = cashAccountId == null ? null : accountRepository.findById(cashAccountId).orElseThrow(() -> new IllegalArgumentException("Cash account not found"));
             Account commission = commissionAccountId == null ? null : accountRepository.findById(commissionAccountId).orElseThrow(() -> new IllegalArgumentException("Commission account not found"));
-            return ResponseEntity.ok(chittaService.saveChitta(chitta, cash, commission));
+            Chitta res = chittaService.saveChitta(chitta, cash, commission); SyncController.bumpVersion(); return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -49,7 +49,7 @@ public class ChittaController {
             hydrateReferences(chitta);
             Account cash = cashAccountId == null ? null : accountRepository.findById(cashAccountId).orElseThrow(() -> new IllegalArgumentException("Cash account not found"));
             Account commission = commissionAccountId == null ? null : accountRepository.findById(commissionAccountId).orElseThrow(() -> new IllegalArgumentException("Commission account not found"));
-            return ResponseEntity.ok(chittaService.updateChitta(id, chitta, cash, commission));
+            Chitta res = chittaService.updateChitta(id, chitta, cash, commission); SyncController.bumpVersion(); return ResponseEntity.ok(res);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -78,7 +78,7 @@ public class ChittaController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteChitta(@PathVariable Long id) {
-        try { chittaService.deleteChitta(id); return ResponseEntity.noContent().build(); }
+        try { chittaService.deleteChitta(id); SyncController.bumpVersion(); return ResponseEntity.noContent().build(); }
         catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }
     }
 
@@ -90,6 +90,7 @@ public class ChittaController {
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate payDate) {
         try {
             Chitta updated = chittaService.recordPayment(id, paidTo, paymentMethod, payDate);
+            SyncController.bumpVersion();
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
@@ -102,6 +103,7 @@ public class ChittaController {
     public ResponseEntity<?> clearPayment(@PathVariable Long id) {
         try {
             Chitta updated = chittaService.clearPayment(id);
+            SyncController.bumpVersion();
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));

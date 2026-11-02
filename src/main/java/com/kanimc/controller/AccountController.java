@@ -55,7 +55,7 @@ public class AccountController {
         account.setAccountGroup(group);
         
         try {
-            return ResponseEntity.ok(accountRepository.save(account));
+            Account saved = accountRepository.save(account); SyncController.bumpVersion(); return ResponseEntity.ok(saved);
         } catch(Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
@@ -100,7 +100,7 @@ public class AccountController {
                         return accountGroupRepository.save(g);
                     });
                     account.setAccountGroup(group);
-                    return ResponseEntity.ok(accountRepository.save(account));
+                    Account saved = accountRepository.save(account); SyncController.bumpVersion(); return ResponseEntity.ok(saved);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -108,7 +108,7 @@ public class AccountController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
         if (accountRepository.existsById(id)) {
-            accountRepository.deleteById(id);
+            accountRepository.deleteById(id); SyncController.bumpVersion();
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();

@@ -32,7 +32,7 @@ public class ReceiptVoucherController {
 
     @PostMapping
     public ResponseEntity<ReceiptVoucher> createVoucher(@RequestBody ReceiptVoucher voucher) {
-        ReceiptVoucher savedVoucher = receiptVoucherRepository.save(voucher);
+        ReceiptVoucher savedVoucher = receiptVoucherRepository.save(voucher); SyncController.bumpVersion();
         return new ResponseEntity<>(savedVoucher, HttpStatus.CREATED);
     }
 }
