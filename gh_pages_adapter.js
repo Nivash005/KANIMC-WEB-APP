@@ -288,7 +288,65 @@
                 if (method === 'POST') { db.settings = reqBody; saveDb(); return jsonResponse(reqBody, 200); }
             }
 
-            // 9. REPORTS & OUTSTANDINGS
+            // 9. REPORTS & OUTSTANDINGS (High-Speed In-Memory Filtering for GitHub Pages)
+            if (path === '/api/reports/chitta-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = db.chittas || [];
+                if (startDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/chitta-pending-register') {
+                const asOfDate = search.get('asOfDate');
+                const accountId = search.get('accountId');
+                let list = (db.chittas || []).filter(c => !c.paid && !c.payDate);
+                if (asOfDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= asOfDate);
+                if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/chitta-payment-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = (db.chittas || []).filter(c => c.paid || c.payDate);
+                if (startDate) list = list.filter(c => (c.payDate || c.chittaDate) && String(c.payDate || c.chittaDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(c => (c.payDate || c.chittaDate) && String(c.payDate || c.chittaDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/bill-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = db.salesBills || [];
+                if (startDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(b => b.buyerAccount && (b.buyerAccount.id == accountId || String(b.buyerAccount.partyId) == String(accountId)));
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/cash-payment-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = db.cashVouchers || [];
+                if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/receipt-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = db.receiptVouchers || [];
+                if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
+                return jsonResponse(list);
+            }
             if (path.startsWith('/api/reports/')) {
                 return jsonResponse([]);
             }
