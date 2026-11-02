@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>INFO-NET Accounting - Integrated</title>
 <link rel="icon" href="data:,">
-<script src="gh_pages_adapter.js?v=20261102_4"></script>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script src="gh_pages_adapter.js?v=20261102_5"></script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}
@@ -590,21 +593,21 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 
 <div class="modal-footer orange" style="border-top:1px solid #fff;">
-    <div style="display:flex; gap:3px;">
-        <button id="btnChittaNew" onclick="chittaActionNew()" style="color:#777;">New</button>
-        <button id="btnChittaSave" onclick="saveChitta()" style="font-weight:bold; background:#0055aa; color:#fff; border:1px solid #003388; padding:3px 12px; cursor:pointer;" tabindex="1999"><u>S</u>ave (F9)</button>
-        <button id="btnChittaFindSave" onclick="chittaActionFindSave()" style="font-weight:bold;" tabindex="2000"><u>F</u>ind</button>
-        <button id="btnChittaChange" onclick="chittaActionChange()" style="color:#777;">Change</button>
-        <button id="btnChittaDelete" onclick="deleteChittaAction()" style="color:#777;">Delete</button>
-        <button id="btnChittaCloseCancel" onclick="chittaActionCloseCancel()" style="font-weight:bold;"><u>C</u>lose</button>
-        <button id="btnChittaPrint" onclick="printChitta(true)" style="color:#000;">Print</button>
-        <button id="btnChittaView" onclick="printChitta(false)" style="color:#000;">View</button>
-        <button id="btnChittaPayment" onclick="openChittaPaymentFromCurrent()" style="color:#777;">Payment</button>
-        <button id="btnChittaSMS" onclick="chittaActionPlaceholder('SMS')" style="color:#777;">SMS</button>
-        <button id="btnChittaTop" onclick="loadFirstChitta()" style="color:#777;">Top</button>
-        <button id="btnChittaPrev" onclick="loadPrevChitta()" style="color:#777;">Prev</button>
-        <button id="btnChittaNext" onclick="loadNextChitta()" style="color:#777;">Next</button>
-        <button id="btnChittaBottom" onclick="loadLastChitta()" style="color:#777;">Bottom</button>
+    <div style="display:flex; gap:3px; align-items:center;">
+        <button id="btnChittaNew" onclick="chittaActionNew()" style="font-weight:bold; color:#0055aa; border:1px solid #99ccee; background:#f0f8ff; padding:3px 12px; cursor:pointer;" title="Start New Chitta or Save Current (F2 or Alt+N)"><u>N</u>ew</button>
+        <button id="btnChittaSave" onclick="saveChitta()" style="font-weight:bold; background:#0055aa; color:#fff; border:1px solid #003388; padding:3px 14px; cursor:pointer;" tabindex="1999" title="Save Chitta (F9 or Alt+S)"><u>S</u>ave (F9)</button>
+        <button id="btnChittaFind" onclick="findChitta()" style="font-weight:bold; padding:3px 10px; cursor:pointer;" tabindex="2000" title="Find / Search Chitta (F8)"><u>F</u>ind</button>
+        <button id="btnChittaChange" onclick="chittaActionChange()" style="padding:3px 10px; cursor:pointer;">Change</button>
+        <button id="btnChittaDelete" onclick="deleteChittaAction()" style="padding:3px 10px; cursor:pointer;">Delete</button>
+        <button id="btnChittaCloseCancel" onclick="chittaActionCloseCancel()" style="font-weight:bold; padding:3px 10px; cursor:pointer;"><u>C</u>lose</button>
+        <button id="btnChittaPrint" onclick="printChitta(true)" style="color:#000; padding:3px 8px; cursor:pointer;">Print</button>
+        <button id="btnChittaView" onclick="printChitta(false)" style="color:#000; padding:3px 8px; cursor:pointer;">View</button>
+        <button id="btnChittaPayment" onclick="openChittaPaymentFromCurrent()" style="padding:3px 8px; cursor:pointer;">Payment</button>
+        <button id="btnChittaSMS" onclick="chittaActionPlaceholder('SMS')" style="padding:3px 8px; cursor:pointer;">SMS</button>
+        <button id="btnChittaTop" onclick="loadFirstChitta()" style="padding:3px 8px; cursor:pointer;">Top</button>
+        <button id="btnChittaPrev" onclick="loadPrevChitta()" style="padding:3px 8px; cursor:pointer;">Prev</button>
+        <button id="btnChittaNext" onclick="loadNextChitta()" style="padding:3px 8px; cursor:pointer;">Next</button>
+        <button id="btnChittaBottom" onclick="loadLastChitta()" style="padding:3px 8px; cursor:pointer;">Bottom</button>
     </div>
 </div>
 </div>
@@ -4250,22 +4253,35 @@ function setChittaMode(mode) {
         }
     });
 
-    // Handle Buttons
-    // Allow clicking New anytime
-    document.getElementById('btnChittaNew').disabled = false;
-    document.getElementById('btnChittaChange').disabled = (mode === 'EDIT');
-    document.getElementById('btnChittaDelete').disabled = (mode === 'EDIT');
-    document.getElementById('btnChittaTop').disabled = (mode === 'EDIT');
-    document.getElementById('btnChittaPrev').disabled = (mode === 'EDIT');
-    document.getElementById('btnChittaNext').disabled = (mode === 'EDIT');
-    document.getElementById('btnChittaBottom').disabled = (mode === 'EDIT');
+    // Handle Buttons - KEEP NEW AND SAVE ALWAYS USABLE
+    const btnNew = document.getElementById('btnChittaNew');
+    if (btnNew) btnNew.disabled = false;
+    const btnSave = document.getElementById('btnChittaSave');
+    if (btnSave) btnSave.disabled = false;
+
+    const btnChange = document.getElementById('btnChittaChange');
+    if (btnChange) btnChange.disabled = (mode === 'EDIT');
+    const btnDel = document.getElementById('btnChittaDelete');
+    if (btnDel) btnDel.disabled = (mode === 'EDIT');
+    const btnTop = document.getElementById('btnChittaTop');
+    if (btnTop) btnTop.disabled = (mode === 'EDIT');
+    const btnPrev = document.getElementById('btnChittaPrev');
+    if (btnPrev) btnPrev.disabled = (mode === 'EDIT');
+    const btnNext = document.getElementById('btnChittaNext');
+    if (btnNext) btnNext.disabled = (mode === 'EDIT');
+    const btnBottom = document.getElementById('btnChittaBottom');
+    if (btnBottom) btnBottom.disabled = (mode === 'EDIT');
     
-    if(mode === 'EDIT') {
-        document.getElementById('btnChittaFindSave').innerHTML = '<u>S</u>ave';
-        document.getElementById('btnChittaCloseCancel').innerHTML = '<u>C</u>ancel';
-    } else {
-        document.getElementById('btnChittaFindSave').innerHTML = '<u>F</u>ind';
-        document.getElementById('btnChittaCloseCancel').innerHTML = '<u>C</u>lose';
+    const btnFind = document.getElementById('btnChittaFind') || document.getElementById('btnChittaFindSave');
+    if (btnFind) btnFind.innerHTML = '<u>F</u>ind';
+    
+    const btnCloseCancel = document.getElementById('btnChittaCloseCancel');
+    if (btnCloseCancel) {
+        if(mode === 'EDIT') {
+            btnCloseCancel.innerHTML = '<u>C</u>ancel';
+        } else {
+            btnCloseCancel.innerHTML = '<u>C</u>lose';
+        }
     }
 }
 
@@ -4294,11 +4310,29 @@ async function autoAssignNextChittaNo() {
 }
 
 async function chittaActionNew() {
+    // 1. If user already filled in farmer and item/qty/rate, clicking "New" means create/save this new chitta!
+    const fName = (document.getElementById('farmerName')?.value || '').trim();
+    const fId = (document.getElementById('farmerAccountId')?.value || '').trim();
+    const firstRate = parseFloat(document.querySelector('#chittaGrid .grid-rate')?.value) || 0;
+    const firstQty = parseFloat(document.querySelector('#chittaGrid .grid-qty')?.value) || 0;
+    
+    if ((fName || fId) && (firstRate > 0 || firstQty > 0)) {
+        showToast("Saving new Chitta...");
+        await saveChitta();
+        return;
+    }
+
+    // 2. Fresh entry initialization
     clearChitta();
     setChittaMode('EDIT');
     await autoAssignNextChittaNo();
+    const curNo = document.getElementById('chittaNo')?.value || '';
+    showToast(`🟢 Ready for New Chitta #${curNo}. Enter Farmer Name and Items, then click Save (F9).`);
     const fInput = document.getElementById('farmerName');
-    if (fInput) fInput.focus();
+    if (fInput) {
+        fInput.focus();
+        fInput.select();
+    }
 }
 
 function chittaActionChange() {
