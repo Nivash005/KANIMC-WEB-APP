@@ -18,11 +18,13 @@ public class ChittaController {
     private final ChittaService chittaService;
     private final AccountRepository accountRepository;
     private final ItemRepository itemRepository;
+    private final com.kanimc.repository.AccountGroupRepository accountGroupRepository;
 
-    public ChittaController(ChittaService chittaService, AccountRepository accountRepository, ItemRepository itemRepository) {
+    public ChittaController(ChittaService chittaService, AccountRepository accountRepository, ItemRepository itemRepository, com.kanimc.repository.AccountGroupRepository accountGroupRepository) {
         this.chittaService = chittaService;
         this.accountRepository = accountRepository;
         this.itemRepository = itemRepository;
+        this.accountGroupRepository = accountGroupRepository;
     }
 
     @PostMapping
@@ -135,11 +137,31 @@ public class ChittaController {
                 ? chitta.getFarmerAccount().getAccountName().trim()
                 : (chitta.getPaidTo() != null && !chitta.getPaidTo().trim().isEmpty() ? chitta.getPaidTo().trim() : "GENERAL FARMER");
             account.setAccountName(fName);
+            
             String pId = (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getPartyId() != null) 
                 ? chitta.getFarmerAccount().getPartyId().trim() 
                 : "";
-            if (pId.length() > 4) pId = pId.substring(0, 4);
+            long nextCandidate = 2494;
+            while (accountRepository.findByPartyId(String.valueOf(nextCandidate)) != null) {
+                nextCandidate++;
+            }
+            if (pId.isEmpty() || accountRepository.findByPartyId(pId) != null) {
+                pId = String.valueOf(nextCandidate > 9999 ? (nextCandidate % 10000) : nextCandidate);
+            } else if (pId.length() > 4) {
+                pId = pId.substring(0, 4);
+            }
             account.setPartyId(pId);
+
+            String groupName = "FARMER";
+            Integer groupCode = Math.abs(groupName.hashCode());
+            com.kanimc.entity.AccountGroup group = accountGroupRepository.findByGroupCode(groupCode).orElseGet(() -> {
+                com.kanimc.entity.AccountGroup g = new com.kanimc.entity.AccountGroup();
+                g.setGroupCode(groupCode);
+                g.setGroupName(groupName);
+                return accountGroupRepository.save(g);
+            });
+            account.setAccountGroup(group);
+            account.setIsFarmer(true);
             account.setDel("   ");
             account.setCrby("SYS");
             account = accountRepository.save(account);
@@ -160,7 +182,7 @@ public class ChittaController {
                 }
                 if (item == null) {
                     item = new com.kanimc.entity.Item();
-                    item.setDes("GOODS");
+                    item.setDes("SEDI");
                     item.setDel("   ");
                     item.setCrby("SYS");
                     item = itemRepository.save(item);

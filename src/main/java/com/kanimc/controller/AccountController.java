@@ -33,12 +33,18 @@ public class AccountController {
     public ResponseEntity<Account> createAccount(@RequestBody java.util.Map<String, String> data) {
         Account account = new Account();
         String pId = data.get("partyId");
+        long nextCandidate = 2494;
+        while (accountRepository.findByPartyId(String.valueOf(nextCandidate)) != null) {
+            nextCandidate++;
+        }
         if (pId != null && !pId.trim().isEmpty()) {
             pId = pId.trim();
             if (pId.length() > 4) pId = pId.substring(0, 4);
+            if (accountRepository.findByPartyId(pId) != null) {
+                pId = String.valueOf(nextCandidate > 9999 ? (nextCandidate % 10000) : nextCandidate);
+            }
         } else {
-            long next = accountRepository.count() + 1;
-            pId = String.valueOf(next > 9999 ? (next % 10000) : next);
+            pId = String.valueOf(nextCandidate > 9999 ? (nextCandidate % 10000) : nextCandidate);
         }
         account.setPartyId(pId);
         account.setAccountName(data.get("accountName"));
