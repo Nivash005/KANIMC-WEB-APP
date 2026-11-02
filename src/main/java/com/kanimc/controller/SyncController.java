@@ -30,7 +30,7 @@ public class SyncController {
         map.put("version", version.get());
         try {
             Long chittaCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM chittas", Long.class);
-            Long paidCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM chittas WHERE is_paid = true", Long.class);
+            Long paidCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM chittas WHERE paid = true", Long.class);
             Long accountCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM accounts", Long.class);
             Long cashCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM cash_vouchers", Long.class);
             Long receiptCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM receipt_vouchers", Long.class);
