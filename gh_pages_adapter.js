@@ -92,6 +92,30 @@
             return originalFetch(resource, init);
         }
 
+        
+        // TRY FORWARDING TO CENTRAL SERVER FOR REAL-TIME MULTI-DEVICE SINGLE DATABASE
+        const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://kanimc-mandy.loca.lt';
+        if (centralServer && !window.location.host.includes('loca.lt') && !window.location.host.includes('192.168.1.7')) {
+            try {
+                const targetUrl = centralServer.replace(/\/$/, '') + urlObj.pathname + urlObj.search;
+                const newHeaders = Object.assign({}, (init && init.headers) || {}, {
+                    'Bypass-Tunnel-Reminder': 'true'
+                });
+                const remoteInit = Object.assign({}, init, { headers: newHeaders });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3500);
+                remoteInit.signal = controller.signal;
+                
+                const remoteRes = await originalFetch(targetUrl, remoteInit);
+                clearTimeout(timeoutId);
+                if (remoteRes && remoteRes.status < 500) {
+                    return remoteRes;
+                }
+            } catch(remoteErr) {
+                // Fall back to local mock DB if central server offline
+            }
+        }
+
         await initPromise;
 
         const method = (init && init.method ? init.method.toUpperCase() : 'GET');
@@ -125,6 +149,18 @@
         }
 
         try {
+            
+            // SYNC STATUS
+            if (path === '/api/sync/status') {
+                return jsonResponse({
+                    version: Date.now(),
+                    chittaCount: (db.chittas || []).length,
+                    paidCount: (db.chittas || []).filter(c => c.paid).length,
+                    accountCount: (db.accounts || []).length,
+                    status: 'STANDALONE_LOCAL'
+                });
+            }
+
             // 1. ACCOUNTS
             if (path === '/api/accounts') {
                 if (method === 'GET') {
