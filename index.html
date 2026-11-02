@@ -470,7 +470,7 @@ Commission % <input id="commRatePct" value="10.00%">
         
         <!-- Header Info -->
         <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:60px 120px 100px 150px 50px 1fr; gap:5px; align-items:center;">
-            <label>Date</label> <input type="date" id="chittaDate" class="chitta-field" value="2025-04-25" tabindex="1" onchange="if(currentChittaIndex===-1) autoAssignNextChittaNo()">
+            <label>Date</label> <input type="date" id="chittaDate" class="chitta-field" value="2026-11-02" tabindex="1" onchange="if(currentChittaIndex===-1) autoAssignNextChittaNo()">
             <label>Farmer Code</label> 
             <div style="display:flex;"><input id="farmerAccountId" class="chitta-field" maxlength="4" style="text-transform:uppercase;" tabindex="2" onchange="onFarmerCodeChange()" onkeydown="handleFarmerCodeKey(event)"><button class="chitta-field" style="width:20px;padding:0;">v</button></div>
             <label style="text-align:right;">Phone</label> <input id="farmerPhone" class="chitta-field" tabindex="3">
@@ -620,7 +620,7 @@ Commission % <input id="commRatePct" value="10.00%">
         
         <!-- Header Info -->
         <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:60px 120px 100px 150px 50px 1fr; gap:5px; align-items:center;">
-            <label>Date</label> <input type="date" id="cpPayDate" value="2025-04-25">
+            <label>Date</label> <input type="date" id="cpPayDate" value="2026-11-02">
             <label>Farmer Code</label> 
             <div style="display:flex;"><input id="cpPayFarmerCode" maxlength="4" style="text-transform:uppercase;" onchange="onCpFarmerCodeChange()"><button type="button" style="width:20px;padding:0;cursor:pointer;" onclick="findAccount()">v</button></div>
             <label style="text-align:right;">Phone</label> <input id="cpPayPhone">
@@ -1391,8 +1391,8 @@ Commission % <input id="commRatePct" value="10.00%">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="billRegFromDate" value="2024-04-26" style="width:100px;">
-            <label>To</label> <input type="date" id="billRegToDate" value="2025-04-25" style="width:100px;">
+            <label>From</label> <input type="date" id="billRegFromDate" value="2026-04-26" style="width:100px;">
+            <label>To</label> <input type="date" id="billRegToDate" value="2026-11-02" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
             <button style="padding:2px 10px;" onclick="loadBillRegister()"><u>O</u>k</button>
@@ -1441,8 +1441,8 @@ Commission % <input id="commRatePct" value="10.00%">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="chittaRegFromDate" value="2024-04-26" style="width:100px; background:#ccffff;">
-            <label>To</label> <input type="date" id="chittaRegToDate" value="2025-04-25" style="width:100px;">
+            <label>From</label> <input type="date" id="chittaRegFromDate" value="2026-04-26" style="width:100px; background:#ccffff;">
+            <label>To</label> <input type="date" id="chittaRegToDate" value="2026-11-02" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
             <button style="padding:2px 10px;" onclick="loadChittaRegister()"><u>O</u>k</button>
@@ -1498,7 +1498,7 @@ Commission % <input id="commRatePct" value="10.00%">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>Date</label> <input type="date" id="chittaPendingRegDate" value="2025-04-25" style="width:100px;">
+            <label>Date</label> <input type="date" id="chittaPendingRegDate" value="2026-11-02" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
             <button style="padding:2px 10px;" onclick="loadChittaPendingRegister()"><u>O</u>k</button>
@@ -3583,69 +3583,80 @@ function formatPeriodYear(p) {
 
 // --- 21. ACCOUNT PERIOD LOGIC ---
 function getActivePeriod() {
-    let saved = localStorage.getItem('kanimc_active_period') || '2024 - 2025';
+    let saved = localStorage.getItem('kanimc_active_period');
     let periods = window.allFinancialPeriods || [];
-    let p = periods.find(x => formatPeriodYear(x) === saved || x.periodName === saved || String(x.id) === saved);
-    return p || null;
+    if (saved) {
+        let p = periods.find(x => formatPeriodYear(x) === saved || x.periodName === saved || String(x.id) === saved);
+        if (p) return p;
+    }
+    // Automatically match the period containing today
+    const today = getTodayDateStr();
+    let currentPeriod = periods.find(p => p.startDate && p.endDate && today >= String(p.startDate).substring(0, 10) && today <= String(p.endDate).substring(0, 10));
+    if (currentPeriod) return currentPeriod;
+    if (periods.length > 0) return periods[periods.length - 1];
+    return null;
 }
 
 function getActivePeriodDates() {
     let p = getActivePeriod();
     if (p && p.startDate && p.endDate) {
-        return { startDate: String(p.startDate), endDate: String(p.endDate) };
+        return { startDate: String(p.startDate).substring(0, 10), endDate: String(p.endDate).substring(0, 10) };
     }
-    let saved = localStorage.getItem('kanimc_active_period') || '2024 - 2025';
-    let match = saved.match(/(\d{4})\s*-\s*(\d{4})/);
-    if (match) {
-        return { startDate: `${match[1]}-04-26`, endDate: `${match[2]}-04-25` };
-    }
-    return { startDate: '2024-04-26', endDate: '2025-04-25' };
+    const today = getTodayDateStr();
+    const curYear = parseInt(today.substring(0, 4), 10);
+    return { startDate: `${curYear}-04-26`, endDate: `${curYear + 1}-04-25` };
 }
 
 function getPeriodCurrentDate() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${day}`;
-    
-    const dates = getActivePeriodDates();
-    if (dates.startDate && dates.endDate) {
-        if (today < dates.startDate) return dates.startDate;
-        if (today > dates.endDate) return dates.endDate;
-        return today;
-    }
-    return today;
+    return getTodayDateStr();
 }
 
 function applyPeriodDateDefaults(forceReset) {
-    const curDate = getPeriodCurrentDate();
-    const dateInputIds = [
+    const curDate = getTodayDateStr();
+    const pDates = getActivePeriodDates();
+    const fromDate = pDates.startDate || `${new Date().getFullYear()}-04-26`;
+    const toDate = curDate;
+
+    const singleDateInputs = [
         'chittaDate', 'chittaPaidOn', 'billDate',
         'cpPayDate', 'cpPayPaidOn', 'dcoDate',
         'cpDate', 'rvDate', 'amDate', 'dobDate',
         'obRegDate', 'daybookDate',
-        'chittaRegFromDate', 'chittaRegToDate',
-        'chittaPendRegDate',
-        'chittaPayRegFromDate', 'chittaPayRegToDate',
-        'billRegFromDate', 'billRegToDate',
-        'cashRegFromDate', 'cashRegToDate',
-        'receiptRegFromDate', 'receiptRegToDate',
-        'ledgerRegFromDate', 'ledgerRegToDate',
-        'itemRegFromDate', 'itemRegToDate',
-        'itemSumFromDate', 'itemSumToDate',
-        'commRegFromDate', 'commRegToDate',
-        'commSumFromDate', 'commSumToDate',
-        'outstandingFrom', 'outstandingTo',
-        'advFromDate', 'advToDate'
+        'chittaPendRegDate', 'chittaPendingRegDate'
     ];
 
-    dateInputIds.forEach(id => {
+    singleDateInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            if (forceReset || !el.value || el.value.startsWith('2023-') || el.value.startsWith('2027-') || el.value === '2026-08-26' || el.value === '2014-07-11' || el.value === '2025-04-25') {
+            if (forceReset || !el.value || el.value.startsWith('2023-') || el.value.startsWith('2024-') || el.value === '2025-04-25') {
                 el.value = curDate;
             }
+        }
+    });
+
+    const rangeInputs = [
+        { from: 'chittaRegFromDate', to: 'chittaRegToDate' },
+        { from: 'chittaPayRegFromDate', to: 'chittaPayRegToDate' },
+        { from: 'billRegFromDate', to: 'billRegToDate' },
+        { from: 'cashRegFromDate', to: 'cashRegToDate' },
+        { from: 'receiptRegFromDate', to: 'receiptRegToDate' },
+        { from: 'ledgerRegFromDate', to: 'ledgerRegToDate' },
+        { from: 'itemRegFromDate', to: 'itemRegToDate' },
+        { from: 'itemSumFromDate', to: 'itemSumToDate' },
+        { from: 'commRegFromDate', to: 'commRegToDate' },
+        { from: 'commSumFromDate', to: 'commSumToDate' },
+        { from: 'outstandingFrom', to: 'outstandingTo' },
+        { from: 'advFromDate', to: 'advToDate' }
+    ];
+
+    rangeInputs.forEach(pair => {
+        const f = document.getElementById(pair.from);
+        const t = document.getElementById(pair.to);
+        if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26')) {
+            f.value = fromDate;
+        }
+        if (t && (forceReset || !t.value || t.value.startsWith('2023-') || t.value.startsWith('2024-') || t.value === '2025-04-25')) {
+            t.value = toDate;
         }
     });
 }
@@ -4454,7 +4465,9 @@ async function checkSyncStatus(force = false) {
             // Refresh open registers without interrupting current editing
             refreshOpenRegistersSilently();
 
-            showLiveSyncToast('🟢 Data synchronized: Update from another device applied');
+            if (!force) {
+                showLiveSyncToast('🟢 Data synchronized: Update from another device applied');
+            }
             isSyncInProgress = false;
         }
     } catch(err) {
@@ -4465,8 +4478,8 @@ async function checkSyncStatus(force = false) {
 function refreshOpenRegistersSilently() {
     try {
         const chittaReg = document.getElementById('chittaRegister');
-        if (chittaReg && chittaReg.style.display !== 'none' && typeof filterChittaRegister === 'function') {
-            filterChittaRegister();
+        if (chittaReg && chittaReg.style.display !== 'none' && typeof loadChittaRegister === 'function') {
+            loadChittaRegister();
         }
         const chittaPendingReg = document.getElementById('chittaPendingRegister');
         if (chittaPendingReg && chittaPendingReg.style.display !== 'none' && typeof loadChittaPendingRegister === 'function') {
@@ -4481,19 +4494,27 @@ function refreshOpenRegistersSilently() {
             loadAllPendingChittasForPayment();
         }
         const cpReg = document.getElementById('cashPaymentRegister');
-        if (cpReg && cpReg.style.display !== 'none' && typeof filterCashPaymentRegister === 'function') {
-            filterCashPaymentRegister();
+        if (cpReg && cpReg.style.display !== 'none' && typeof loadCashPaymentRegister === 'function') {
+            loadCashPaymentRegister();
         }
         const rcReg = document.getElementById('receiptRegister');
-        if (rcReg && rcReg.style.display !== 'none' && typeof filterReceiptRegister === 'function') {
-            filterReceiptRegister();
+        if (rcReg && rcReg.style.display !== 'none' && typeof loadReceiptRegister === 'function') {
+            loadReceiptRegister();
+        }
+        const billReg = document.getElementById('billRegister');
+        if (billReg && billReg.style.display !== 'none' && typeof loadBillRegister === 'function') {
+            loadBillRegister();
         }
         const dcModal = document.getElementById('dailyCash');
         if (dcModal && dcModal.style.display !== 'none' && typeof refreshDailyCashReport === 'function') {
             refreshDailyCashReport();
         }
+        const openChittaModal = document.getElementById('openingChitta');
+        if (openChittaModal && openChittaModal.style.display !== 'none' && typeof chittaMode !== 'undefined' && chittaMode === 'VIEW' && chittas.length > 0) {
+            displayChitta(chittas.length - 1);
+        }
     } catch(e) {
-        // Safe silent refresh
+        console.warn('Error during silent register refresh:', e);
     }
 }
 
@@ -5253,11 +5274,7 @@ function clearChitta() {
 
 async function fetchChittas(loadLast = false) {
     try {
-        const dates = (typeof getActivePeriodDates === 'function') ? getActivePeriodDates() : null;
         let url = '/api/chittas';
-        if (dates && dates.startDate && dates.endDate) {
-            url += `?startDate=${dates.startDate}&endDate=${dates.endDate}`;
-        }
         const res = await fetch(url);
         if(res.ok) {
             chittas = await res.json();
