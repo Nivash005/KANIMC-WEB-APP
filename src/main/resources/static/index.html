@@ -4043,20 +4043,23 @@ function chittaActionCloseCancel() {
 
 // --- VOUCHER & REGISTER PRINTING & EXCEL UTILITIES ---
 
-function printChitta(autoPrint = true) {
-    let c = null;
-    const cpModal = document.getElementById('chittaPayment');
-    if (cpModal && cpModal.style.display !== 'none' && typeof selectedCpChitta !== 'undefined' && selectedCpChitta && selectedCpChitta.id) {
-        c = selectedCpChitta;
-    } else if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && chittas[currentChittaIndex]) {
-        c = chittas[currentChittaIndex];
+function printChitta(autoPrint = true, targetChitta = null) {
+    let c = targetChitta;
+    if (!c) {
+        const cpModal = document.getElementById('chittaPayment');
+        if (cpModal && cpModal.style.display !== 'none' && typeof selectedCpChitta !== 'undefined' && selectedCpChitta && selectedCpChitta.id) {
+            c = selectedCpChitta;
+        } else if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && typeof chittas !== 'undefined' && chittas[currentChittaIndex]) {
+            c = chittas[currentChittaIndex];
+        }
     }
     if (!c) {
-        alert("Please select a Chitta to " + (autoPrint ? "print" : "view") + ".");
+        showToast("Please select a Chitta to " + (autoPrint ? "print" : "view") + ".");
         return;
     }
     const farmerName = (c.farmerAccount && c.farmerAccount.accountName) ? c.farmerAccount.accountName : (c.farmerName || '');
     const dateFormatted = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toLocaleDateString('en-GB')) : '';
+    const payDateFormatted = c.payDate ? (typeof c.payDate === 'string' ? c.payDate.substring(0, 10) : new Date(c.payDate).toLocaleDateString('en-GB')) : '';
     
     let itemsHtml = '';
     let totalQty = 0;
@@ -4084,10 +4087,25 @@ function printChitta(autoPrint = true) {
     const freight = parseFloat(c.freightAmount != null ? c.freightAmount : c.freight) || 0;
     const net = parseFloat(c.netPayable) || 0;
 
+    let paymentStatusSection = '';
+    if (c.paid || c.payDate || c.paidTo) {
+        paymentStatusSection = `
+            <table style="width:100%; margin-top:8px; font-size:12px; border-top:1px dashed #333; padding-top:6px;">
+                <tr>
+                    <td style="width:50%;"><strong>Payment Status:</strong> <span style="color:#008800; font-weight:bold;">PAID / SETTLED</span></td>
+                    <td style="text-align:right;"><strong>Paid On:</strong> ${payDateFormatted || dateFormatted}</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><strong>Paid To:</strong> ${c.paidTo || farmerName}</td>
+                </tr>
+            </table>
+        `;
+    }
+
     const previewHtml = `
         <div style="margin-bottom:15px; border-bottom:2px dashed #000; padding-bottom:10px;">
             <div style="text-align:center; font-size:18px; font-weight:bold;">SRI KANNIAMMAN TRADERS</div>
-            <div style="text-align:center; font-size:13px; margin-top:3px;">COMMISSION AGENT & WHOLESALE MANDY - CHITTA VOUCHER</div>
+            <div style="text-align:center; font-size:13px; margin-top:3px;">COMMISSION AGENT & WHOLESALE MANDY - CHITTA BILL / PAYMENT VOUCHER</div>
         </div>
         <table style="width:100%; margin-bottom:15px; font-size:13px;">
             <tr>
@@ -4134,12 +4152,13 @@ function printChitta(autoPrint = true) {
                 <td style="text-align:right;">${freight.toFixed(2)}</td>
             </tr>
             <tr style="border-top:2px solid #000; border-bottom:2px solid #000; font-size:15px; font-weight:bold;">
-                <td style="text-align:right; padding:6px 0;">NET PAYABLE:</td>
+                <td style="text-align:right; padding:6px 0;">NET PAID:</td>
                 <td style="text-align:right; padding:6px 0; color:#b00;">₹${net.toFixed(2)}</td>
             </tr>
         </table>
+        ${paymentStatusSection}
     `;
-    openVfpReportPreview('Chitta Voucher - ' + (c.chittaNo || ''), previewHtml, autoPrint);
+    openVfpReportPreview('Chitta Payment Bill - ' + (c.chittaNo || ''), previewHtml, autoPrint);
 }
 
 function printBill(autoPrint = true) {
@@ -4681,6 +4700,16 @@ async function saveChittaPaymentSettlement() {
         if(res.ok) {
             const updated = await res.json();
             showToast("Payment of ₹" + (updated.netPayable || selectedCpChitta.netPayable || 0) + " recorded successfully for Chitta " + (updated.chittaNo || selectedCpChitta.chittaNo) + "!");
+            
+            // AUTOMATICALLY PRINT THE BILL / PAYMENT VOUCHER
+            const chittaToPrint = Object.assign({}, selectedCpChitta, updated, {
+                paid: true,
+                paidTo: paidTo,
+                payDate: payDate,
+                items: (updated && updated.items && updated.items.length > 0) ? updated.items : (selectedCpChitta.items || [])
+            });
+            printChitta(true, chittaToPrint);
+
             if (typeof fetchChittas === 'function') await fetchChittas();
             clearChittaPaymentForm();
             await loadAllPendingChittasForPayment();
