@@ -4039,7 +4039,7 @@ function login() {
         if (err) err.innerText = 'Invalid username!';
         return;
     }
-    if (p !== expectedPass) {
+    if (p.toLowerCase() !== expectedPass.toLowerCase()) {
         if (err) err.innerText = 'Invalid password!';
         const pInput = document.getElementById('password');
         if (pInput) { pInput.focus(); pInput.select(); }
@@ -4327,7 +4327,6 @@ async function chittaActionNew() {
         focusTarget.focus();
         if (typeof focusTarget.select === 'function') focusTarget.select();
     }
-}
 }
 
 function chittaActionChange() {
