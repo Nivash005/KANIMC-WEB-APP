@@ -170,7 +170,7 @@
         if (!path.startsWith('/')) path = '/' + path;
 
         // TRY FORWARDING TO CENTRAL SERVER FOR REAL-TIME MULTI-DEVICE SINGLE DATABASE
-        const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://muscle-pearl-forth-ongoing.trycloudflare.com';
+        const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://raw-contrast-enterprises-relates.trycloudflare.com';
         if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
             try {
                 const targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
