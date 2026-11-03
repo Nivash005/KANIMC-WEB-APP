@@ -183,7 +183,7 @@ public class ChittaService {
 
         if (cashAccount != null && chitta.getFarmerAccount() != null && chitta.getNetPayable() != null && chitta.getNetPayable().compareTo(BigDecimal.ZERO) > 0) {
             accountingService.postDoubleEntry(chitta.getPayDate(), chitta.getFarmerAccount(), cashAccount,
-                    chitta.getNetPayable(), 3, "PAY-" + chitta.getChittaNo(), chitta.getFinancialYear(), "Chitta Settlement " + chitta.getChittaNo());
+                    chitta.getNetPayable(), 4, "PAY-" + chitta.getChittaNo(), chitta.getFinancialYear(), "Chitta Settlement " + chitta.getChittaNo());
         }
 
         return chittaRepository.save(chitta);
@@ -200,3 +200,4 @@ public class ChittaService {
         return chittaRepository.save(chitta);
     }
 }
+

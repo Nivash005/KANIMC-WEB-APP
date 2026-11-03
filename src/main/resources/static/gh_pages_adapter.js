@@ -275,21 +275,34 @@
                 const id = parseInt(parts[3], 10);
                 const acc = db.accounts.find(a => a.id === id || String(a.partyId) === String(id));
                 let bal = acc ? (parseFloat(acc.openingBalance) || 0) : 0;
-                
-                // Add all Sales Bills for this buyer (Increases outstanding balance)
-                (db.salesBills || []).forEach(b => {
-                    if (b.buyerAccount && (b.buyerAccount.id === id || String(b.buyerAccount.partyId) === String(id))) {
-                        bal += (parseFloat(b.netPayable || b.netReceivable || b.grossAmount) || 0);
-                    }
-                });
-                
-                // Subtract all Receipts for this buyer (Reduces outstanding balance)
-                (db.receiptVouchers || []).forEach(rv => {
-                    if (rv.account && (rv.account.id === id || String(rv.account.partyId) === String(id))) {
-                        bal -= (parseFloat(rv.amount) || 0);
-                    }
-                });
-                
+                const isFarmer = acc && (acc.isFarmer || (acc.accountGroup && String(acc.accountGroup.groupName).toUpperCase().includes('FARMER')));
+
+                if (isFarmer) {
+                    // Farmer balance: Opening + Chittas (we owe them) - Payments (we paid them)
+                    (db.chittas || []).forEach(c => {
+                        if (c.farmerAccount && (c.farmerAccount.id === id || String(c.farmerAccount.partyId) === String(id))) {
+                            bal += (parseFloat(c.netPayable || c.grossAmount) || 0);
+                        }
+                    });
+                    (db.cashVouchers || []).forEach(cv => {
+                        if (cv.account && (cv.account.id === id || String(cv.account.partyId) === String(id))) {
+                            bal -= (parseFloat(cv.amount) || 0);
+                        }
+                    });
+                } else {
+                    // Trader / Buyer balance: Opening + Sales Bills (they owe us) - Receipts (they paid us)
+                    (db.salesBills || []).forEach(b => {
+                        if (b.buyerAccount && (b.buyerAccount.id === id || String(b.buyerAccount.partyId) === String(id))) {
+                            bal += (parseFloat(b.netReceivable || b.netPayable || b.grossAmount) || 0);
+                        }
+                    });
+                    (db.receiptVouchers || []).forEach(rv => {
+                        if (rv.account && (rv.account.id === id || String(rv.account.partyId) === String(id))) {
+                            bal -= (parseFloat(rv.amount) || 0);
+                        }
+                    });
+                }
+                bal = Math.round(bal * 100) / 100;
                 return jsonResponse(bal);
             }
 
@@ -365,6 +378,18 @@
                         paymentMethod: null,
                         createdAt: new Date().toISOString()
                     };
+                    let gross = 0;
+                    (newC.items || []).forEach(it => {
+                        const amt = Math.round((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0) * 100) / 100;
+                        it.amount = amt;
+                        gross += amt;
+                    });
+                    newC.grossAmount = Math.round(gross * 100) / 100;
+                    const rate = parseFloat(newC.commissionRate) || 0;
+                    newC.commissionDeduction = Math.round((newC.grossAmount * (rate / 100.0)) * 100) / 100;
+                    const adv = parseFloat(newC.advanceAmount) || 0;
+                    const frt = parseFloat(newC.freightAmount) || 0;
+                    newC.netPayable = Math.round((newC.grossAmount - newC.commissionDeduction - adv - frt) * 100) / 100;
 
                     if (newC.farmerAccount) {
                         const acc = (db.accounts || []).find(a => 
@@ -402,6 +427,15 @@
                         ...reqBody,
                         createdAt: new Date().toISOString()
                     };
+                    let gross = 0;
+                    (newB.items || []).forEach(it => {
+                        const amt = Math.round((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0) * 100) / 100;
+                        it.amount = amt;
+                        gross += amt;
+                    });
+                    newB.grossAmount = Math.round(gross * 100) / 100;
+                    const totalCharges = (parseFloat(newB.freightCharges) || 0) + (parseFloat(newB.packingCharges) || 0) + (parseFloat(newB.commissionCharges) || 0) + (parseFloat(newB.otherCharges) || 0);
+                    newB.netReceivable = Math.round((newB.grossAmount + totalCharges - (parseFloat(newB.discount) || 0)) * 100) / 100;
                     db.salesBills.push(newB);
                     saveDb();
                     return jsonResponse(newB, 201);
@@ -539,7 +573,15 @@
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
                 const accountId = search.get('accountId');
-                let list = (db.salesBills || []).slice();
+                let list = (db.salesBills || []).map(b => {
+                    let weight = 0;
+                    (b.items || []).forEach(it => weight += (parseFloat(it.quantity) || 0));
+                    return {
+                        ...b,
+                        netReceivable: b.netReceivable !== undefined ? b.netReceivable : b.netAmount,
+                        weight: weight
+                    };
+                });
                 if (startDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(b => b.buyerAccount && (b.buyerAccount.id == accountId || String(b.buyerAccount.partyId) == String(accountId)));
@@ -583,6 +625,119 @@
                 });
                 return jsonResponse(list);
             }
+            if (path === '/api/reports/commission-summary') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const summaryMap = {};
+                (db.chittas || []).forEach(c => {
+                    const cDate = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
+                    if (startDate && cDate < startDate) return;
+                    if (endDate && cDate > endDate) return;
+                    const comm = parseFloat(c.commissionDeduction || c.commission) || 0;
+                    if (comm > 0) {
+                        const party = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || 'Unknown');
+                        summaryMap[party] = (summaryMap[party] || 0) + comm;
+                    }
+                });
+                (db.salesBills || []).forEach(b => {
+                    const bDate = b.billDate ? String(b.billDate).substring(0, 10) : '';
+                    if (startDate && bDate < startDate) return;
+                    if (endDate && bDate > endDate) return;
+                    const comm = parseFloat(b.commissionCharges || b.commission) || 0;
+                    if (comm > 0) {
+                        const party = b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : (b.buyerName || 'Unknown');
+                        summaryMap[party] = (summaryMap[party] || 0) + comm;
+                    }
+                });
+                const summaryList = Object.keys(summaryMap).sort().map(party => ({
+                    partyName: party,
+                    totalCommission: Math.round(summaryMap[party] * 100) / 100,
+                    commission: Math.round(summaryMap[party] * 100) / 100
+                }));
+                return jsonResponse(summaryList);
+            }
+            if (path === '/api/reports/outstanding') {
+                const asOfDate = search.get('asOfDate') || search.get('endDate');
+                const list = [];
+                (db.accounts || []).forEach(a => {
+                    const id = a.id;
+                    const isFarmer = a.isFarmer || (a.accountGroup && String(a.accountGroup.groupName).toUpperCase().includes('FARMER'));
+                    const ob = parseFloat(a.openingBalance || a.opbal) || 0;
+                    let debits = 0;
+                    let credits = 0;
+
+                    if (isFarmer) {
+                        (db.chittas || []).forEach(c => {
+                            const cDate = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
+                            if (asOfDate && cDate > asOfDate) return;
+                            if (c.farmerAccount && (c.farmerAccount.id === id || String(c.farmerAccount.partyId) === String(a.partyId))) {
+                                credits += (parseFloat(c.netPayable || c.grossAmount) || 0);
+                            }
+                        });
+                        (db.cashVouchers || []).forEach(cv => {
+                            const vDate = cv.voucherDate ? String(cv.voucherDate).substring(0, 10) : '';
+                            if (asOfDate && vDate > asOfDate) return;
+                            if (cv.account && (cv.account.id === id || String(cv.account.partyId) === String(a.partyId))) {
+                                debits += (parseFloat(cv.amount) || 0);
+                            }
+                        });
+                        const net = Math.round((ob + credits - debits) * 100) / 100;
+                        if (net !== 0) {
+                            const isDr = net < 0;
+                            const absBal = Math.abs(net);
+                            list.push({
+                                accountId: a.id,
+                                partyName: a.accountName,
+                                accountName: a.accountName,
+                                groupName: a.accountGroup ? a.accountGroup.groupName : '',
+                                balance: absBal,
+                                closingBalance: isDr ? absBal : -absBal,
+                                type: isDr ? 'Dr' : 'Cr',
+                                debit: isDr ? absBal : 0,
+                                credit: !isDr ? absBal : 0,
+                                netBalance: absBal,
+                                isFarmer: true,
+                                isTrader: false
+                            });
+                        }
+                    } else {
+                        (db.salesBills || []).forEach(b => {
+                            const bDate = b.billDate ? String(b.billDate).substring(0, 10) : '';
+                            if (asOfDate && bDate > asOfDate) return;
+                            if (b.buyerAccount && (b.buyerAccount.id === id || String(b.buyerAccount.partyId) === String(a.partyId))) {
+                                debits += (parseFloat(b.netReceivable || b.grossAmount) || 0);
+                            }
+                        });
+                        (db.receiptVouchers || []).forEach(rv => {
+                            const vDate = rv.voucherDate ? String(rv.voucherDate).substring(0, 10) : '';
+                            if (asOfDate && vDate > asOfDate) return;
+                            if (rv.account && (rv.account.id === id || String(rv.account.partyId) === String(a.partyId))) {
+                                credits += (parseFloat(rv.amount) || 0);
+                            }
+                        });
+                        const net = Math.round((ob + debits - credits) * 100) / 100;
+                        if (net !== 0) {
+                            const isDr = net >= 0;
+                            const absBal = Math.abs(net);
+                            list.push({
+                                accountId: a.id,
+                                partyName: a.accountName,
+                                accountName: a.accountName,
+                                groupName: a.accountGroup ? a.accountGroup.groupName : '',
+                                balance: absBal,
+                                closingBalance: isDr ? absBal : -absBal,
+                                type: isDr ? 'Dr' : 'Cr',
+                                debit: isDr ? absBal : 0,
+                                credit: !isDr ? absBal : 0,
+                                netBalance: absBal,
+                                isFarmer: false,
+                                isTrader: true
+                            });
+                        }
+                    }
+                });
+                return jsonResponse(list);
+            }
                         if (path === '/api/admin/reset-transactions') {
                 db.chittas = [];
                 db.salesBills = [];
@@ -614,4 +769,5 @@
         }
     };
 })();
+
 

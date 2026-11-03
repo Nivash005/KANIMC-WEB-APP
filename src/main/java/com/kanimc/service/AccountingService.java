@@ -71,7 +71,10 @@ public class AccountingService {
         BigDecimal balance = acc.getOpeningBalance() != null ? acc.getOpeningBalance() : BigDecimal.ZERO;
         List<AccountTransaction> txns = transactionRepository.findByAccountIdOrderByTransactionDateAsc(accountId);
         if (txns != null) {
-            boolean isDebtor = Boolean.TRUE.equals(acc.getIsTrader()) || !Boolean.TRUE.equals(acc.getIsFarmer());
+            boolean isFarmer = Boolean.TRUE.equals(acc.getIsFarmer()) || 
+                (acc.getAccountGroup() != null && acc.getAccountGroup().getGroupName() != null && 
+                 acc.getAccountGroup().getGroupName().toUpperCase().contains("FARMER"));
+            boolean isDebtor = !isFarmer;
             for (AccountTransaction t : txns) {
                 BigDecimal dr = t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO;
                 BigDecimal cr = t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO;
@@ -85,3 +88,4 @@ public class AccountingService {
         return balance;
     }
 }
+

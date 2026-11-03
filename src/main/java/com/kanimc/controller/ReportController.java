@@ -296,11 +296,20 @@ public class ReportController {
         
         List<com.kanimc.entity.AccountTransaction> allTxns = txnRepository.findByAccountIdOrderByTransactionDateAsc(accountId);
         
+        boolean isFarmer = Boolean.TRUE.equals(acc.getIsFarmer()) || 
+            (acc.getAccountGroup() != null && acc.getAccountGroup().getGroupName() != null && 
+             acc.getAccountGroup().getGroupName().toUpperCase().contains("FARMER"));
+        
         BigDecimal opening = acc.getOpeningBalance() != null ? acc.getOpeningBalance() : BigDecimal.ZERO;
         for (com.kanimc.entity.AccountTransaction t : allTxns) {
             if (startDate != null && t.getTransactionDate().isBefore(startDate)) {
-                if (t.getDebitAmount() != null) opening = opening.add(t.getDebitAmount());
-                if (t.getCreditAmount() != null) opening = opening.subtract(t.getCreditAmount());
+                BigDecimal dr = t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO;
+                BigDecimal cr = t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO;
+                if (isFarmer) {
+                    opening = opening.add(cr).subtract(dr);
+                } else {
+                    opening = opening.add(dr).subtract(cr);
+                }
             }
         }
         
@@ -315,7 +324,11 @@ public class ReportController {
                 
                 BigDecimal dr = t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO;
                 BigDecimal cr = t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO;
-                running = running.add(dr).subtract(cr);
+                if (isFarmer) {
+                    running = running.add(cr).subtract(dr);
+                } else {
+                    running = running.add(dr).subtract(cr);
+                }
                 totalDebit = totalDebit.add(dr);
                 totalCredit = totalCredit.add(cr);
                 
@@ -498,7 +511,20 @@ public class ReportController {
             BigDecimal credits = totals != null ? totals[0] : BigDecimal.ZERO;
             BigDecimal debits = totals != null ? totals[1] : BigDecimal.ZERO;
             
-            BigDecimal net = ob.add(credits).subtract(debits);
+            boolean isFarmer = Boolean.TRUE.equals(a.getIsFarmer()) || 
+                (a.getAccountGroup() != null && a.getAccountGroup().getGroupName() != null && 
+                 a.getAccountGroup().getGroupName().toUpperCase().contains("FARMER"));
+
+            BigDecimal net;
+            boolean isDr;
+            if (isFarmer) {
+                net = ob.add(credits).subtract(debits);
+                isDr = net.compareTo(BigDecimal.ZERO) < 0;
+            } else {
+                net = ob.add(debits).subtract(credits);
+                isDr = net.compareTo(BigDecimal.ZERO) >= 0;
+            }
+            
             if (net.compareTo(BigDecimal.ZERO) != 0) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("accountId", a.getId());
@@ -506,11 +532,13 @@ public class ReportController {
                 map.put("accountName", a.getAccountName());
                 map.put("groupName", a.getAccountGroup() != null ? a.getAccountGroup().getGroupName() : "");
                 map.put("balance", net.abs());
-                map.put("closingBalance", net);
-                map.put("type", net.compareTo(BigDecimal.ZERO) > 0 ? "Cr" : "Dr");
-                map.put("netBalance", net);
-                map.put("isFarmer", a.getIsFarmer());
-                map.put("isTrader", a.getIsTrader());
+                map.put("closingBalance", isDr ? net.abs() : net.abs().negate());
+                map.put("type", isDr ? "Dr" : "Cr");
+                map.put("debit", isDr ? net.abs() : BigDecimal.ZERO);
+                map.put("credit", !isDr ? net.abs() : BigDecimal.ZERO);
+                map.put("netBalance", net.abs());
+                map.put("isFarmer", isFarmer);
+                map.put("isTrader", !isFarmer);
                 result.add(map);
             }
         }
@@ -741,6 +769,7 @@ public class ReportController {
             .body(bytes);
     }
 }
+
 
 
 

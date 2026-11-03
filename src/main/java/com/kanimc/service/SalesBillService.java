@@ -33,13 +33,13 @@ public class SalesBillService {
                 if (item.getBags() == null) item.setBags(0);
                 if (item.getQuantity() == null) item.setQuantity(BigDecimal.ZERO);
                 if (item.getRate() == null) item.setRate(BigDecimal.ZERO);
-                BigDecimal amt = item.getQuantity().multiply(item.getRate());
+                BigDecimal amt = item.getQuantity().multiply(item.getRate()).setScale(2, java.math.RoundingMode.HALF_UP);
                 item.setAmount(amt);
                 item.setSalesBill(bill);
                 gross = gross.add(amt);
             }
         }
-        bill.setGrossAmount(gross);
+        bill.setGrossAmount(gross.setScale(2, java.math.RoundingMode.HALF_UP));
 
         // 2. Calculate Net Receivable = Gross + Charges - Discount
         BigDecimal comm = bill.getCommissionCharges() != null ? bill.getCommissionCharges() : BigDecimal.ZERO;
@@ -55,7 +55,7 @@ public class SalesBillService {
         bill.setDiscount(disc);
 
         BigDecimal totalCharges = comm.add(pack).add(frt).add(other);
-        BigDecimal netReceivable = gross.add(totalCharges).subtract(disc);
+        BigDecimal netReceivable = gross.add(totalCharges).subtract(disc).setScale(2, java.math.RoundingMode.HALF_UP);
         bill.setNetReceivable(netReceivable);
 
         // 3. Save to DB
@@ -93,3 +93,4 @@ public class SalesBillService {
         salesBillRepository.deleteById(id);
     }
 }
+
