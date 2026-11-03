@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261103_7"></script>
+<script src="gh_pages_adapter.js?v=20261103_8"></script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}
@@ -4237,9 +4237,10 @@ function calcChitta() {
     for(let i=0; i < rates.length; i++) {
         let r = parseFloat(rates[i].value) || 0;
         let q = parseFloat(qtys[i].value) || 0;
-        let amt = r * q;
+        let amt = Math.round(r * q * 100) / 100;
         if(amt > 0) { amts[i].value = amt.toFixed(2); totalGross += amt; } else { amts[i].value = ''; }
     }
+    totalGross = Math.round(totalGross * 100) / 100;
     
     const grossEl = document.getElementById('chittaGross');
     if(grossEl) grossEl.value = totalGross.toFixed(2);
@@ -4248,7 +4249,7 @@ function calcChitta() {
     const commPctEl = document.getElementById('chittaCommPct');
     if (commPctEl) commPct = parseFloat(commPctEl.value) || 0;
     
-    let commAmt = totalGross * (commPct / 100);
+    let commAmt = Math.round((totalGross * (commPct / 100)) * 100) / 100;
     const commAmtEl = document.getElementById('chittaCommAmt');
     if(commAmtEl) commAmtEl.value = commAmt.toFixed(2);
     
@@ -4260,7 +4261,7 @@ function calcChitta() {
     const freightEl = document.getElementById('chittaFreight');
     if(freightEl) freight = parseFloat(freightEl.value) || 0;
     
-    let net = totalGross - commAmt - advance - freight;
+    let net = Math.round((totalGross - commAmt - advance - freight) * 100) / 100;
     const netEl = document.getElementById('chittaNet');
     if(netEl) netEl.value = net.toFixed(2);
 }
@@ -5452,7 +5453,7 @@ async function saveChitta() {
             return;
         }
         
-        const lineAmt = q * r;
+        const lineAmt = Math.round(q * r * 100) / 100;
         calcGrossTotal += lineAmt;
         data.items.push({ 
             item: { id: itemId, des: finalDesc }, 
@@ -5471,10 +5472,11 @@ async function saveChitta() {
         return;
     }
     
-    const commAmt = (calcGrossTotal * commRate) / 100.0;
+    calcGrossTotal = Math.round(calcGrossTotal * 100) / 100;
+    const commAmt = Math.round((calcGrossTotal * commRate / 100.0) * 100) / 100;
     data.grossAmount = calcGrossTotal;
     data.commissionDeduction = commAmt;
-    data.netPayable = calcGrossTotal - commAmt - advAmt - frtAmt;
+    data.netPayable = Math.round((calcGrossTotal - commAmt - advAmt - frtAmt) * 100) / 100;
     
     try {
         const isExisting = (currentChittaIndex >= 0 && chittas[currentChittaIndex] && String(chittas[currentChittaIndex].chittaNo).trim() === chittaNoStr && String(chittas[currentChittaIndex].chittaDate).substring(0, 10) === dateVal);
@@ -6112,11 +6114,11 @@ async function saveCashPayment() {
     const dateVal = document.getElementById('cpDate')?.value;
     
     if (!accCode && !accName) {
-        alert("Please enter Account Code or Account Name.");
+        showToast("Please enter Account Code or Account Name.");
         return;
     }
     if (amountVal <= 0) {
-        alert("Please enter a valid Amount.");
+        showToast("Please enter a valid Amount.");
         return;
     }
     
@@ -6129,7 +6131,7 @@ async function saveCashPayment() {
         targetAcc = accounts.find(a => a.accountName && a.accountName.toLowerCase() === accName.toLowerCase());
     }
     if (!targetAcc) {
-        alert("Account not found. Please select a valid account.");
+        showToast("Account not found. Please select a valid account.");
         return;
     }
     
@@ -6164,17 +6166,17 @@ async function saveCashPayment() {
             }
         } else {
             const err = await res.text();
-            alert("Error saving Cash Payment: " + err);
+            showToast("Error saving Cash Payment: " + err);
         }
     } catch(e) {
         console.error(e);
-        alert("Network error saving Cash Payment.");
+        showToast("Network error saving Cash Payment.");
     }
 }
 
 async function deleteCashPayment() {
     if (currentCashVoucherIndex < 0 || !cashVouchers[currentCashVoucherIndex]) {
-        alert("No Cash Payment selected to delete.");
+        showToast("No Cash Payment selected to delete.");
         return;
     }
     const cv = cashVouchers[currentCashVoucherIndex];
@@ -6483,11 +6485,11 @@ async function saveReceipt() {
     const dateVal = document.getElementById('rvDate')?.value;
     
     if (!accCode && !accName) {
-        alert("Please enter Account Code or Account Name.");
+        showToast("Please enter Account Code or Account Name.");
         return;
     }
     if (amountVal <= 0) {
-        alert("Please enter a valid Amount.");
+        showToast("Please enter a valid Amount.");
         return;
     }
     
@@ -6499,7 +6501,7 @@ async function saveReceipt() {
         targetAcc = accounts.find(a => a.accountName && a.accountName.toLowerCase() === accName.toLowerCase());
     }
     if (!targetAcc) {
-        alert("Account not found. Please select a valid account.");
+        showToast("Account not found. Please select a valid account.");
         return;
     }
     
@@ -6534,17 +6536,17 @@ async function saveReceipt() {
             }
         } else {
             const err = await res.text();
-            alert("Error saving Receipt: " + err);
+            showToast("Error saving Receipt: " + err);
         }
     } catch(e) {
         console.error(e);
-        alert("Network error saving Receipt.");
+        showToast("Network error saving Receipt.");
     }
 }
 
 async function deleteReceipt() {
     if (currentReceiptVoucherIndex < 0 || !receiptVouchers[currentReceiptVoucherIndex]) {
-        alert("No Receipt selected to delete.");
+        showToast("No Receipt selected to delete.");
         return;
     }
     const rv = receiptVouchers[currentReceiptVoucherIndex];
@@ -6737,9 +6739,10 @@ function calcBill() {
     for(let i=0; i < rates.length; i++) {
         let r = parseFloat(rates[i].value) || 0;
         let q = parseFloat(qtys[i].value) || 0;
-        let amt = r * q;
+        let amt = Math.round(r * q * 100) / 100;
         if(amt > 0) { amts[i].value = amt.toFixed(2); totalGross += amt; } else { amts[i].value = ''; }
     }
+    totalGross = Math.round(totalGross * 100) / 100;
     
     const grossEl = document.getElementById('billGross');
     if(grossEl) grossEl.value = totalGross.toFixed(2);
@@ -6748,7 +6751,7 @@ function calcBill() {
     let packing = parseFloat(document.getElementById('billPacking').value) || 0;
     let discount = parseFloat(document.getElementById('billDiscount').value) || 0;
     
-    let net = totalGross + freight + packing - discount;
+    let net = Math.round((totalGross + freight + packing - discount) * 100) / 100;
     const netEl = document.getElementById('billNet');
     if(netEl) netEl.value = net.toFixed(2);
 }
@@ -6912,7 +6915,7 @@ async function saveBill() {
 
     let billNoStr = (document.getElementById('billNo')?.value || '').trim();
     if (!billNoStr) {
-        alert("Please enter a Bill Number.");
+        showToast("Please enter a Bill Number.");
         return;
     }
 
@@ -6928,7 +6931,7 @@ async function saveBill() {
         }
     }
     if (!buyerId) {
-        alert("Please select a valid Merchant / Buyer.");
+        showToast("Please select a valid Merchant / Buyer.");
         return;
     }
 
@@ -6944,6 +6947,7 @@ async function saveBill() {
         items: []
     };
     
+    let grossTotal = 0;
     const itemDescs = document.querySelectorAll('#billGrid .b-grid-item');
     const rates = document.querySelectorAll('#billGrid .b-grid-rate');
     const qtys = document.querySelectorAll('#billGrid .b-grid-qty');
@@ -6955,22 +6959,30 @@ async function saveBill() {
             const desc = itemDescs[i] ? itemDescs[i].value.trim() : '';
             if (desc && typeof items !== 'undefined') {
                 const foundItem = items.find(it => (it.des && it.des.toLowerCase() === desc.toLowerCase()) || (it.desTamil && it.desTamil === desc));
-                if (foundItem) itemObj = { id: foundItem.id };
+                if (foundItem) itemObj = { id: foundItem.id, des: foundItem.des };
             }
+            const lineAmt = Math.round(r * q * 100) / 100;
+            grossTotal += lineAmt;
             data.items.push({ 
                 rate: r, 
                 quantity: q, 
                 bags: 0,
+                amount: lineAmt,
                 item: itemObj
             });
         }
     }
     
     if (data.items.length === 0) {
-        alert("Please enter at least one item row with Rate and Quantity (Weight).");
+        showToast("Please enter at least one item row with Rate and Quantity (Weight).");
         return;
     }
     
+    grossTotal = Math.round(grossTotal * 100) / 100;
+    data.grossAmount = grossTotal;
+    const totalCharges = data.freightCharges + data.packingCharges + data.otherCharges + data.commissionCharges;
+    data.netReceivable = Math.round((grossTotal + totalCharges - data.discount) * 100) / 100;
+
     try {
         const res = await fetch('/api/sales-bills', {
             method: 'POST',
@@ -6979,8 +6991,7 @@ async function saveBill() {
         });
         if(res.ok) {
             const saved = await res.json();
-            alert("Bill #" + (saved.billNo || billNoStr) + " saved successfully!");
-            showToast("Bill Saved");
+            showToast("Bill #" + (saved.billNo || billNoStr) + " saved successfully!");
             await fetchBills();
             clearBill();
         } else {
@@ -6993,11 +7004,11 @@ async function saveBill() {
             } catch(e) {
                 if (errText) errMsg += ": " + errText;
             }
-            alert(errMsg);
+            showToast(errMsg);
         }
     } catch(e) {
         console.error(e);
-        alert("Network Error: " + e.message);
+        showToast("Network Error: " + e.message);
     }
 }
 
@@ -7474,6 +7485,12 @@ async function loadChittaRegister() {
                 tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No Chitta records found</td></tr>';
                 return;
             }
+            data.sort((a, b) => {
+                const da = String(a.chittaDate || '').substring(0, 10);
+                const db = String(b.chittaDate || '').substring(0, 10);
+                if (da !== db) return da.localeCompare(db);
+                return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+            });
             let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
             const rowsHtml = [];
             for (let idx = 0; idx < data.length; idx++) {
@@ -7484,27 +7501,21 @@ async function loadChittaRegister() {
                 const frt = parseFloat(c.freightAmount || c.freight) || 0;
                 const net = parseFloat(c.netPayable) || 0;
 
-                sumTotal += gross;
-                sumComm += comm;
-                sumAdv += adv;
-                sumFreight += frt;
-                sumNet += net;
+                sumTotal = Math.round((sumTotal + gross) * 100) / 100;
+                sumComm = Math.round((sumComm + comm) * 100) / 100;
+                sumAdv = Math.round((sumAdv + adv) * 100) / 100;
+                sumFreight = Math.round((sumFreight + frt) * 100) / 100;
+                sumNet = Math.round((sumNet + net) * 100) / 100;
                 
                 let chittaWeight = parseFloat(c.weight) || 0;
                 if (!chittaWeight && c.items) {
                     c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
                 }
-                sumWeight += chittaWeight;
+                sumWeight = Math.round((sumWeight + chittaWeight) * 100) / 100;
 
                 const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
                 const chittaDateStr = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
                 const payDateStr = c.payDate ? String(c.payDate).substring(0, 10) : (c.paid ? 'PAID' : '');
-                data.sort((a, b) => {
-                const da = String(a.chittaDate || '').substring(0, 10);
-                const db = String(b.chittaDate || '').substring(0, 10);
-                if (da !== db) return da.localeCompare(db);
-                return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
-            });
             const safeNo = (c.chittaNo || '').replace(/'/g, "\\'");
                 const safeId = (c.id || '');
 
@@ -7669,13 +7680,19 @@ function applyAdvancedOptions() {
                     let debitStr = '';
                     let creditStr = '';
                     
-                    if (item.closingBalance > 0) {
-                        debitStr = parseFloat(item.closingBalance).toFixed(2);
-                        totalDebit += parseFloat(item.closingBalance);
-                    } else if (item.closingBalance < 0) {
-                        creditStr = Math.abs(parseFloat(item.closingBalance)).toFixed(2);
-                        totalCredit += Math.abs(parseFloat(item.closingBalance));
+                    let deb = parseFloat(item.debit) || 0;
+                    let crd = parseFloat(item.credit) || 0;
+                    if (deb === 0 && crd === 0) {
+                        if (item.closingBalance > 0) {
+                            deb = parseFloat(item.closingBalance);
+                        } else if (item.closingBalance < 0) {
+                            crd = Math.abs(parseFloat(item.closingBalance));
+                        }
                     }
+                    totalDebit = Math.round((totalDebit + deb) * 100) / 100;
+                    totalCredit = Math.round((totalCredit + crd) * 100) / 100;
+                    debitStr = deb > 0 ? deb.toFixed(2) : '';
+                    creditStr = crd > 0 ? crd.toFixed(2) : '';
                     
                     tr.innerHTML = `
                         <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${sno++}</td>
@@ -7882,7 +7899,7 @@ async function loadBillRegister() {
                 const bags = parseFloat(b.totalBags || b.bags) || 0;
                 const weight = parseFloat(b.totalWeight || b.weight) || 0;
                 const gross = parseFloat(b.grossAmount || b.gross) || 0;
-                const net = parseFloat(b.netAmount || b.net) || 0;
+                const net = parseFloat(b.netReceivable || b.netAmount || b.net) || 0;
 
                 sumBags += bags;
                 sumWeight += weight;
@@ -8087,7 +8104,7 @@ async function loadCommissionRegister() {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px; color:#888;">No Commission records found</td></tr>';
             } else {
                 data.forEach((r, idx) => {
-                    const comm = parseFloat(r.commission) || 0;
+                    const comm = parseFloat(r.totalCommission || r.commission) || 0;
                     const gross = parseFloat(r.grossAmount) || 0;
                     sumComm += comm;
                     const dt = r.date ? (typeof r.date === 'string' ? r.date.substring(0, 10) : new Date(r.date).toLocaleDateString('en-GB')) : '';
@@ -8130,7 +8147,7 @@ async function loadCommissionSummary() {
                 tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:10px; color:#888;">No Commission records found</td></tr>';
             } else {
                 data.forEach((r, idx) => {
-                    const comm = parseFloat(r.commission) || 0;
+                    const comm = parseFloat(r.totalCommission || r.commission) || 0;
                     sumComm += comm;
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
