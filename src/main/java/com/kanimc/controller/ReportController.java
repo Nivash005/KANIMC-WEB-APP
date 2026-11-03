@@ -20,6 +20,7 @@ import java.util.*;
 import java.math.BigDecimal;
 import java.util.stream.Collectors;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/reports")
 public class ReportController {
