@@ -71,9 +71,15 @@ public class AccountingService {
         BigDecimal balance = acc.getOpeningBalance() != null ? acc.getOpeningBalance() : BigDecimal.ZERO;
         List<AccountTransaction> txns = transactionRepository.findByAccountIdOrderByTransactionDateAsc(accountId);
         if (txns != null) {
+            boolean isDebtor = Boolean.TRUE.equals(acc.getIsTrader()) || !Boolean.TRUE.equals(acc.getIsFarmer());
             for (AccountTransaction t : txns) {
-                if (t.getCreditAmount() != null) balance = balance.add(t.getCreditAmount());
-                if (t.getDebitAmount() != null) balance = balance.subtract(t.getDebitAmount());
+                BigDecimal dr = t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO;
+                BigDecimal cr = t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO;
+                if (isDebtor) {
+                    balance = balance.add(dr).subtract(cr);
+                } else {
+                    balance = balance.add(cr).subtract(dr);
+                }
             }
         }
         return balance;

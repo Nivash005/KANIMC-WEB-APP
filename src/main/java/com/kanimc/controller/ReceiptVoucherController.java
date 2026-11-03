@@ -1,13 +1,17 @@
 package com.kanimc.controller;
 
+import com.kanimc.entity.Account;
 import com.kanimc.entity.ReceiptVoucher;
+import com.kanimc.repository.AccountRepository;
 import com.kanimc.repository.ReceiptVoucherRepository;
+import com.kanimc.service.AccountingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -18,6 +22,12 @@ public class ReceiptVoucherController {
 
     @Autowired
     private ReceiptVoucherRepository receiptVoucherRepository;
+
+    @Autowired
+    private AccountingService accountingService;
+
+    @Autowired
+    private AccountRepository accountRepository;
 
     @GetMapping
     public List<ReceiptVoucher> getAllVouchers(
@@ -32,7 +42,30 @@ public class ReceiptVoucherController {
 
     @PostMapping
     public ResponseEntity<ReceiptVoucher> createVoucher(@RequestBody ReceiptVoucher voucher) {
-        ReceiptVoucher savedVoucher = receiptVoucherRepository.save(voucher); SyncController.bumpVersion();
+        ReceiptVoucher savedVoucher = receiptVoucherRepository.save(voucher);
+        
+        // Post double-entry: DR Cash Account, CR Buyer/Merchant Account (reduces buyer balance)
+        if (savedVoucher.getAccount() != null && savedVoucher.getAccount().getId() != null &&
+            savedVoucher.getAmount() != null && savedVoucher.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+            Account buyer = accountRepository.findById(savedVoucher.getAccount().getId()).orElse(null);
+            Account cash = accountRepository.findById(1L).orElseGet(() -> accountRepository.findByPartyId("1"));
+            if (buyer != null && cash != null) {
+                LocalDate vDate = savedVoucher.getVoucherDate() != null ? savedVoucher.getVoucherDate() : LocalDate.now();
+                String docNo = savedVoucher.getVoucherNo() != null ? savedVoucher.getVoucherNo() : String.valueOf(savedVoucher.getId());
+                accountingService.postDoubleEntry(
+                    vDate,
+                    cash,  // DR Cash
+                    buyer, // CR Buyer Account (reduces their outstanding balance)
+                    savedVoucher.getAmount(),
+                    4,     // Doc code 4 = Receipt Voucher
+                    docNo,
+                    null,
+                    savedVoucher.getNarration() != null ? savedVoucher.getNarration() : "Receipt Voucher " + docNo
+                );
+            }
+        }
+        
+        SyncController.bumpVersion();
         return new ResponseEntity<>(savedVoucher, HttpStatus.CREATED);
     }
 }
