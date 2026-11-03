@@ -39,7 +39,7 @@
     console.log('[KANIMC] GitHub Pages detected. Initializing client-side database adapter...');
 
     // In-memory / LocalStorage Database
-    const DB_KEY = 'KANIMC_GHPAGES_DB_V3';
+    const DB_KEY = 'KANIMC_GHPAGES_DB_V4';
     let db = {
         accounts: [],
         chittas: [],
@@ -64,16 +64,53 @@
         }
     }
 
-    // Load initial data from bundled JSON files if localStorage is empty
+    // Load initial data: keep accounts/masters, completely wipe all transactions to start fresh at #1
     const initPromise = (async function initDatabase() {
         const cached = localStorage.getItem(DB_KEY);
         if (cached) {
             try {
                 db = JSON.parse(cached);
-                console.log('[KANIMC] Loaded DB from localStorage (' + db.accounts.length + ' accounts, ' + db.chittas.length + ' chittas)');
+                console.log('[KANIMC] Loaded DB from localStorage (' + (db.accounts ? db.accounts.length : 0) + ' accounts, ' + (db.chittas ? db.chittas.length : 0) + ' chittas)');
                 return;
             } catch(e) {
-                console.warn('[KANIMC] Failed parsing cached DB, reloading from json:', e);
+                console.warn('[KANIMC] Failed parsing cached DB, reloading:', e);
+            }
+        }
+
+        const oldV3 = localStorage.getItem('KANIMC_GHPAGES_DB_V3') || localStorage.getItem('KANIMC_GHPAGES_DB_V2');
+        if (oldV3) {
+            try {
+                const prev = JSON.parse(oldV3);
+                if (prev.accounts && prev.accounts.length > 0) {
+                    db.accounts = prev.accounts;
+                    db.places = prev.places || [];
+                    db.items = prev.items || [];
+                    db.groups = prev.groups || [];
+                    db.commissionRates = prev.commissionRates || [];
+                    db.company = prev.company || {};
+                    db.settings = prev.settings || {};
+                    db.periods = prev.periods || [];
+                }
+                // Wipe every transaction entry completely
+                db.chittas = [];
+                db.salesBills = [];
+                db.cashVouchers = [];
+                db.receiptVouchers = [];
+                db.openingBalances = [];
+                if (db.accounts) {
+                    db.accounts.forEach(a => {
+                        a.opbal = 0;
+                        a.openingBalance = 0;
+                        a.balance = 0;
+                    });
+                }
+                saveDb();
+                try { localStorage.removeItem('KANIMC_GHPAGES_DB_V3'); } catch(e) {}
+                try { localStorage.removeItem('KANIMC_GHPAGES_DB_V2'); } catch(e) {}
+                console.log('[KANIMC] Upgraded DB to V4 with fresh #1 transaction slate (' + db.accounts.length + ' accounts, 0 chittas)');
+                return;
+            } catch(e) {
+                console.warn('[KANIMC] Failed upgrading from old DB:', e);
             }
         }
 
@@ -104,6 +141,11 @@
             }
         }));
 
+        db.chittas = [];
+        db.salesBills = [];
+        db.cashVouchers = [];
+        db.receiptVouchers = [];
+        db.openingBalances = [];
         saveDb();
         console.log('[KANIMC] Database initialized successfully (' + db.accounts.length + ' accounts, ' + db.chittas.length + ' chittas)');
     })();
@@ -541,6 +583,25 @@
                 });
                 return jsonResponse(list);
             }
+                        if (path === '/api/admin/reset-transactions') {
+                db.chittas = [];
+                db.salesBills = [];
+                db.cashVouchers = [];
+                db.receiptVouchers = [];
+                db.openingBalances = [];
+                if (db.accounts) {
+                    db.accounts.forEach(a => {
+                        a.opbal = 0;
+                        a.openingBalance = 0;
+                        a.balance = 0;
+                    });
+                }
+                saveDb();
+                return jsonResponse({
+                    status: 'SUCCESS',
+                    message: 'All transaction entries completely removed! Counters reset to 1.'
+                });
+            }
             if (path.startsWith('/api/reports/')) {
                 return jsonResponse([]);
             }
@@ -553,3 +614,4 @@
         }
     };
 })();
+
