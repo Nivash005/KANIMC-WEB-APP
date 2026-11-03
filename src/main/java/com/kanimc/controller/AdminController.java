@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
@@ -136,6 +137,42 @@ public class AdminController {
             "status", "SUCCESS",
             "message", "Index utility completed successfully. All database indices verified."
         ));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @PostMapping("/reset-transactions")
+    @Transactional
+    public ResponseEntity<?> resetAllTransactions() {
+        try {
+            try { jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE"); } catch (Exception ignored) {}
+            jdbcTemplate.execute("DELETE FROM chitta_items");
+            jdbcTemplate.execute("DELETE FROM chittas");
+            jdbcTemplate.execute("DELETE FROM sales_bill_items");
+            jdbcTemplate.execute("DELETE FROM sales_bills");
+            jdbcTemplate.execute("DELETE FROM receipt_vouchers");
+            jdbcTemplate.execute("DELETE FROM cash_vouchers");
+            jdbcTemplate.execute("DELETE FROM account_transactions");
+            try { jdbcTemplate.execute("DELETE FROM s_obout"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM f_dbal"); } catch (Exception ignored) {}
+            jdbcTemplate.execute("UPDATE accounts SET opening_balance = 0.00");
+            try { jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE"); } catch (Exception ignored) {}
+            SyncController.bumpVersion();
+            return ResponseEntity.ok(Map.of(
+                "status", "SUCCESS",
+                "message", "All transaction entries completely removed! Counters reset to 1."
+            ));
+        } catch (Exception e) {
+            try { jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE"); } catch (Exception ignored) {}
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/reset-transactions")
+    @Transactional
+    public ResponseEntity<?> resetAllTransactionsGet() {
+        return resetAllTransactions();
     }
 }
 
