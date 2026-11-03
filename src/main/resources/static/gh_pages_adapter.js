@@ -232,8 +232,23 @@
                 const parts = path.split('/');
                 const id = parseInt(parts[3], 10);
                 const acc = db.accounts.find(a => a.id === id || String(a.partyId) === String(id));
-                const bal = acc ? (parseFloat(acc.openingBalance) || 0) : 0;
-                return jsonResponse({ balance: bal, closingBalance: bal });
+                let bal = acc ? (parseFloat(acc.openingBalance) || 0) : 0;
+                
+                // Add all Sales Bills for this buyer (Increases outstanding balance)
+                (db.salesBills || []).forEach(b => {
+                    if (b.buyerAccount && (b.buyerAccount.id === id || String(b.buyerAccount.partyId) === String(id))) {
+                        bal += (parseFloat(b.netPayable || b.netReceivable || b.grossAmount) || 0);
+                    }
+                });
+                
+                // Subtract all Receipts for this buyer (Reduces outstanding balance)
+                (db.receiptVouchers || []).forEach(rv => {
+                    if (rv.account && (rv.account.id === id || String(rv.account.partyId) === String(id))) {
+                        bal -= (parseFloat(rv.amount) || 0);
+                    }
+                });
+                
+                return jsonResponse(bal);
             }
 
             // 2. CHITTAS
