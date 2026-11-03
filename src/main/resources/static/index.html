@@ -473,7 +473,7 @@ Commission % <input id="commRatePct" value="10.00%">
         
         <!-- Header Info -->
         <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:60px 120px 100px 150px 50px 1fr; gap:5px; align-items:center;">
-            <label>Date</label> <input type="date" id="chittaDate" class="chitta-field" value="2026-11-02" tabindex="1" onchange="if(currentChittaIndex===-1) autoAssignNextChittaNo()">
+            <label>Date</label> <input type="date" id="chittaDate" class="chitta-field" tabindex="1" onchange="if(currentChittaIndex===-1) autoAssignNextChittaNo()">
             <label>Farmer Code</label> 
             <div style="display:flex;"><input id="farmerAccountId" class="chitta-field" maxlength="4" style="text-transform:uppercase;" tabindex="2" onchange="onFarmerCodeChange()" onkeydown="handleFarmerCodeKey(event)"><button class="chitta-field" style="width:20px;padding:0;">v</button></div>
             <label style="text-align:right;">Phone</label> <input id="farmerPhone" class="chitta-field" tabindex="3">
@@ -1856,7 +1856,7 @@ Commission % <input id="commRatePct" value="10.00%">
         <div style="font-weight:bold; color:#222; margin-bottom:6px;">Option 2: Connect via Cloud / Internet / GitHub Pages</div>
         <div style="color:#555; margin-bottom:8px;">Access anywhere over mobile data (4G/5G) or outside the office:</div>
         <div style="display:flex; gap:8px; align-items:center;">
-            <input type="text" id="cloudServerUrl" readonly value="https://marcus-mattress-tions-versus.trycloudflare.com" style="font-size:13px; font-weight:bold; color:#28a745; padding:6px; flex:1; background:#f9f9f9; border:1px solid #ccc;">
+            <input type="text" id="cloudServerUrl" readonly value="https://muscle-pearl-forth-ongoing.trycloudflare.com" style="font-size:13px; font-weight:bold; color:#28a745; padding:6px; flex:1; background:#f9f9f9; border:1px solid #ccc;">
             <button type="button" onclick="copyCloudUrl()" style="padding:6px 14px; cursor:pointer;">Copy URL</button>
         </div>
     </div>
@@ -3002,9 +3002,13 @@ function onFarmerCodeChange() {
 function handleFarmerCodeKey(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         onFarmerCodeChange();
         const next = document.getElementById('farmerName');
-        if (next) next.focus();
+        if (next) {
+            next.focus();
+            if (typeof next.select === 'function') next.select();
+        }
     }
 }
 
@@ -4272,7 +4276,7 @@ function setChittaMode(mode) {
     const btnBottom = document.getElementById('btnChittaBottom');
     if (btnBottom) btnBottom.disabled = (mode === 'EDIT');
     
-    const btnFind = document.getElementById('btnChittaFind') || document.getElementById('btnChittaFindSave');
+    const btnFind = document.getElementById('btnChittaFind') || document.getElementById('btnChittaSave');
     if (btnFind) btnFind.innerHTML = '<u>F</u>ind';
     
     const btnCloseCancel = document.getElementById('btnChittaCloseCancel');
@@ -4310,29 +4314,20 @@ async function autoAssignNextChittaNo() {
 }
 
 async function chittaActionNew() {
-    // 1. If user already filled in farmer and item/qty/rate, clicking "New" means create/save this new chitta!
-    const fName = (document.getElementById('farmerName')?.value || '').trim();
-    const fId = (document.getElementById('farmerAccountId')?.value || '').trim();
-    const firstRate = parseFloat(document.querySelector('#chittaGrid .grid-rate')?.value) || 0;
-    const firstQty = parseFloat(document.querySelector('#chittaGrid .grid-qty')?.value) || 0;
-    
-    if ((fName || fId) && (firstRate > 0 || firstQty > 0)) {
-        showToast("Saving new Chitta...");
-        await saveChitta();
-        return;
-    }
-
-    // 2. Fresh entry initialization
+    // Always cleanly initialize a fresh new Chitta entry
     clearChitta();
     setChittaMode('EDIT');
     await autoAssignNextChittaNo();
     const curNo = document.getElementById('chittaNo')?.value || '';
     showToast(`🟢 Ready for New Chitta #${curNo}. Enter Farmer Name and Items, then click Save (F9).`);
-    const fInput = document.getElementById('farmerName');
-    if (fInput) {
-        fInput.focus();
-        fInput.select();
+    const fCodeInput = document.getElementById('farmerAccountId');
+    const fNameInput = document.getElementById('farmerName');
+    const focusTarget = fCodeInput || fNameInput;
+    if (focusTarget) {
+        focusTarget.focus();
+        if (typeof focusTarget.select === 'function') focusTarget.select();
     }
+}
 }
 
 function chittaActionChange() {
@@ -4545,10 +4540,7 @@ function refreshOpenRegistersSilently() {
         if (dcModal && dcModal.style.display !== 'none' && typeof refreshDailyCashReport === 'function') {
             refreshDailyCashReport();
         }
-        const openChittaModal = document.getElementById('openingChitta');
-        if (openChittaModal && openChittaModal.style.display !== 'none' && typeof chittaMode !== 'undefined' && chittaMode === 'VIEW' && chittas.length > 0) {
-            displayChitta(chittas.length - 1);
-        }
+        // Preserve active #openingChitta view/entry without jumping on sync
     } catch(e) {
         console.warn('Error during silent register refresh:', e);
     }
@@ -5287,24 +5279,35 @@ function loadLastChitta() { displayChitta(chittas.length - 1); }
 
 function clearChitta() {
     currentChittaIndex = -1;
-    document.getElementById('chittaNo').value = '';
+    const noEl = document.getElementById('chittaNo');
+    if (noEl) noEl.value = '';
     const chittaDateEl = document.getElementById('chittaDate');
-    if (chittaDateEl) chittaDateEl.value = (typeof getPeriodCurrentDate === 'function') ? getPeriodCurrentDate() : new Date().toISOString().substring(0, 10);
-    document.getElementById('farmerAccountId').value = '';
-    document.getElementById('farmerName').value = '';
-    
+    if (chittaDateEl) chittaDateEl.value = (typeof getTodayDateStr === 'function') ? getTodayDateStr() : new Date().toISOString().substring(0, 10);
+    const fAccId = document.getElementById('farmerAccountId');
+    if (fAccId) fAccId.value = '';
+    const fName = document.getElementById('farmerName');
+    if (fName) fName.value = '';
+    const fPhone = document.getElementById('farmerPhone');
+    if (fPhone) fPhone.value = '';
+    const paidTo = document.getElementById('paidTo') || document.querySelector('#openingChitta input[tabindex="7"]');
+    if (paidTo) paidTo.value = '';
+    const paidOn = document.getElementById('paidOn') || document.querySelector('#openingChitta input[tabindex="6"]');
+    if (paidOn) paidOn.value = '';
     
     const itemDescs = document.querySelectorAll('#chittaGrid .grid-item');
     const qtys = document.querySelectorAll('#chittaGrid .grid-qty');
     const rates = document.querySelectorAll('#chittaGrid .grid-rate');
+    const amts = document.querySelectorAll('#chittaGrid .grid-amt');
     for(let i=0; i<rates.length; i++) {
-        itemDescs[i].value = '';
-        qtys[i].value = '';
-        rates[i].value = '';
+        if (itemDescs[i]) itemDescs[i].value = '';
+        if (qtys[i]) qtys[i].value = '';
+        if (rates[i]) rates[i].value = '';
+        if (amts[i]) amts[i].value = '';
     }
-    document.getElementById('chittaCommPct').value = '10.00';
-    document.getElementById('chittaAdvance').value = '';
-    document.getElementById('chittaFreight').value = '';
+    const commPct = document.getElementById('chittaCommPct');
+    if (commPct) commPct.value = '10.00';
+    if(document.getElementById('chittaAdvance')) document.getElementById('chittaAdvance').value = '';
+    if(document.getElementById('chittaFreight')) document.getElementById('chittaFreight').value = '';
     calcChitta();
 }
 
@@ -5460,12 +5463,9 @@ async function saveChitta() {
         if(res.ok) {
             const savedChitta = await res.json().catch(() => null);
             const savedNo = (savedChitta && savedChitta.chittaNo) ? savedChitta.chittaNo : chittaNoStr;
-            showToast("Chitta #" + savedNo + " Saved Successfully!");
-            
+            showToast("✅ Chitta #" + savedNo + " Saved Successfully!");
             await fetchChittas(false);
-            
-            // Automatically prepare next Chitta for quick entry
-            chittaActionNew();
+            await chittaActionNew();
         } else if (res.status === 400) {
             let errMsg = "This Chitta Number already exists on this date! Please choose a different number.";
             try {
@@ -5749,7 +5749,7 @@ document.addEventListener("keydown", function(e) {
                     const itemVal = (e.target.value || '').trim();
                     // If row has no item in description, automatically move to Save button area
                     if (itemVal === '') {
-                        const saveBtn = document.getElementById('btnChittaFindSave');
+                        const saveBtn = document.getElementById('btnChittaSave');
                         if (saveBtn) {
                             saveBtn.focus();
                         }
@@ -5790,7 +5790,7 @@ document.addEventListener("keydown", function(e) {
                             return;
                         } else {
                             // If no more rows or end of grid, move to Save button
-                            const saveBtn = document.getElementById('btnChittaFindSave');
+                            const saveBtn = document.getElementById('btnChittaSave');
                             if (saveBtn) {
                                 saveBtn.focus();
                                 return;
