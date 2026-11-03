@@ -8,7 +8,33 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<script src="gh_pages_adapter.js?v=20261102_5"></script>
+<script>
+(function() {
+    function safeTodayDateStr() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+    try {
+        Object.defineProperty(window, 'getTodayDateStr', {
+            get: function() { return safeTodayDateStr; },
+            set: function() {},
+            configurable: true
+        });
+        Object.defineProperty(window, 'getPeriodCurrentDate', {
+            get: function() { return safeTodayDateStr; },
+            set: function() {},
+            configurable: true
+        });
+    } catch(e) {
+        window.getTodayDateStr = safeTodayDateStr;
+        window.getPeriodCurrentDate = safeTodayDateStr;
+    }
+})();
+</script>
+<script src="gh_pages_adapter.js?v=20261103_6"></script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}

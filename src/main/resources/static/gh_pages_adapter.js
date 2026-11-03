@@ -1,3 +1,29 @@
+// Global safeguard against recursion
+(function() {
+    function safeTodayDateStr() {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+    try {
+        Object.defineProperty(window, 'getTodayDateStr', {
+            get: function() { return safeTodayDateStr; },
+            set: function() {},
+            configurable: true
+        });
+        Object.defineProperty(window, 'getPeriodCurrentDate', {
+            get: function() { return safeTodayDateStr; },
+            set: function() {},
+            configurable: true
+        });
+    } catch(e) {
+        window.getTodayDateStr = safeTodayDateStr;
+        window.getPeriodCurrentDate = safeTodayDateStr;
+    }
+})();
+
 /**
  * GitHub Pages Client-Side Backend Adapter for KANIMC Web Application
  * Enables full functionality (database, autocomplete, CRUD, registers, reports)
