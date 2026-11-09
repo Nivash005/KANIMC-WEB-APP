@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_5"></script>
+<script src="gh_pages_adapter.js?v=20261109_6"></script>
 <script>
 if ('serviceWorker' in navigator) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -6431,7 +6431,12 @@ async function saveCashPayment() {
         amount: amountVal,
         narration: narration,
         paymentMethod: 'CASH',
-        account: { id: targetAcc.id }
+        account: {
+            id: targetAcc.id,
+            partyId: targetAcc.partyId,
+            accountName: targetAcc.accountName
+        },
+        accountName: targetAcc.accountName
     };
     
     const isEdit = (currentCashVoucherIndex >= 0 && cashVouchers[currentCashVoucherIndex]);
@@ -6801,7 +6806,12 @@ async function saveReceipt() {
         amount: amountVal,
         narration: narration,
         paymentMethod: 'CASH',
-        account: { id: targetAcc.id }
+        account: {
+            id: targetAcc.id,
+            partyId: targetAcc.partyId,
+            accountName: targetAcc.accountName
+        },
+        accountName: targetAcc.accountName
     };
     
     const isEdit = (currentReceiptVoucherIndex >= 0 && receiptVouchers[currentReceiptVoucherIndex]);
@@ -7626,7 +7636,22 @@ async function loadCashPaymentRegister() {
                 const v = data[idx];
                 const amt = parseFloat(v.amount) || 0;
                 total += amt;
-                const accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
+                let accName = '';
+                if (v.account) {
+                    accName = v.account.accountName || v.account.name || '';
+                    if (!accName && v.account.id && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                        const found = accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
+                        if (found) accName = found.accountName;
+                    }
+                }
+                if (!accName && v.accountName) {
+                    accName = v.accountName;
+                }
+                if (!accName && v.accountId && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                    const found = accounts.find(a => a.id == v.accountId || String(a.partyId) == String(v.accountId));
+                    if (found) accName = found.accountName;
+                }
+                if (!accName || accName === 'undefined') accName = '—';
                 const dtStr = v.voucherDate ? String(v.voucherDate).substring(0, 10) : '';
 
                 rowsHtml.push(
@@ -7677,7 +7702,22 @@ function loadReceiptRegister() {
                 const v = data[idx];
                 const amt = parseFloat(v.amount) || 0;
                 total += amt;
-                const accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
+                let accName = '';
+                if (v.account) {
+                    accName = v.account.accountName || v.account.name || '';
+                    if (!accName && v.account.id && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                        const found = accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
+                        if (found) accName = found.accountName;
+                    }
+                }
+                if (!accName && v.accountName) {
+                    accName = v.accountName;
+                }
+                if (!accName && v.accountId && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                    const found = accounts.find(a => a.id == v.accountId || String(a.partyId) == String(v.accountId));
+                    if (found) accName = found.accountName;
+                }
+                if (!accName || accName === 'undefined') accName = '—';
                 const dtStr = v.voucherDate ? String(v.voucherDate).substring(0, 10) : '';
 
                 rowsHtml.push(
