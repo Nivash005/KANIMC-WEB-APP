@@ -1195,48 +1195,113 @@
             }
 
             if (path === '/api/reports/daybook') {
-                const dateVal = search.get('date') || new Date().toISOString().substring(0, 10);
-                const list = [];
-                (db.chittas || []).forEach(c => {
-                    if (c.chittaDate && c.chittaDate.substring(0, 10) === dateVal) {
-                        list.push({
-                            date: c.chittaDate,
-                            particulars: 'Chitta #' + c.chittaNo + ' (' + (c.farmerName || 'Farmer') + ')',
-                            debit: 0,
-                            credit: c.netPayable || c.grossAmount
-                        });
-                    }
-                });
-                (db.salesBills || []).forEach(b => {
-                    if (b.billDate && b.billDate.substring(0, 10) === dateVal) {
-                        list.push({
-                            date: b.billDate,
-                            particulars: 'Bill #' + b.billNo + ' (' + (b.buyerAccount ? b.buyerAccount.accountName : '') + ')',
-                            debit: b.netReceivable || b.grossAmount,
-                            credit: 0
-                        });
-                    }
-                });
-                (db.cashVouchers || []).forEach(v => {
-                    if (v.voucherDate && v.voucherDate.substring(0, 10) === dateVal) {
-                        list.push({
-                            date: v.voucherDate,
-                            particulars: 'Payment #' + v.voucherNo + ' (' + (v.account ? v.account.accountName : '') + ')',
-                            debit: v.amount,
-                            credit: 0
-                        });
-                    }
-                });
+                const sDate = search.get('startDate') || search.get('date') || new Date().toISOString().substring(0, 10);
+                const eDate = search.get('endDate') || (search.get('date') || sDate);
+
+                // 1. Calculate Opening Cash Balance before sDate
+                let cashAcc = (db.accounts || []).find(a => a.accountName && a.accountName.toUpperCase().trim() === 'CASH');
+                let opening = (cashAcc ? (parseFloat(cashAcc.openingBalance || cashAcc.opbal) || 0) : 0);
+
                 (db.receiptVouchers || []).forEach(r => {
-                    if (r.voucherDate && r.voucherDate.substring(0, 10) === dateVal) {
+                    const dt = (r.voucherDate || '').substring(0, 10);
+                    if (dt && dt < sDate) {
+                        opening += (parseFloat(r.amount) || 0);
+                    }
+                });
+
+                (db.cashVouchers || []).forEach(v => {
+                    const dt = (v.voucherDate || '').substring(0, 10);
+                    if (dt && dt < sDate) {
+                        opening -= (parseFloat(v.amount) || 0);
+                    }
+                });
+
+                (db.chittas || []).forEach(c => {
+                    const dt = (c.payDate || c.chittaDate || '').substring(0, 10);
+                    if (dt && dt < sDate) {
+                        if (c.isPaid || (c.paymentMethod && c.paymentMethod.toUpperCase() === 'CASH')) {
+                            opening -= (parseFloat(c.netPayable || c.grossAmount) || 0);
+                        }
+                    }
+                });
+
+                const list = [];
+                // Row 1: OPENING BALANCE
+                list.push({
+                    date: '',
+                    name: 'OPENING BALANCE',
+                    accountName: 'OPENING BALANCE',
+                    credit: opening,
+                    debit: 0,
+                    isOpening: true
+                });
+
+                // Row 2: Chitta Payments grouped by Date -> "CHITTA PAYMENT"
+                const chittaByDate = {};
+                (db.chittas || []).forEach(c => {
+                    const dt = (c.payDate || c.chittaDate || '').substring(0, 10);
+                    if (dt && dt >= sDate && dt <= eDate) {
+                        if (c.isPaid || (c.paymentMethod && c.paymentMethod.toUpperCase() === 'CASH')) {
+                            const amt = parseFloat(c.netPayable || c.grossAmount) || 0;
+                            chittaByDate[dt] = (chittaByDate[dt] || 0) + amt;
+                        }
+                    }
+                });
+
+                Object.keys(chittaByDate).sort().forEach(dt => {
+                    if (chittaByDate[dt] > 0) {
                         list.push({
-                            date: r.voucherDate,
-                            particulars: 'Receipt #' + r.voucherNo + ' (' + (r.account ? r.account.accountName : '') + ')',
-                            debit: 0,
-                            credit: r.amount
+                            date: dt,
+                            name: 'CHITTA PAYMENT',
+                            accountName: 'CHITTA PAYMENT',
+                            credit: 0,
+                            debit: chittaByDate[dt]
                         });
                     }
                 });
+
+                // Row 3: Cash Vouchers in range
+                (db.cashVouchers || []).forEach(v => {
+                    const dt = (v.voucherDate || '').substring(0, 10);
+                    if (dt && dt >= sDate && dt <= eDate) {
+                        let accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
+                        if (!accName && v.account && v.account.id && db.accounts) {
+                            const found = db.accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
+                            if (found) accName = found.accountName;
+                        }
+                        if (!accName) accName = 'PURCHASE A/C';
+                        list.push({
+                            date: dt,
+                            name: accName,
+                            accountName: accName,
+                            credit: 0,
+                            debit: parseFloat(v.amount) || 0,
+                            narration: v.narration || ''
+                        });
+                    }
+                });
+
+                // Row 4: Receipt Vouchers in range
+                (db.receiptVouchers || []).forEach(r => {
+                    const dt = (r.voucherDate || '').substring(0, 10);
+                    if (dt && dt >= sDate && dt <= eDate) {
+                        let accName = r.account ? (r.account.accountName || r.account.name) : (r.accountName || '');
+                        if (!accName && r.account && r.account.id && db.accounts) {
+                            const found = db.accounts.find(a => a.id == r.account.id || String(a.partyId) == String(r.account.id));
+                            if (found) accName = found.accountName;
+                        }
+                        if (!accName) accName = 'RECEIPT';
+                        list.push({
+                            date: dt,
+                            name: accName,
+                            accountName: accName,
+                            credit: parseFloat(r.amount) || 0,
+                            debit: 0,
+                            narration: r.narration || ''
+                        });
+                    }
+                });
+
                 return jsonResponse(list);
             }
 
