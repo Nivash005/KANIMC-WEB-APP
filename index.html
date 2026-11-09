@@ -34,7 +34,14 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_1"></script>
+<script src="gh_pages_adapter.js?v=20261109_2"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+}
+</script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}
