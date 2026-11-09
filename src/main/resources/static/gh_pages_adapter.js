@@ -361,6 +361,9 @@
 
         db.chittas = db.chittas || [];
         db.salesBills = db.salesBills || [];
+    db.purchases = db.purchases || [];
+    db.purchasePayments = db.purchasePayments || [];
+    db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
         db.cashVouchers = db.cashVouchers || [];
         db.receiptVouchers = db.receiptVouchers || [];
         db.openingBalances = db.openingBalances || [];
@@ -573,7 +576,16 @@
                 const isFarmer = acc && (acc.isFarmer || (acc.accountGroup && String(acc.accountGroup.groupName).toUpperCase().includes('FARMER')));
 
                 if (isFarmer) {
-                    (db.chittas || []).forEach(c => {
+                    (db.purchasePayments || []).forEach(pp => {
+                    const dt = (pp.paymentDate || '').substring(0, 10);
+                    if (dt && dt < sDate) {
+                        if (!pp.paymentMethod || pp.paymentMethod.toUpperCase() === 'CASH') {
+                            opening -= (parseFloat(pp.amount) || 0);
+                        }
+                    }
+                });
+
+                (db.chittas || []).forEach(c => {
                         if (c.farmerAccount && (c.farmerAccount.id === id || String(c.farmerAccount.partyId) === String(id))) {
                             bal += (parseFloat(c.netPayable || c.grossAmount) || 0);
                         }
@@ -825,7 +837,234 @@
                 }
             }
 
-            // 4. CASH VOUCHERS / PAYMENTS
+            
+            // 3B. PURCHASES
+            if (path === '/api/purchases/next-no') {
+                let max = 0;
+                (db.purchases || []).forEach(p => {
+                    const n = parseInt(p.purchaseNo, 10);
+                    if (!isNaN(n) && n > max) max = n;
+                });
+                return jsonResponse({ nextNo: max + 1 });
+            }
+
+            if (path === '/api/purchases/pending') {
+                const accId = search.get('accountId');
+                const list = (db.purchases || []).filter(p => {
+                    if (p.paid) return false;
+                    if (accId) {
+                        return p.traderAccount && (p.traderAccount.id == accId || p.traderAccount.partyId == accId);
+                    }
+                    return true;
+                });
+                return jsonResponse(list);
+            }
+
+            const mPurchaseSingle = path.match(/^\/api\/purchases\/(\d+)$/);
+            if (mPurchaseSingle) {
+                const id = parseInt(mPurchaseSingle[1], 10);
+                const idx = (db.purchases || []).findIndex(p => p.id == id);
+                if (method === 'GET') {
+                    if (idx >= 0) return jsonResponse(db.purchases[idx], 200);
+                    return jsonResponse({ error: 'Purchase not found with ID: ' + id }, 404);
+                } else if (method === 'PUT') {
+                    if (idx >= 0) {
+                        db.purchases[idx] = { ...db.purchases[idx], ...reqBody, id: id, updatedAt: new Date().toISOString() };
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'purchase' });
+                        return jsonResponse(db.purchases[idx], 200);
+                    } else {
+                        const newP = { id: id, ...reqBody, createdAt: new Date().toISOString() };
+                        db.purchases.push(newP);
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'purchase' });
+                        return jsonResponse(newP, 201);
+                    }
+                } else if (method === 'DELETE') {
+                    if (idx >= 0) {
+                        db.purchases.splice(idx, 1);
+                        saveDb();
+                        window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'purchase' });
+                        return jsonResponse({ success: true, status: 'DELETED' }, 200);
+                    }
+                    return jsonResponse({ error: 'Purchase not found' }, 404);
+                }
+            }
+
+            if (path === '/api/purchases') {
+                if (method === 'GET') {
+                    return jsonResponse(db.purchases || []);
+                } else if (method === 'POST') {
+                    db.purchases = db.purchases || [];
+                    const newP = {
+                        id: db.purchases.length > 0 ? Math.max(...db.purchases.map(p => p.id || 0)) + 1 : 1,
+                        ...reqBody,
+                        createdAt: new Date().toISOString()
+                    };
+                    db.purchases.push(newP);
+                    saveDb();
+                    window.enqueueOfflineAction('POST', path, newP, { localId: newP.id, type: 'purchase' });
+                    return jsonResponse(newP, 201);
+                }
+            }
+
+            // Purchase Payments
+            const mPpSingle = path.match(/^\/api\/purchase-payments\/(\d+)$/);
+            if (mPpSingle && method === 'DELETE') {
+                const id = parseInt(mPpSingle[1], 10);
+                const idx = (db.purchasePayments || []).findIndex(pp => pp.id == id);
+                if (idx >= 0) {
+                    db.purchasePayments.splice(idx, 1);
+                    saveDb();
+                    window.enqueueOfflineAction('DELETE', path, null, { localId: id });
+                    return jsonResponse({ success: true }, 200);
+                }
+                return jsonResponse({ error: 'Payment not found' }, 404);
+            }
+
+            if (path === '/api/purchase-payments') {
+                if (method === 'GET') {
+                    return jsonResponse(db.purchasePayments || []);
+                } else if (method === 'POST') {
+                    db.purchasePayments = db.purchasePayments || [];
+                    const newPp = {
+                        id: db.purchasePayments.length > 0 ? Math.max(...db.purchasePayments.map(pp => pp.id || 0)) + 1 : 1,
+                        ...reqBody,
+                        createdAt: new Date().toISOString()
+                    };
+                    if (newPp.purchase && newPp.purchase.id) {
+                        const p = (db.purchases || []).find(x => x.id == newPp.purchase.id);
+                        if (p) {
+                            p.paid = true;
+                            p.paidAmount = newPp.amount;
+                            p.payDate = newPp.paymentDate;
+                        }
+                    }
+                    db.purchasePayments.push(newPp);
+                    saveDb();
+                    window.enqueueOfflineAction('POST', path, newPp, { localId: newPp.id });
+                    return jsonResponse(newPp, 201);
+                }
+            }
+
+            // Purchase Opening Balances
+            const mPobSingle = path.match(/^\/api\/purchase-opening-balances\/(\d+)$/);
+            if (mPobSingle && method === 'DELETE') {
+                const id = parseInt(mPobSingle[1], 10);
+                const idx = (db.purchaseOpeningBalances || []).findIndex(ob => ob.id == id);
+                if (idx >= 0) {
+                    db.purchaseOpeningBalances.splice(idx, 1);
+                    saveDb();
+                    window.enqueueOfflineAction('DELETE', path, null, { localId: id });
+                    return jsonResponse({ success: true }, 200);
+                }
+                return jsonResponse({ error: 'Opening balance not found' }, 404);
+            }
+
+            if (path === '/api/purchase-opening-balances') {
+                if (method === 'GET') {
+                    return jsonResponse(db.purchaseOpeningBalances || []);
+                } else if (method === 'POST') {
+                    db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
+                    const newOb = {
+                        id: db.purchaseOpeningBalances.length > 0 ? Math.max(...db.purchaseOpeningBalances.map(o => o.id || 0)) + 1 : 1,
+                        ...reqBody,
+                        createdAt: new Date().toISOString()
+                    };
+                    db.purchaseOpeningBalances.push(newOb);
+                    saveDb();
+                    window.enqueueOfflineAction('POST', path, newOb, { localId: newOb.id });
+                    return jsonResponse(newOb, 201);
+                }
+            }
+
+            // Reports: Purchase Register
+            if (path === '/api/reports/purchase-register') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+                const accId = search.get('accountId');
+                const list = (db.purchases || []).filter(p => {
+                    const dt = (p.purchaseDate || '').substring(0, 10);
+                    if (sDate && dt < sDate) return false;
+                    if (eDate && dt > eDate) return false;
+                    if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
+                    return true;
+                }).map(p => {
+                    let weight = 0, bags = 0;
+                    (p.items || []).forEach(it => {
+                        weight += parseFloat(it.quantity) || 0;
+                        bags += parseFloat(it.bags) || 0;
+                    });
+                    return {
+                        id: p.id,
+                        purchaseNo: p.purchaseNo,
+                        purchaseDate: p.purchaseDate,
+                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        traderAccount: p.traderAccount,
+                        grossAmount: p.grossAmount || 0,
+                        freight: p.freightCharges || 0,
+                        packing: p.packingCharges || 0,
+                        other: p.otherCharges || 0,
+                        discount: p.discount || 0,
+                        netPayable: p.netPayable || 0,
+                        paid: Boolean(p.paid),
+                        weight: weight,
+                        bags: bags,
+                        items: p.items || []
+                    };
+                });
+                return jsonResponse(list);
+            }
+
+            // Reports: Purchase Payment Register
+            if (path === '/api/reports/purchase-payment-register') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+                const accId = search.get('accountId');
+                const list = (db.purchasePayments || []).filter(pp => {
+                    const dt = (pp.paymentDate || '').substring(0, 10);
+                    if (sDate && dt < sDate) return false;
+                    if (eDate && dt > eDate) return false;
+                    if (accId && pp.traderAccount && (pp.traderAccount.id != accId && pp.traderAccount.partyId != accId)) return false;
+                    return true;
+                }).map(pp => ({
+                    id: pp.id,
+                    paymentNo: pp.paymentNo,
+                    paymentDate: pp.paymentDate,
+                    traderName: pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : 'Unknown',
+                    amount: pp.amount || 0,
+                    discount: pp.discount || 0,
+                    paymentMethod: pp.paymentMethod || 'CASH',
+                    narration: pp.narration || ''
+                }));
+                return jsonResponse(list);
+            }
+
+            // Reports: Purchase Pending Register
+            if (path === '/api/reports/purchase-pending-register') {
+                const accId = search.get('accountId');
+                const list = (db.purchases || []).filter(p => {
+                    if (p.paid) return false;
+                    if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
+                    return true;
+                }).map(p => {
+                    const net = parseFloat(p.netPayable) || 0;
+                    const paidAmt = parseFloat(p.paidAmount) || 0;
+                    return {
+                        id: p.id,
+                        purchaseNo: p.purchaseNo,
+                        purchaseDate: p.purchaseDate,
+                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        traderAccount: p.traderAccount,
+                        netPayable: net,
+                        paidAmount: paidAmt,
+                        balance: net - paidAmt > 0 ? (net - paidAmt) : net
+                    };
+                });
+                return jsonResponse(list);
+            }
+
+// 4. CASH VOUCHERS / PAYMENTS
             const mCashSingle = path.match(/^\/api\/(cash-vouchers|cash-payments)\/(\d+)$/);
             if (mCashSingle) {
                 const id = parseInt(mCashSingle[2], 10);
@@ -1257,6 +1496,24 @@
                             credit: 0,
                             debit: chittaByDate[dt]
                         });
+                    }
+                });
+
+                // Row 2B: Purchase Payments in range
+                (db.purchasePayments || []).forEach(pp => {
+                    const dt = (pp.paymentDate || '').substring(0, 10);
+                    if (dt && dt >= sDate && dt <= eDate) {
+                        if (!pp.paymentMethod || pp.paymentMethod.toUpperCase() === 'CASH') {
+                            let accName = pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : 'PURCHASE A/C';
+                            list.push({
+                                date: dt,
+                                name: accName,
+                                accountName: accName,
+                                credit: 0,
+                                debit: parseFloat(pp.amount) || 0,
+                                narration: pp.narration || ''
+                            });
+                        }
                     }
                 });
 
