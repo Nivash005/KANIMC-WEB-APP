@@ -25,21 +25,18 @@
 })();
 
 /**
- * GitHub Pages Client-Side Backend Adapter for KANIMC Web Application
- * Enables full functionality (database, autocomplete, CRUD, registers, reports)
- * when running statically on GitHub Pages (github.io) without requiring a live JVM backend.
+ * Universal Offline-First Database Adapter & Automatic Sync Engine for KANIMC Web Application
+ * - When offline: seamlessly saves all mutations (chittas, bills, vouchers, accounts) to local storage.
+ * - When internet/network connects: automatically syncs queued offline changes to the central database.
+ * - Zero changes to UI layout, accounting logic, or business formulas.
  */
 (function() {
-    const isGhPages = window.location.hostname.includes('github.io') || window.location.protocol === 'file:';
-    if (!isGhPages) {
-        console.log('[KANIMC] Running in native mode against live Spring Boot backend.');
-        return;
-    }
+    console.log('[KANIMC] Initializing Offline-First database adapter & auto-sync engine...');
 
-    console.log('[KANIMC] GitHub Pages detected. Initializing client-side database adapter...');
+    const DB_KEY = 'KANIMC_GHPAGES_DB_V4';
+    const OFFLINE_QUEUE_KEY = 'KANIMC_OFFLINE_SYNC_QUEUE';
 
     // In-memory / LocalStorage Database
-    const DB_KEY = 'KANIMC_GHPAGES_DB_V4';
     let db = {
         accounts: [],
         chittas: [],
@@ -64,7 +61,174 @@
         }
     }
 
-    // Load initial data: keep accounts/masters, completely wipe all transactions to start fresh at #1
+    // Offline Sync Queue Helpers
+    window.getOfflineQueue = function() {
+        try {
+            const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch(e) {
+            return [];
+        }
+    };
+
+    window.saveOfflineQueue = function(queue) {
+        try {
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+        } catch(e) {
+            console.error('[KANIMC] Failed to save offline sync queue:', e);
+        }
+    };
+
+    window.getOfflineQueueLength = function() {
+        return window.getOfflineQueue().length;
+    };
+
+    window.enqueueOfflineAction = function(method, path, body, meta = {}) {
+        const queue = window.getOfflineQueue();
+        const action = {
+            id: 'sync_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            timestamp: new Date().toISOString(),
+            method: method,
+            path: path,
+            body: body,
+            meta: meta
+        };
+        queue.push(action);
+        window.saveOfflineQueue(queue);
+        console.log(`[KANIMC Offline] Action enqueued: ${method} ${path} (Pending sync: ${queue.length})`);
+        if (typeof updateLiveSyncBadge === 'function') {
+            updateLiveSyncBadge(false);
+        }
+    };
+
+    function getCentralServerUrl() {
+        let cs = localStorage.getItem('KANIMC_SERVER_URL');
+        if (!cs) {
+            if (!window.location.hostname.includes('github.io') && window.location.port !== '') {
+                cs = window.location.origin;
+            } else {
+                cs = 'https://lake-divine-independent-emacs.trycloudflare.com';
+            }
+        }
+        return cs;
+    }
+
+    // Auto-Sync Worker
+    let isSyncingQueue = false;
+    window.processOfflineSyncQueue = async function() {
+        if (isSyncingQueue) return;
+        const queue = window.getOfflineQueue();
+        if (!queue || queue.length === 0) return;
+
+        if (navigator.onLine === false) return;
+
+        const centralServer = getCentralServerUrl();
+        if (!centralServer) return;
+
+        isSyncingQueue = true;
+        console.log(`[KANIMC Sync] Connected. Processing ${queue.length} offline action(s)...`);
+
+        const remainingQueue = [];
+        let syncedCount = 0;
+        const idMapping = {}; // localId -> realServerId
+
+        for (let i = 0; i < queue.length; i++) {
+            const item = queue[i];
+            let actionPath = item.path;
+            let actionBody = item.body;
+
+            // Map temporary local IDs to real server IDs if dependent
+            for (const [oldId, newId] of Object.entries(idMapping)) {
+                actionPath = actionPath.replace(new RegExp(`/${oldId}(/|\\?|$)`), `/${newId}$1`);
+            }
+
+            try {
+                let targetUrl = actionPath.startsWith('http://') || actionPath.startsWith('https://')
+                    ? actionPath
+                    : centralServer.replace(/\/$/, '') + actionPath;
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Bypass-Tunnel-Reminder': 'true'
+                };
+                const fetchInit = {
+                    method: item.method,
+                    headers: headers
+                };
+                if (actionBody && item.method !== 'GET') {
+                    fetchInit.body = typeof actionBody === 'string' ? actionBody : JSON.stringify(actionBody);
+                }
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                fetchInit.signal = controller.signal;
+
+                const res = await originalFetch(targetUrl, fetchInit);
+                clearTimeout(timeoutId);
+
+                if (res.ok || res.status === 201 || res.status === 200) {
+                    syncedCount++;
+                    try {
+                        const serverEntity = await res.json();
+                        if (serverEntity && serverEntity.id && item.meta && item.meta.localId) {
+                            idMapping[item.meta.localId] = serverEntity.id;
+                        }
+                    } catch(e) {}
+                } else if (res.status === 400 || res.status === 409) {
+                    // Record already exists on server, safely mark as synced
+                    console.warn(`[KANIMC Sync] Server responded ${res.status} for ${item.path}, item marked synced.`);
+                    syncedCount++;
+                } else {
+                    console.warn(`[KANIMC Sync] Server error ${res.status} for ${item.path}, retaining in queue.`);
+                    remainingQueue.push(item);
+                    remainingQueue.push(...queue.slice(i + 1));
+                    break;
+                }
+            } catch(netErr) {
+                console.warn('[KANIMC Sync] Network interrupted during sync:', netErr);
+                remainingQueue.push(item);
+                remainingQueue.push(...queue.slice(i + 1));
+                break;
+            }
+        }
+
+        window.saveOfflineQueue(remainingQueue);
+        isSyncingQueue = false;
+
+        if (syncedCount > 0) {
+            console.log(`[KANIMC Sync] Synchronized ${syncedCount} offline record(s) to Central Server.`);
+            const msg = `🟢 Internet Connected: ${syncedCount} offline record(s) synchronized with Central Server!`;
+            if (typeof showLiveSyncToast === 'function') {
+                showLiveSyncToast(msg);
+            } else if (typeof showToast === 'function') {
+                showToast(msg);
+            }
+            if (typeof checkSyncStatus === 'function') {
+                checkSyncStatus(true);
+            }
+        }
+
+        if (typeof updateLiveSyncBadge === 'function') {
+            updateLiveSyncBadge(remainingQueue.length === 0);
+        }
+    };
+
+    // Auto-listen to online/offline events
+    window.addEventListener('online', function() {
+        console.log('[KANIMC] Network status: ONLINE');
+        if (typeof window.processOfflineSyncQueue === 'function') {
+            window.processOfflineSyncQueue();
+        }
+    });
+
+    window.addEventListener('offline', function() {
+        console.log('[KANIMC] Network status: OFFLINE');
+        if (typeof updateLiveSyncBadge === 'function') {
+            updateLiveSyncBadge(false);
+        }
+    });
+
+    // Load initial data into localStorage DB
     const initPromise = (async function initDatabase() {
         const cached = localStorage.getItem(DB_KEY);
         if (cached) {
@@ -91,7 +255,6 @@
                     db.settings = prev.settings || {};
                     db.periods = prev.periods || [];
                 }
-                // Wipe every transaction entry completely
                 db.chittas = [];
                 db.salesBills = [];
                 db.cashVouchers = [];
@@ -107,7 +270,7 @@
                 saveDb();
                 try { localStorage.removeItem('KANIMC_GHPAGES_DB_V3'); } catch(e) {}
                 try { localStorage.removeItem('KANIMC_GHPAGES_DB_V2'); } catch(e) {}
-                console.log('[KANIMC] Upgraded DB to V4 with fresh #1 transaction slate (' + db.accounts.length + ' accounts, 0 chittas)');
+                console.log('[KANIMC] Upgraded DB to V4 with fresh slate (' + db.accounts.length + ' accounts, 0 chittas)');
                 return;
             } catch(e) {
                 console.warn('[KANIMC] Failed upgrading from old DB:', e);
@@ -155,7 +318,7 @@
     window.fetch = async function(resource, init) {
         let url = typeof resource === 'string' ? resource : resource.url;
         
-        // Let non-API requests or requests to json pass through
+        // Let non-API requests or static assets pass through
         if (!url.includes('/api/')) {
             return originalFetch(resource, init);
         }
@@ -169,31 +332,6 @@
         }
         if (!path.startsWith('/')) path = '/' + path;
 
-        // TRY FORWARDING TO CENTRAL SERVER FOR REAL-TIME MULTI-DEVICE SINGLE DATABASE
-        const centralServer = localStorage.getItem('KANIMC_SERVER_URL') || 'https://raw-contrast-enterprises-relates.trycloudflare.com';
-        if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
-            try {
-                const targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
-                const newHeaders = Object.assign({}, (init && init.headers) || {}, {
-                    'Bypass-Tunnel-Reminder': 'true'
-                });
-                const remoteInit = Object.assign({}, init, { headers: newHeaders });
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
-                remoteInit.signal = controller.signal;
-                
-                const remoteRes = await originalFetch(targetUrl, remoteInit);
-                clearTimeout(timeoutId);
-                if (remoteRes && remoteRes.status !== 502 && remoteRes.status !== 503 && remoteRes.status !== 504) {
-                    return remoteRes;
-                }
-            } catch(remoteErr) {
-                console.warn('[KANIMC] Central server unreachable, falling back to local DB:', remoteErr);
-            }
-        }
-
-        await initPromise;
-
         const method = (init && init.method ? init.method.toUpperCase() : 'GET');
         const search = urlObj.searchParams;
 
@@ -206,7 +344,47 @@
             }
         }
 
-        console.log(`[Mock API] ${method} ${path}`, reqBody || '');
+        const isMutation = (method === 'POST' || method === 'PUT' || method === 'DELETE');
+        const centralServer = getCentralServerUrl();
+
+        // 1. TRY LIVE CENTRAL SERVER FIRST IF NETWORK IS ONLINE
+        if (navigator.onLine !== false && centralServer) {
+            try {
+                let targetUrl = url;
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
+                        targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
+                    } else {
+                        targetUrl = window.location.origin + path + urlObj.search;
+                    }
+                }
+                const newHeaders = Object.assign({}, (init && init.headers) || {}, {
+                    'Bypass-Tunnel-Reminder': 'true'
+                });
+                const remoteInit = Object.assign({}, init, { headers: newHeaders });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                remoteInit.signal = controller.signal;
+                
+                const remoteRes = await originalFetch(targetUrl, remoteInit);
+                clearTimeout(timeoutId);
+                if (remoteRes && remoteRes.status !== 502 && remoteRes.status !== 503 && remoteRes.status !== 504) {
+                    // Central server handled the request successfully!
+                    // If queue has pending items, attempt background drain
+                    if (window.getOfflineQueueLength() > 0) {
+                        setTimeout(() => window.processOfflineSyncQueue(), 500);
+                    }
+                    return remoteRes;
+                }
+            } catch(remoteErr) {
+                console.warn('[KANIMC] Central server unreachable / offline, falling back to local DB:', remoteErr);
+            }
+        }
+
+        // 2. OFFLINE / LOCAL CLIENT DATABASE FALLBACK
+        await initPromise;
+
+        console.log(`[Offline Mock API] ${method} ${path}`, reqBody || '');
 
         function jsonResponse(data, status = 200) {
             return new Response(JSON.stringify(data), {
@@ -227,11 +405,12 @@
             // SYNC STATUS
             if (path === '/api/sync/status') {
                 return jsonResponse({
-                    version: 1793634402291,
+                    version: Date.now(),
                     chittaCount: (db.chittas || []).length,
                     paidCount: (db.chittas || []).filter(c => c.paid).length,
                     accountCount: (db.accounts || []).length,
-                    status: 'STANDALONE_LOCAL'
+                    status: 'STANDALONE_LOCAL',
+                    offlinePending: window.getOfflineQueueLength()
                 });
             }
 
@@ -267,9 +446,29 @@
                     };
                     db.accounts.push(newAcc);
                     saveDb();
+                    window.enqueueOfflineAction('POST', path, newAcc, { localId: nextId, type: 'account' });
                     return jsonResponse(newAcc, 201);
                 }
             }
+
+            const mAccSingle = path.match(/^\/api\/accounts\/(\d+)$/);
+            if (mAccSingle) {
+                const id = parseInt(mAccSingle[1], 10);
+                const idx = (db.accounts || []).findIndex(a => a.id == id);
+                if (method === 'GET') {
+                    if (idx >= 0) return jsonResponse(db.accounts[idx], 200);
+                    return jsonResponse({ error: 'Account not found with ID: ' + id }, 404);
+                } else if (method === 'PUT') {
+                    if (idx >= 0) {
+                        db.accounts[idx] = { ...db.accounts[idx], ...reqBody, id: id, updatedAt: new Date().toISOString() };
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'account' });
+                        return jsonResponse(db.accounts[idx], 200);
+                    }
+                    return jsonResponse({ error: 'Account not found' }, 404);
+                }
+            }
+
             if (path.startsWith('/api/accounts/') && path.endsWith('/balance')) {
                 const parts = path.split('/');
                 const id = parseInt(parts[3], 10);
@@ -336,6 +535,7 @@
                     found.payDate = payDate;
                     found.status = 'PAID';
                     saveDb();
+                    window.enqueueOfflineAction('POST', path + urlObj.search, null, { localId: id, type: 'chittaPayment' });
                     return jsonResponse(found, 200);
                 } else if (method === 'DELETE') {
                     found.paid = false;
@@ -344,6 +544,7 @@
                     found.payDate = null;
                     found.status = 'PENDING';
                     saveDb();
+                    window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'chittaPaymentCancel' });
                     return jsonResponse(found, 200);
                 }
             }
@@ -351,10 +552,50 @@
             const mChittaSingle = path.match(/^\/api\/chittas\/(\d+)$/);
             if (mChittaSingle) {
                 const id = parseInt(mChittaSingle[1], 10);
-                const found = (db.chittas || []).find(c => c.id == id);
-                if (found) return jsonResponse(found, 200);
-                return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
+                const idx = (db.chittas || []).findIndex(c => c.id == id);
+                if (method === 'GET') {
+                    if (idx >= 0) return jsonResponse(db.chittas[idx], 200);
+                    return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
+                } else if (method === 'PUT') {
+                    if (idx >= 0) {
+                        let gross = 0;
+                        (reqBody.items || []).forEach(it => {
+                            const amt = Math.round((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0) * 100) / 100;
+                            it.amount = amt;
+                            gross += amt;
+                        });
+                        gross = Math.round(gross * 100) / 100;
+                        const rate = parseFloat(reqBody.commissionRate) || 0;
+                        const comm = Math.round((gross * (rate / 100.0)) * 100) / 100;
+                        const adv = parseFloat(reqBody.advanceAmount) || 0;
+                        const frt = parseFloat(reqBody.freightAmount) || 0;
+                        const net = Math.round((gross - comm - adv - frt) * 100) / 100;
+
+                        db.chittas[idx] = {
+                            ...db.chittas[idx],
+                            ...reqBody,
+                            id: id,
+                            grossAmount: gross,
+                            commissionDeduction: comm,
+                            netPayable: net,
+                            updatedAt: new Date().toISOString()
+                        };
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'chitta' });
+                        return jsonResponse(db.chittas[idx], 200);
+                    }
+                    return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
+                } else if (method === 'DELETE') {
+                    if (idx >= 0) {
+                        db.chittas.splice(idx, 1);
+                        saveDb();
+                        window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'chitta' });
+                        return jsonResponse({ status: 'DELETED' }, 200);
+                    }
+                    return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
+                }
             }
+
             if (path === '/api/chittas') {
                 if (method === 'GET') {
                     const date = search.get('date');
@@ -405,6 +646,7 @@
 
                     db.chittas.push(newC);
                     saveDb();
+                    window.enqueueOfflineAction('POST', '/api/chittas', newC, { localId: newId, chittaNo: newC.chittaNo });
                     return jsonResponse(newC, 201);
                 }
             }
@@ -418,6 +660,50 @@
                 });
                 return jsonResponse({ nextNo: max + 1 });
             }
+
+            const mBillSingle = path.match(/^\/api\/(sales-bills|bills)\/(\d+)$/);
+            if (mBillSingle) {
+                const id = parseInt(mBillSingle[2], 10);
+                const idx = (db.salesBills || []).findIndex(b => b.id == id);
+                if (method === 'GET') {
+                    if (idx >= 0) return jsonResponse(db.salesBills[idx], 200);
+                    return jsonResponse({ error: 'Bill not found with ID: ' + id }, 404);
+                } else if (method === 'PUT') {
+                    if (idx >= 0) {
+                        let gross = 0;
+                        (reqBody.items || []).forEach(it => {
+                            const amt = Math.round((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0) * 100) / 100;
+                            it.amount = amt;
+                            gross += amt;
+                        });
+                        gross = Math.round(gross * 100) / 100;
+                        const totalCharges = (parseFloat(reqBody.freightCharges) || 0) + (parseFloat(reqBody.packingCharges) || 0) + (parseFloat(reqBody.commissionCharges) || 0) + (parseFloat(reqBody.otherCharges) || 0);
+                        const net = Math.round((gross + totalCharges - (parseFloat(reqBody.discount) || 0)) * 100) / 100;
+
+                        db.salesBills[idx] = {
+                            ...db.salesBills[idx],
+                            ...reqBody,
+                            id: id,
+                            grossAmount: gross,
+                            netReceivable: net,
+                            updatedAt: new Date().toISOString()
+                        };
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'salesBill' });
+                        return jsonResponse(db.salesBills[idx], 200);
+                    }
+                    return jsonResponse({ error: 'Bill not found' }, 404);
+                } else if (method === 'DELETE') {
+                    if (idx >= 0) {
+                        db.salesBills.splice(idx, 1);
+                        saveDb();
+                        window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'salesBill' });
+                        return jsonResponse({ status: 'DELETED' }, 200);
+                    }
+                    return jsonResponse({ error: 'Bill not found' }, 404);
+                }
+            }
+
             if (path === '/api/sales-bills' || path === '/api/bills') {
                 if (method === 'GET') {
                     return jsonResponse(db.salesBills);
@@ -438,11 +724,38 @@
                     newB.netReceivable = Math.round((newB.grossAmount + totalCharges - (parseFloat(newB.discount) || 0)) * 100) / 100;
                     db.salesBills.push(newB);
                     saveDb();
+                    window.enqueueOfflineAction('POST', path, newB, { localId: newB.id, billNo: newB.billNo });
                     return jsonResponse(newB, 201);
                 }
             }
 
             // 4. CASH VOUCHERS / PAYMENTS
+            const mCashSingle = path.match(/^\/api\/(cash-vouchers|cash-payments)\/(\d+)$/);
+            if (mCashSingle) {
+                const id = parseInt(mCashSingle[2], 10);
+                const idx = (db.cashVouchers || []).findIndex(v => v.id == id);
+                if (method === 'GET') {
+                    if (idx >= 0) return jsonResponse(db.cashVouchers[idx], 200);
+                    return jsonResponse({ error: 'Voucher not found' }, 404);
+                } else if (method === 'PUT') {
+                    if (idx >= 0) {
+                        db.cashVouchers[idx] = { ...db.cashVouchers[idx], ...reqBody, id: id, updatedAt: new Date().toISOString() };
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'cashVoucher' });
+                        return jsonResponse(db.cashVouchers[idx], 200);
+                    }
+                    return jsonResponse({ error: 'Voucher not found' }, 404);
+                } else if (method === 'DELETE') {
+                    if (idx >= 0) {
+                        db.cashVouchers.splice(idx, 1);
+                        saveDb();
+                        window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'cashVoucher' });
+                        return jsonResponse({ status: 'DELETED' }, 200);
+                    }
+                    return jsonResponse({ error: 'Voucher not found' }, 404);
+                }
+            }
+
             if (path === '/api/cash-vouchers' || path === '/api/cash-payments') {
                 if (method === 'GET') {
                     return jsonResponse(db.cashVouchers);
@@ -454,11 +767,38 @@
                     };
                     db.cashVouchers.push(newV);
                     saveDb();
+                    window.enqueueOfflineAction('POST', path, newV, { localId: newV.id, type: 'cashVoucher' });
                     return jsonResponse(newV, 201);
                 }
             }
 
             // 5. RECEIPT VOUCHERS
+            const mRcptSingle = path.match(/^\/api\/(receipt-vouchers|receipts)\/(\d+)$/);
+            if (mRcptSingle) {
+                const id = parseInt(mRcptSingle[2], 10);
+                const idx = (db.receiptVouchers || []).findIndex(v => v.id == id);
+                if (method === 'GET') {
+                    if (idx >= 0) return jsonResponse(db.receiptVouchers[idx], 200);
+                    return jsonResponse({ error: 'Receipt not found' }, 404);
+                } else if (method === 'PUT') {
+                    if (idx >= 0) {
+                        db.receiptVouchers[idx] = { ...db.receiptVouchers[idx], ...reqBody, id: id, updatedAt: new Date().toISOString() };
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'receiptVoucher' });
+                        return jsonResponse(db.receiptVouchers[idx], 200);
+                    }
+                    return jsonResponse({ error: 'Receipt not found' }, 404);
+                } else if (method === 'DELETE') {
+                    if (idx >= 0) {
+                        db.receiptVouchers.splice(idx, 1);
+                        saveDb();
+                        window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'receiptVoucher' });
+                        return jsonResponse({ status: 'DELETED' }, 200);
+                    }
+                    return jsonResponse({ error: 'Receipt not found' }, 404);
+                }
+            }
+
             if (path === '/api/receipt-vouchers' || path === '/api/receipts') {
                 if (method === 'GET') {
                     return jsonResponse(db.receiptVouchers);
@@ -470,6 +810,7 @@
                     };
                     db.receiptVouchers.push(newV);
                     saveDb();
+                    window.enqueueOfflineAction('POST', path, newV, { localId: newV.id, type: 'receiptVoucher' });
                     return jsonResponse(newV, 201);
                 }
             }
@@ -480,6 +821,7 @@
                 if (method === 'POST') {
                     db.periods.push(reqBody);
                     saveDb();
+                    window.enqueueOfflineAction('POST', path, reqBody, {});
                     return jsonResponse(reqBody, 201);
                 }
             }
@@ -490,6 +832,7 @@
                 if (method === 'POST') {
                     db.openingBalances.push(reqBody);
                     saveDb();
+                    window.enqueueOfflineAction('POST', path, reqBody, {});
                     return jsonResponse(reqBody, 201);
                 }
             }
@@ -497,30 +840,30 @@
             // 8. MASTERS: Places, Items, Groups, Commission
             if (path === '/api/places') {
                 if (method === 'GET') return jsonResponse(db.places);
-                if (method === 'POST') { db.places.push(reqBody); saveDb(); return jsonResponse(reqBody, 201); }
+                if (method === 'POST') { db.places.push(reqBody); saveDb(); window.enqueueOfflineAction('POST', path, reqBody, {}); return jsonResponse(reqBody, 201); }
             }
             if (path === '/api/items') {
                 if (method === 'GET') return jsonResponse(db.items);
-                if (method === 'POST') { db.items.push(reqBody); saveDb(); return jsonResponse(reqBody, 201); }
+                if (method === 'POST') { db.items.push(reqBody); saveDb(); window.enqueueOfflineAction('POST', path, reqBody, {}); return jsonResponse(reqBody, 201); }
             }
             if (path === '/api/account-groups') {
                 if (method === 'GET') return jsonResponse(db.groups);
-                if (method === 'POST') { db.groups.push(reqBody); saveDb(); return jsonResponse(reqBody, 201); }
+                if (method === 'POST') { db.groups.push(reqBody); saveDb(); window.enqueueOfflineAction('POST', path, reqBody, {}); return jsonResponse(reqBody, 201); }
             }
             if (path === '/api/commission-rates') {
                 if (method === 'GET') return jsonResponse(db.commissionRates);
-                if (method === 'POST') { db.commissionRates.push(reqBody); saveDb(); return jsonResponse(reqBody, 201); }
+                if (method === 'POST') { db.commissionRates.push(reqBody); saveDb(); window.enqueueOfflineAction('POST', path, reqBody, {}); return jsonResponse(reqBody, 201); }
             }
             if (path === '/api/company') {
                 if (method === 'GET') return jsonResponse(db.company);
-                if (method === 'POST') { db.company = reqBody; saveDb(); return jsonResponse(reqBody, 200); }
+                if (method === 'POST') { db.company = reqBody; saveDb(); window.enqueueOfflineAction('POST', path, reqBody, {}); return jsonResponse(reqBody, 200); }
             }
             if (path === '/api/settings') {
                 if (method === 'GET') return jsonResponse(db.settings);
-                if (method === 'POST') { db.settings = reqBody; saveDb(); return jsonResponse(reqBody, 200); }
+                if (method === 'POST') { db.settings = reqBody; saveDb(); window.enqueueOfflineAction('POST', path, reqBody, {}); return jsonResponse(reqBody, 200); }
             }
 
-            // 9. REPORTS & OUTSTANDINGS (High-Speed In-Memory Filtering & Chronological Sorting for GitHub Pages)
+            // 9. REPORTS & OUTSTANDINGS
             if (path === '/api/reports/chitta-register') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
@@ -738,7 +1081,8 @@
                 });
                 return jsonResponse(list);
             }
-                        if (path === '/api/admin/reset-transactions') {
+
+            if (path === '/api/admin/reset-transactions') {
                 db.chittas = [];
                 db.salesBills = [];
                 db.cashVouchers = [];
@@ -752,11 +1096,13 @@
                     });
                 }
                 saveDb();
+                window.saveOfflineQueue([]);
                 return jsonResponse({
                     status: 'SUCCESS',
                     message: 'All transaction entries completely removed! Counters reset to 1.'
                 });
             }
+
             if (path.startsWith('/api/reports/')) {
                 return jsonResponse([]);
             }
@@ -769,5 +1115,3 @@
         }
     };
 })();
-
-
