@@ -40,8 +40,22 @@ public class CashVoucherController {
         return cashVoucherRepository.findAll();
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<CashVoucher> getVoucherById(@PathVariable Long id) {
+        return cashVoucherRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<CashVoucher> createVoucher(@RequestBody CashVoucher voucher) {
+        // Resolve account by ID or partyId if needed
+        if (voucher.getAccount() != null && voucher.getAccount().getId() != null) {
+            Account fullAcc = accountRepository.findById(voucher.getAccount().getId()).orElse(null);
+            if (fullAcc != null) {
+                voucher.setAccount(fullAcc);
+            }
+        }
         CashVoucher savedVoucher = cashVoucherRepository.save(voucher);
         
         // Post double-entry: DR Target Account, CR Cash Account (reduces target balance / records cash payment)
@@ -67,5 +81,44 @@ public class CashVoucherController {
         
         SyncController.bumpVersion();
         return new ResponseEntity<>(savedVoucher, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CashVoucher> updateVoucher(@PathVariable Long id, @RequestBody CashVoucher voucher) {
+        CashVoucher existing = cashVoucherRepository.findById(id).orElse(null);
+        if (existing == null && voucher.getVoucherNo() != null) {
+            existing = cashVoucherRepository.findAll().stream()
+                    .filter(v -> voucher.getVoucherNo().equals(v.getVoucherNo()))
+                    .findFirst().orElse(null);
+        }
+        if (existing != null) {
+            if (voucher.getVoucherDate() != null) existing.setVoucherDate(voucher.getVoucherDate());
+            if (voucher.getVoucherNo() != null) existing.setVoucherNo(voucher.getVoucherNo());
+            if (voucher.getAmount() != null) existing.setAmount(voucher.getAmount());
+            if (voucher.getNarration() != null) existing.setNarration(voucher.getNarration());
+            if (voucher.getAccount() != null && voucher.getAccount().getId() != null) {
+                Account fullAcc = accountRepository.findById(voucher.getAccount().getId()).orElse(null);
+                if (fullAcc != null) {
+                    existing.setAccount(fullAcc);
+                } else {
+                    existing.setAccount(voucher.getAccount());
+                }
+            }
+            CashVoucher saved = cashVoucherRepository.save(existing);
+            SyncController.bumpVersion();
+            return ResponseEntity.ok(saved);
+        } else {
+            // If doesn't exist on server yet, save as new
+            return createVoucher(voucher);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVoucher(@PathVariable Long id) {
+        if (cashVoucherRepository.existsById(id)) {
+            cashVoucherRepository.deleteById(id);
+            SyncController.bumpVersion();
+        }
+        return ResponseEntity.noContent().build();
     }
 }

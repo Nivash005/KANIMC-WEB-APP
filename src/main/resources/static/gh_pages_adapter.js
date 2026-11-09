@@ -200,6 +200,29 @@
                     // Record already exists on server, safely mark as synced
                     console.warn(`[KANIMC Sync] Server responded ${res.status} for ${item.path}, item marked synced.`);
                     syncedCount++;
+                } else if (res.status === 404) {
+                    if (item.method === 'PUT') {
+                        // If record didn't exist for PUT on server, fallback to POST to create it!
+                        const createUrl = targetUrl.replace(/\/\d+$/, '');
+                        try {
+                            const postRes = await originalFetch(createUrl, { ...fetchInit, method: 'POST' });
+                            if (postRes && (postRes.ok || postRes.status === 201 || postRes.status === 400 || postRes.status === 409)) {
+                                syncedCount++;
+                            } else {
+                                console.warn(`[KANIMC Sync] PUT 404 handled for ${item.path}`);
+                                syncedCount++;
+                            }
+                        } catch(e) {
+                            syncedCount++;
+                        }
+                    } else if (item.method === 'DELETE') {
+                        // Already deleted on server
+                        syncedCount++;
+                    } else {
+                        remainingQueue.push(item);
+                        remainingQueue.push(...queue.slice(i + 1));
+                        break;
+                    }
                 } else if (res.status >= 500) {
                     console.warn(`[KANIMC Sync] Server error ${res.status} for ${item.path}, retaining in queue.`);
                     remainingQueue.push(item);
@@ -816,14 +839,20 @@
                         saveDb();
                         window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'cashVoucher' });
                         return jsonResponse(db.cashVouchers[idx], 200);
+                    } else {
+                        const newV = { id: id, ...reqBody, createdAt: new Date().toISOString() };
+                        db.cashVouchers = db.cashVouchers || [];
+                        db.cashVouchers.push(newV);
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'cashVoucher' });
+                        return jsonResponse(newV, 201);
                     }
-                    return jsonResponse({ error: 'Voucher not found' }, 404);
                 } else if (method === 'DELETE') {
                     if (idx >= 0) {
                         db.cashVouchers.splice(idx, 1);
                         saveDb();
                         window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'cashVoucher' });
-                        return jsonResponse({ status: 'DELETED' }, 200);
+                        return jsonResponse({ success: true, status: 'DELETED' }, 200);
                     }
                     return jsonResponse({ error: 'Voucher not found' }, 404);
                 }
@@ -860,8 +889,14 @@
                         saveDb();
                         window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'receiptVoucher' });
                         return jsonResponse(db.receiptVouchers[idx], 200);
+                    } else {
+                        const newV = { id: id, ...reqBody, createdAt: new Date().toISOString() };
+                        db.receiptVouchers = db.receiptVouchers || [];
+                        db.receiptVouchers.push(newV);
+                        saveDb();
+                        window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'receiptVoucher' });
+                        return jsonResponse(newV, 201);
                     }
-                    return jsonResponse({ error: 'Receipt not found' }, 404);
                 } else if (method === 'DELETE') {
                     if (idx >= 0) {
                         db.receiptVouchers.splice(idx, 1);
