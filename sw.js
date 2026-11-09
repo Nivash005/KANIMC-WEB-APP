@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261109_4';
+const CACHE_NAME = 'kanimc-cache-v20261109_5';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -41,8 +41,24 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Bypass Service Worker for /api/ requests so gh_pages_adapter can handle them
+    // Bypass Service Worker for /api/ requests so backend / gh_pages_adapter can handle them
     if (url.pathname.includes('/api/')) {
+        return;
+    }
+
+    // NETWORK-FIRST FOR HTML (NAVIGATION): always load fresh code if online, fallback to cache if offline!
+    if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+        event.respondWith(
+            fetch(event.request).then(networkResponse => {
+                if (networkResponse && networkResponse.status === 200) {
+                    const resClone = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+                }
+                return networkResponse;
+            }).catch(() => {
+                return caches.match('./index.html') || caches.match('./');
+            })
+        );
         return;
     }
 
@@ -65,7 +81,6 @@ self.addEventListener('fetch', event => {
                 }
                 return networkResponse;
             }).catch(() => {
-                // If offline and requesting an HTML page, serve index.html
                 if (event.request.headers.get('accept')?.includes('text/html')) {
                     return caches.match('./index.html') || caches.match('./');
                 }
