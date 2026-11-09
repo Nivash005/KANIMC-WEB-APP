@@ -49,12 +49,20 @@ public class CashVoucherController {
 
     @PostMapping
     public ResponseEntity<CashVoucher> createVoucher(@RequestBody CashVoucher voucher) {
-        // Resolve account by ID or partyId if needed
-        if (voucher.getAccount() != null && voucher.getAccount().getId() != null) {
-            Account fullAcc = accountRepository.findById(voucher.getAccount().getId()).orElse(null);
-            if (fullAcc != null) {
-                voucher.setAccount(fullAcc);
-            }
+        if (voucher.getVoucherDate() == null) {
+            voucher.setVoucherDate(LocalDate.now());
+        }
+        if (voucher.getAccount() == null || voucher.getAccount().getId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        Account fullAcc = accountRepository.findById(voucher.getAccount().getId()).orElse(null);
+        if (fullAcc == null && voucher.getAccount().getPartyId() != null) {
+            fullAcc = accountRepository.findByPartyId(voucher.getAccount().getPartyId());
+        }
+        if (fullAcc != null) {
+            voucher.setAccount(fullAcc);
+        } else {
+            return ResponseEntity.badRequest().build();
         }
         CashVoucher savedVoucher = cashVoucherRepository.save(voucher);
         
