@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_3"></script>
+<script src="gh_pages_adapter.js?v=20261109_4"></script>
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -516,7 +516,7 @@ Commission % <input id="commRatePct" value="10.00%">
             <label>Farmer Name</label> 
             <div style="display:flex; grid-column: span 3; gap:5px;">
                 <div style="flex:1; position:relative; display:flex;">
-                    <input id="farmerName" class="chitta-field" style="width:100%;" autocomplete="off" tabindex="5" oninput="onFarmerNameInput()" onkeydown="handleFarmerNameKey(event)">
+                    <input id="farmerName" class="chitta-field" style="width:100%;" autocomplete="off" tabindex="5" oninput="onFarmerNameInput()" onkeydown="handleFarmerNameKey(event)" onchange="onFarmerNameChange()" onblur="onFarmerNameBlur()">
                     <div id="farmerNameSuggestBox" style="display:none; position:absolute; left:0; top:100%; width:100%; min-width:380px; background:#fff; border:2px solid #0055aa; max-height:220px; overflow-y:auto; z-index:35000; box-shadow:0 6px 16px rgba(0,0,0,0.4); font-size:12px;"></div>
                 </div>
                 <button type="button" class="chitta-field" style="white-space:nowrap; padding:2px 10px; color:#555;" onclick="openWin('account')">Account Master</button>
@@ -610,7 +610,7 @@ Commission % <input id="commRatePct" value="10.00%">
                         <th style="border-bottom:1px solid #ccc; padding:2px;">Amount</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="chittaHistoryBody">
                     <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
                     <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
                     <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
@@ -620,7 +620,7 @@ Commission % <input id="commRatePct" value="10.00%">
             </table>
         </div>
         <div style="text-align:right;">
-            <input type="text" style="width:100px; text-align:right;" readonly>
+            <input type="text" id="chittaHistoryTotal" style="width:100px; text-align:right; font-weight:bold;" readonly>
         </div>
     </div>
 </div>
@@ -2967,6 +2967,7 @@ function handleFarmerNameKey(e) {
     if (!box || box.style.display === 'none') {
         if (e.key === 'Enter') {
             e.preventDefault();
+            onFarmerNameChange();
             const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
             if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
                 firstItem.focus();
@@ -3013,22 +3014,208 @@ function handleFarmerNameKey(e) {
 }
 
 
+function onFarmerNameChange() {
+    const fInput = document.getElementById('farmerName');
+    if (!fInput) return;
+    const nameVal = (fInput.value || '').trim();
+    if (!nameVal) {
+        loadFarmerChittaHistory(null);
+        return;
+    }
+    let matchedAcc = null;
+    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+        const lower = nameVal.toLowerCase();
+        matchedAcc = accounts.find(a => (a.accountName || '').trim().toLowerCase() === lower);
+        if (!matchedAcc) {
+            matchedAcc = accounts.find(a => (a.accountName || '').trim().toLowerCase().startsWith(lower));
+        }
+    }
+    if (matchedAcc) {
+        const idInput = document.getElementById('farmerAccountId');
+        const phoneInput = document.getElementById('farmerPhone');
+        if (idInput && !idInput.value) idInput.value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(matchedAcc) : (matchedAcc.partyId || matchedAcc.id || '');
+        if (phoneInput && !phoneInput.value) phoneInput.value = matchedAcc.phone1 || matchedAcc.mobile || matchedAcc.phone || '';
+        loadFarmerChittaHistory(matchedAcc);
+    } else {
+        loadFarmerChittaHistory(nameVal);
+    }
+}
+
+function onFarmerNameBlur() {
+    setTimeout(() => {
+        const box = document.getElementById('farmerNameSuggestBox');
+        if (!box || box.style.display === 'none') {
+            onFarmerNameChange();
+        }
+    }, 200);
+}
+
+function loadFarmerChittaHistory(farmerAccOrName) {
+    const histBody = document.getElementById('chittaHistoryBody');
+    const histTotalEl = document.getElementById('chittaHistoryTotal');
+    if (!histBody) return;
+
+    const renderEmptyRows = () => {
+        histBody.innerHTML = `
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+        `;
+        if (histTotalEl) histTotalEl.value = '';
+    };
+
+    if (!farmerAccOrName) {
+        renderEmptyRows();
+        return;
+    }
+
+    let targetId = null;
+    let targetPartyId = null;
+    let targetName = null;
+
+    if (typeof farmerAccOrName === 'object' && farmerAccOrName !== null) {
+        targetId = farmerAccOrName.id ? String(farmerAccOrName.id) : null;
+        targetPartyId = farmerAccOrName.partyId ? String(farmerAccOrName.partyId) : null;
+        targetName = farmerAccOrName.accountName ? farmerAccOrName.accountName.trim().toLowerCase() : null;
+    } else if (typeof farmerAccOrName === 'string' || typeof farmerAccOrName === 'number') {
+        const str = String(farmerAccOrName).trim();
+        if (!str) {
+            renderEmptyRows();
+            return;
+        }
+        if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+            const lower = str.toLowerCase();
+            const found = accounts.find(a => 
+                (a.accountName && a.accountName.trim().toLowerCase() === lower) ||
+                (a.partyId && String(a.partyId).trim().toLowerCase() === lower) ||
+                (a.id && String(a.id).trim().toLowerCase() === lower) ||
+                (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === lower)
+            );
+            if (found) {
+                targetId = found.id ? String(found.id) : null;
+                targetPartyId = found.partyId ? String(found.partyId) : null;
+                targetName = found.accountName ? found.accountName.trim().toLowerCase() : null;
+            } else {
+                targetName = lower;
+            }
+        } else {
+            targetName = str.toLowerCase();
+        }
+    }
+
+    // Pool of chittas
+    let pool = [];
+    if (typeof chittas !== 'undefined' && Array.isArray(chittas) && chittas.length > 0) {
+        pool = pool.concat(chittas);
+    }
+    if (typeof window !== 'undefined' && Array.isArray(window.allPendingChittas) && window.allPendingChittas.length > 0) {
+        window.allPendingChittas.forEach(pc => {
+            if (!pool.some(c => (c.id && pc.id && c.id === pc.id) || (c.chittaNo && pc.chittaNo && String(c.chittaNo).trim() === String(pc.chittaNo).trim()))) {
+                pool.push(pc);
+            }
+        });
+    }
+
+    // If pool is empty, fetch chittas asynchronously and re-populate
+    if (pool.length === 0 && typeof fetchChittas === 'function') {
+        fetchChittas().then(() => {
+            if (chittas && chittas.length > 0) {
+                loadFarmerChittaHistory(farmerAccOrName);
+            }
+        });
+    }
+
+    const unpaid = pool.filter(c => {
+        const isPaid = Boolean(c.paid) || Boolean(c.payDate);
+        if (isPaid) return false;
+
+        if (targetId && c.farmerAccount && String(c.farmerAccount.id) === targetId) return true;
+        if (targetPartyId && c.farmerAccount && String(c.farmerAccount.partyId) === targetPartyId) return true;
+        if (targetName && c.farmerAccount && c.farmerAccount.accountName && c.farmerAccount.accountName.trim().toLowerCase() === targetName) return true;
+        if (targetName && c.farmerName && c.farmerName.trim().toLowerCase() === targetName) return true;
+        if (targetId && c.farmerAccountId && String(c.farmerAccountId) === targetId) return true;
+        if (targetPartyId && c.farmerAccountId && String(c.farmerAccountId) === targetPartyId) return true;
+        return false;
+    });
+
+    unpaid.sort((a, b) => {
+        const da = String(a.chittaDate || '').substring(0, 10);
+        const db = String(b.chittaDate || '').substring(0, 10);
+        if (da !== db) return da.localeCompare(db);
+        return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+    });
+
+    histBody.innerHTML = '';
+    let histTotal = 0;
+
+    if (unpaid.length === 0) {
+        renderEmptyRows();
+    } else {
+        unpaid.forEach((c, idx) => {
+            const amt = parseFloat(c.netPayable !== undefined && c.netPayable !== null ? c.netPayable : (parseFloat(c.grossAmount || 0) - parseFloat(c.commissionDeduction || 0) - parseFloat(c.advanceAmount || 0) - parseFloat(c.freightAmount || 0))) || 0;
+            histTotal += amt;
+            const dt = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toISOString().substring(0, 10)) : '';
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.title = `Click to view Chitta #${c.chittaNo}`;
+            tr.onmouseenter = () => { if (tr.dataset.selected !== 'true') tr.style.background = '#eef6ff'; };
+            tr.onmouseleave = () => { if (tr.dataset.selected !== 'true') { tr.style.background = ''; tr.style.color = ''; } };
+            tr.onclick = () => {
+                const rows = histBody.querySelectorAll('tr');
+                rows.forEach(r => { r.style.background = ''; r.style.color = ''; r.dataset.selected = 'false'; });
+                tr.style.background = '#0a246a';
+                tr.style.color = '#fff';
+                tr.dataset.selected = 'true';
+                if (typeof chittas !== 'undefined' && chittas.length > 0) {
+                    const foundIdx = chittas.findIndex(x => (c.id && x.id === c.id) || (String(x.chittaNo).trim() === String(c.chittaNo).trim()));
+                    if (foundIdx !== -1) {
+                        displayChitta(foundIdx);
+                    }
+                }
+            };
+            tr.innerHTML = `
+                <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-size:11px;">${dt}</td>
+                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa; text-align:center;">${c.chittaNo || ''}</td>
+                <td style="border-bottom:1px solid #ccc; padding:2px; text-align:right; font-weight:bold;">${amt.toFixed(2)}</td>
+            `;
+            histBody.appendChild(tr);
+        });
+        for (let i = unpaid.length; i < 5; i++) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td>';
+            histBody.appendChild(tr);
+        }
+    }
+
+    if (histTotalEl) {
+        histTotalEl.value = histTotal > 0 ? histTotal.toFixed(2) : '';
+    }
+}
+
 function onFarmerCodeChange() {
     let code = (document.getElementById('farmerAccountId')?.value || '').trim();
-    if (!code) return;
+    if (!code) {
+        loadFarmerChittaHistory(null);
+        return;
+    }
     if (code.length > 4) {
         code = code.substring(0, 4);
         document.getElementById('farmerAccountId').value = code;
     }
     const q = code.toLowerCase();
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        (getDisplayFarmerCode(a).toLowerCase() === q) ||
+        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
         (a.partyId && String(a.partyId).toLowerCase() === q) ||
         (String(a.id).toLowerCase() === q) ||
         (String(a.id).padStart(4, '0') === q)
     );
     if (acc) {
         selectFarmerFromSuggest(acc);
+    } else {
+        loadFarmerChittaHistory(code);
     }
 }
 
@@ -3061,6 +3248,8 @@ function selectFarmerFromSuggest(acc) {
     }
     currentFarmerSuggestMatches = [];
     currentFarmerSuggestIndex = 0;
+
+    loadFarmerChittaHistory(acc);
 
     // Move focus to next field (Item description in first row of grid)
     setTimeout(() => {
@@ -4912,24 +5101,38 @@ function clearChittaPaymentForm() {
 }
 
 function onCpFarmerCodeChange() {
-    const code = document.getElementById('cpPayFarmerCode')?.value.trim();
+    const code = (document.getElementById('cpPayFarmerCode')?.value || '').trim();
     if(!code) return;
-    const acc = accounts.find(a => a.id && a.id.toString() === code);
+    const q = code.toLowerCase();
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
+        (a.partyId && String(a.partyId).toLowerCase() === q) ||
+        (String(a.id).toLowerCase() === q) ||
+        (String(a.id).padStart(4, '0') === q)
+    );
     if(acc) {
         if(document.getElementById('cpPayFarmerName')) document.getElementById('cpPayFarmerName').value = acc.accountName || '';
-        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.mobile || acc.phone || '';
+        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.phone1 || acc.mobile || acc.phone || '';
         loadFarmerChittasForPayment(acc);
+    } else {
+        loadFarmerChittasForPayment(code);
     }
 }
 
 function onCpFarmerNameChange() {
-    const name = document.getElementById('cpPayFarmerName')?.value.trim();
+    const name = (document.getElementById('cpPayFarmerName')?.value || '').trim();
     if(!name) return;
-    const acc = accounts.find(a => a.accountName && a.accountName.toLowerCase() === name.toLowerCase());
+    const q = name.toLowerCase();
+    let acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase() === q);
+    if (!acc) {
+        acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
+    }
     if(acc) {
         if(document.getElementById('cpPayFarmerCode')) document.getElementById('cpPayFarmerCode').value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(acc) : (acc.partyId || acc.id || '');
-        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.mobile || acc.phone || '';
+        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.phone1 || acc.mobile || acc.phone || '';
         loadFarmerChittasForPayment(acc);
+    } else {
+        loadFarmerChittasForPayment(name);
     }
 }
 
@@ -4999,8 +5202,31 @@ async function onCpChittaNoChange() {
 
 function loadFarmerChittasForPayment(acc, skipPopulateForm) {
     if(!acc) return;
+    let targetId = (typeof acc === 'object' && acc !== null) ? (acc.id ? String(acc.id) : null) : null;
+    let targetPartyId = (typeof acc === 'object' && acc !== null) ? (acc.partyId ? String(acc.partyId) : null) : null;
+    let targetName = (typeof acc === 'object' && acc !== null) ? (acc.accountName ? acc.accountName.trim().toLowerCase() : null) : String(acc).trim().toLowerCase();
+    
+    if (!targetId && targetName && typeof accounts !== 'undefined' && accounts) {
+        const found = accounts.find(a => (a.accountName && a.accountName.trim().toLowerCase() === targetName) || (a.partyId && String(a.partyId) === targetName) || (String(a.id) === targetName));
+        if (found) {
+            targetId = String(found.id);
+            targetPartyId = String(found.partyId);
+            targetName = found.accountName.trim().toLowerCase();
+        }
+    }
+
     const pool = (window.allPendingChittas && window.allPendingChittas.length > 0) ? window.allPendingChittas : (typeof chittas !== 'undefined' ? chittas : []);
-    const unpaid = pool.filter(c => !c.paid && c.farmerAccount && (c.farmerAccount.id === acc.id || String(c.farmerAccount.partyId) === String(acc.partyId) || String(c.farmerAccount.accountName).toLowerCase() === String(acc.accountName).toLowerCase()));
+    const unpaid = pool.filter(c => {
+        const isPaid = Boolean(c.paid) || Boolean(c.payDate);
+        if (isPaid) return false;
+        if (targetId && c.farmerAccount && String(c.farmerAccount.id) === targetId) return true;
+        if (targetPartyId && c.farmerAccount && String(c.farmerAccount.partyId) === targetPartyId) return true;
+        if (targetName && c.farmerAccount && c.farmerAccount.accountName && c.farmerAccount.accountName.trim().toLowerCase() === targetName) return true;
+        if (targetName && c.farmerName && c.farmerName.trim().toLowerCase() === targetName) return true;
+        if (targetId && c.farmerAccountId && String(c.farmerAccountId) === targetId) return true;
+        if (targetPartyId && c.farmerAccountId && String(c.farmerAccountId) === targetPartyId) return true;
+        return false;
+    });
     const histBody = document.getElementById('cpPayHistoryBody');
     if(!histBody) return;
     histBody.innerHTML = '';
@@ -5301,6 +5527,12 @@ function displayChitta(index) {
     if (c.farmerAccount) {
         document.getElementById('farmerAccountId').value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(c.farmerAccount) : (c.farmerAccount.partyId || c.farmerAccount.id || '');
         document.getElementById('farmerName').value = c.farmerAccount.accountName || '';
+        loadFarmerChittaHistory(c.farmerAccount);
+    } else if (c.farmerName) {
+        document.getElementById('farmerName').value = c.farmerName || '';
+        loadFarmerChittaHistory(c.farmerName);
+    } else {
+        loadFarmerChittaHistory(null);
     }
     
     const items = c.items || [];
@@ -5335,6 +5567,7 @@ function loadLastChitta() { displayChitta(chittas.length - 1); }
 
 function clearChitta() {
     currentChittaIndex = -1;
+    loadFarmerChittaHistory(null);
     const noEl = document.getElementById('chittaNo');
     if (noEl) noEl.value = '';
     const chittaDateEl = document.getElementById('chittaDate');

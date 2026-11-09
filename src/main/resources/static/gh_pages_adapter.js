@@ -933,7 +933,7 @@
                 let list = (db.chittas || []).slice();
                 if (startDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= endDate);
-                if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                if (accountId) list = list.filter(c => (c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId) || String(c.farmerAccount.accountName).toLowerCase() === String(accountId).toLowerCase())) || (c.farmerName && c.farmerName.toLowerCase() === String(accountId).toLowerCase()));
                 list.sort((a, b) => {
                     const da = String(a.chittaDate || '').substring(0, 10);
                     const db = String(b.chittaDate || '').substring(0, 10);
