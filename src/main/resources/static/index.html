@@ -37,9 +37,13 @@
 <script src="gh_pages_adapter.js?v=20261109_4"></script>
 <script>
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) {
+        navigator.serviceWorker.getRegistrations().then(regs => { for (let r of regs) r.unregister(); });
+        if ('caches' in window) { caches.keys().then(keys => keys.forEach(k => caches.delete(k))); }
+    } else {
+        window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    }
 }
 </script>
 <style>
