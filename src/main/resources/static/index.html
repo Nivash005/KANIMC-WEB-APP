@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_8"></script>
+<script src="gh_pages_adapter.js?v=20261109_9"></script>
 <script>
 if ('serviceWorker' in navigator) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -188,6 +188,11 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="dropdown-item" onclick="openWin('receipt');event.stopPropagation()">Receipt</div>
 <div class="dropdown-item" onclick="openWin('cashPayment');event.stopPropagation()">Cash Payment</div>
 <div class="dropdown-item" onclick="openWin('dailyCashOpening');event.stopPropagation()">Daily Cash Opening</div>
+<div class="dropdown-item has-submenu" onclick="toggleSubmenu(event, this)">Purchase ▶<div class="submenu">
+<div class="dropdown-item" onclick="openWin('purchase');event.stopPropagation()">1. Purchase</div>
+<div class="dropdown-item" onclick="openWin('purchasePayment');event.stopPropagation()">2. Purchase Payment</div>
+<div class="dropdown-item" onclick="openWin('purchaseOpeningBalance');event.stopPropagation()">3. Purchase Opening Balance</div>
+</div></div>
 </div>
 </div>
 
@@ -2326,6 +2331,364 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 
+
+<!-- ================= 38. PURCHASE ================= -->
+<div class="modal-overlay" id="purchase">
+<div class="modal" style="width:1050px; padding:5px; background:#c0c0c0;">
+<div class="modal-title" id="purchaseModalTitle" style="border:1px solid #999;">Purchase - New<span onclick="closeAll()">✖</span></div>
+<div style="display:flex; flex-direction:column; gap:2px; margin-top:2px;">
+    <!-- Header Info -->
+    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:80px 120px 100px 150px 1fr 100px 120px; gap:5px; align-items:center;">
+        <label>Date</label>
+        <input type="date" id="purchaseDate" class="p-field" data-next="purchaseAccountId">
+        
+        <label>Trader Code</label>
+        <div style="display:flex;">
+            <input id="purchaseAccountId" onchange="onPurchaseTraderCodeChange()" class="p-field" data-next="purchaseNo" style="width:100px;">
+            <button style="width:20px;padding:0;" onclick="findPurchaseTrader()">▼</button>
+        </div>
+        <div></div>
+        <label style="text-align:right;">Balance</label>
+        <input id="purchaseBalance" readonly style="background:#eef; text-align:right; font-weight:bold; color:#0055aa;">
+
+        <label>Purchase No</label>
+        <div style="display:flex;">
+            <input id="purchaseNo" style="background:#ccffff;" class="p-field" data-next="pGridItem0">
+            <button style="width:20px;padding:0;" onclick="findPurchaseBill()">▼</button>
+        </div>
+
+        <label>Trader Name</label>
+        <input id="purchaseAccountName" list="accountNamesList" onchange="onPurchaseTraderNameChange()" style="grid-column:span 2; width:280px;" class="p-field" data-next="purchaseNo">
+        <div></div>
+        <div></div>
+    </div>
+
+    <!-- Items Grid -->
+    <div style="border:1px solid #fff; background:#fff; height:200px; overflow-y:auto;">
+        <table id="purchaseGrid" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="background:#eee; font-weight:bold; position:sticky; top:0;">
+                    <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Sno</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Item description</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Bags</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Rate</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Weight (kg)</th>
+                    <th style="width:110px; border-bottom:1px solid #ccc; text-align:right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="purchaseGridBody">
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Summary & Charges -->
+    <div style="border:1px solid #fff; padding:6px; display:flex; justify-content:space-between; align-items:flex-start; font-size:12px;">
+        <div style="display:grid; grid-template-columns:80px 100px 80px 100px; gap:4px; align-items:center;">
+            <label>Freight</label> <input type="number" step="0.01" id="purchaseFreight" oninput="calcPurchaseTotals()" style="width:90px;">
+            <label>Packing</label> <input type="number" step="0.01" id="purchasePacking" oninput="calcPurchaseTotals()" style="width:90px;">
+            <label>Other</label> <input type="number" step="0.01" id="purchaseOther" oninput="calcPurchaseTotals()" style="width:90px;">
+            <label>Discount</label> <input type="number" step="0.01" id="purchaseDiscount" oninput="calcPurchaseTotals()" style="width:90px;">
+        </div>
+        <div style="display:grid; grid-template-columns:90px 120px; gap:4px; align-items:center; text-align:right;">
+            <label>Total Bags</label> <input id="purchaseTotalBags" readonly style="width:110px; background:#f0f0f0; text-align:right;">
+            <label>Total Weight</label> <input id="purchaseTotalWeight" readonly style="width:110px; background:#f0f0f0; text-align:right;">
+            <label>Gross Amount</label> <input id="purchaseGrossAmount" readonly style="width:110px; background:#f0f0f0; text-align:right; font-weight:bold;">
+            <label style="font-weight:bold; color:#0055aa;">Net Payable</label> <input id="purchaseNetPayable" readonly style="width:110px; background:#ccffff; text-align:right; font-weight:bold; font-size:14px; color:#0055aa;">
+        </div>
+    </div>
+
+    <!-- Toolbar Buttons -->
+    <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; background:#c0c0c0;">
+        <div style="display:flex; gap:2px;">
+            <button onclick="topPurchase()" style="padding:2px 8px;">Top</button>
+            <button onclick="prevPurchase()" style="padding:2px 8px;">Prev</button>
+            <button onclick="nextPurchase()" style="padding:2px 8px;">Next</button>
+            <button onclick="bottomPurchase()" style="padding:2px 8px;">Bottom</button>
+        </div>
+        <div style="display:flex; gap:3px;">
+            <button onclick="newPurchase()" id="btnPurchaseNew" style="padding:2px 10px;"><u>N</u>ew</button>
+            <button onclick="findPurchaseDialog()" id="btnPurchaseFind" style="padding:2px 10px;"><u>F</u>ind</button>
+            <button onclick="savePurchase()" id="btnPurchaseSave" style="padding:2px 10px; font-weight:bold;"><u>S</u>ave</button>
+            <button onclick="editPurchase()" id="btnPurchaseChange" style="padding:2px 10px;"><u>C</u>hange</button>
+            <button onclick="deletePurchase()" id="btnPurchaseDelete" style="padding:2px 10px;"><u>D</u>elete</button>
+            <button onclick="printPurchaseInvoice()" id="btnPurchasePrint" style="padding:2px 10px;"><u>P</u>rint</button>
+            <button onclick="closeAll()" style="padding:2px 10px;">Close</button>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 39. PURCHASE PAYMENT ================= -->
+<div class="modal-overlay" id="purchasePayment">
+<div class="modal" style="width:800px; padding:5px; background:#c0c0c0;">
+<div class="modal-title" id="ppModalTitle" style="border:1px solid #999;">Purchase Payment - New<span onclick="closeAll()">✖</span></div>
+<div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+    <!-- Trader Info -->
+    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:100px 140px 100px 220px 80px 110px; gap:6px; align-items:center; font-size:12px;">
+        <label>Date</label> <input type="date" id="ppDate">
+        <label>Trader Code</label>
+        <div style="display:flex;">
+            <input id="ppAccountId" onchange="onPpTraderCodeChange()" style="width:80px;">
+            <button style="width:20px;padding:0;" onclick="findPpTrader()">▼</button>
+        </div>
+        <label style="text-align:right;">Balance</label>
+        <input id="ppBalance" readonly style="background:#eef; text-align:right; font-weight:bold; color:#0055aa; width:100px;">
+        
+        <label>Payment No</label> <input id="ppNo" style="background:#ccffff;" readonly>
+        <label>Trader Name</label>
+        <input id="ppAccountName" list="accountNamesList" onchange="onPpTraderNameChange()" style="grid-column:span 3; width:100%;">
+    </div>
+
+    <!-- Pending Bills Grid -->
+    <div style="border:1px solid #fff; background:#fff; height:180px; overflow-y:auto;">
+        <table id="ppPendingGrid" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="background:#eee; font-weight:bold; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Pay</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Pur No</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Date</th>
+                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Net Payable</th>
+                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Paid</th>
+                    <th style="border-bottom:1px solid #ccc; text-align:right;">Pending Balance</th>
+                </tr>
+            </thead>
+            <tbody id="ppPendingBody">
+                <tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">Select a trader to view pending bills</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Payment Inputs -->
+    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:100px 140px 100px 140px 100px 140px; gap:6px; align-items:center; font-size:12px;">
+        <label style="font-weight:bold;">Amount</label>
+        <input type="number" step="0.01" id="ppAmount" style="font-weight:bold; font-size:13px; background:#ccffff;">
+        
+        <label>Discount</label>
+        <input type="number" step="0.01" id="ppDiscount">
+
+        <label>Method</label>
+        <select id="ppMethod">
+            <option value="CASH">CASH</option>
+            <option value="BANK">BANK</option>
+        </select>
+
+        <label>Paid To</label>
+        <input id="ppPaidTo" placeholder="Recipient / Representative">
+
+        <label>Narration</label>
+        <input id="ppNarration" style="grid-column:span 3;" placeholder="Remarks...">
+    </div>
+
+    <!-- Toolbar -->
+    <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; background:#c0c0c0;">
+        <div style="display:flex; gap:2px;">
+            <button onclick="topPp()" style="padding:2px 8px;">Top</button>
+            <button onclick="prevPp()" style="padding:2px 8px;">Prev</button>
+            <button onclick="nextPp()" style="padding:2px 8px;">Next</button>
+            <button onclick="bottomPp()" style="padding:2px 8px;">Bottom</button>
+        </div>
+        <div style="display:flex; gap:3px;">
+            <button onclick="newPurchasePayment()" style="padding:2px 10px;"><u>N</u>ew</button>
+            <button onclick="savePurchasePayment()" style="padding:2px 10px; font-weight:bold;"><u>S</u>ave</button>
+            <button onclick="deletePurchasePayment()" style="padding:2px 10px;"><u>D</u>elete</button>
+            <button onclick="closeAll()" style="padding:2px 10px;">Close</button>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 40. PURCHASE OPENING BALANCE ================= -->
+<div class="modal-overlay" id="purchaseOpeningBalance">
+<div class="modal" style="width:550px; padding:5px; background:#c0c0c0;">
+<div class="modal-title" style="border:1px solid #999;">Purchase Opening Balance<span onclick="closeAll()">✖</span></div>
+<div style="border:1px solid #fff; padding:20px; margin-top:4px; display:grid; grid-template-columns:120px 1fr; gap:10px; align-items:center; font-size:12px;">
+    <label>Date</label>
+    <input type="date" id="pobDate" style="width:130px;">
+
+    <label>Trader Code</label>
+    <div style="display:flex; gap:4px;">
+        <input id="pobAccountId" onchange="onPobTraderCodeChange()" style="width:80px;">
+        <button style="width:24px;padding:0;" onclick="findPobTrader()">▼</button>
+    </div>
+
+    <label>Trader Name</label>
+    <input id="pobAccountName" list="accountNamesList" onchange="onPobTraderNameChange()" style="width:100%;">
+
+    <label>Amount</label>
+    <input type="number" step="0.01" id="pobAmount" style="width:140px; font-weight:bold; font-size:13px; background:#ccffff;">
+
+    <label>Balance Type</label>
+    <select id="pobType" style="width:140px;">
+        <option value="CREDIT">CREDIT (Payable to Trader)</option>
+        <option value="DEBIT">DEBIT (Advance to Trader)</option>
+    </select>
+
+    <label>Narration</label>
+    <input id="pobNarration" style="width:100%;" placeholder="Opening balance note...">
+</div>
+<div style="border:1px solid #fff; padding:4px; display:flex; justify-content:flex-end; gap:5px; background:#c0c0c0; margin-top:4px;">
+    <button onclick="savePurchaseOpeningBalance()" style="padding:3px 14px; font-weight:bold;"><u>S</u>ave</button>
+    <button onclick="closeAll()" style="padding:3px 14px;"><u>C</u>lose</button>
+</div>
+</div>
+</div>
+
+<!-- ================= 41. PURCHASE REGISTER ================= -->
+<div class="modal-overlay" id="purchaseRegister">
+<div class="modal" style="width:1000px; background:#ffffe1; border:2px solid #555;">
+<div class="modal-title">Purchase Register<span onclick="closeAll()">✖</span></div>
+<div style="padding:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label>From</label> <input type="date" id="prFromDate" style="width:120px;">
+            <label>To</label> <input type="date" id="prToDate" style="width:120px;">
+            <label>Trader</label>
+            <input id="prAccountName" list="accountNamesList" placeholder="All Traders" style="width:180px;">
+            <input type="hidden" id="prAccountId">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', true)">Print</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', false)">View</button>
+            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchaseRegister', 'Purchase Register')">Excel</button>
+            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        </div>
+    </div>
+    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pur No</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
+                    <th style="width:60px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Bags</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Weight</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Gross</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Freight</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Pack/Oth</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Discount</th>
+                    <th style="width:100px; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Net Payable</th>
+                </tr>
+            </thead>
+            <tbody id="purchaseRegisterBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
+                    <td colspan="4" style="text-align:right; padding:4px; border-top:2px solid #555;">Totals:</td>
+                    <td id="prTotBags" style="text-align:right; padding:4px; border-top:2px solid #555;">0</td>
+                    <td id="prTotWeight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotGross" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotFreight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotPack" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotDisc" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotNet" style="text-align:right; padding:4px; border-top:2px solid #555; color:#0055aa;">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 42. PURCHASE PAYMENT REGISTER ================= -->
+<div class="modal-overlay" id="purchasePaymentRegister">
+<div class="modal" style="width:960px; background:#ffffe1; border:2px solid #555;">
+<div class="modal-title">Purchase Payment Register<span onclick="closeAll()">✖</span></div>
+<div style="padding:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label>From</label> <input type="date" id="pprFromDate" style="width:120px;">
+            <label>To</label> <input type="date" id="pprToDate" style="width:120px;">
+            <label>Trader</label>
+            <input id="pprAccountName" list="accountNamesList" placeholder="All Traders" style="width:180px;">
+            <input type="hidden" id="pprAccountId">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px;" onclick="loadPurchasePaymentRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePaymentRegister', 'Purchase Payment Register', true)">Print</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePaymentRegister', 'Purchase Payment Register', false)">View</button>
+            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchasePaymentRegister', 'Purchase Payment Register')">Excel</button>
+            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        </div>
+    </div>
+    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pay No</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:4px;">Method</th>
+                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Amount</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Discount</th>
+                    <th style="border-bottom:1px solid #ccc; padding:4px;">Narration</th>
+                </tr>
+            </thead>
+            <tbody id="purchasePaymentRegisterBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
+                    <td colspan="5" style="text-align:right; padding:4px; border-top:2px solid #555;">Total:</td>
+                    <td id="pprTotAmount" style="text-align:right; padding:4px; border-top:2px solid #555; color:#0055aa;">0.00</td>
+                    <td id="pprTotDiscount" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td style="border-top:2px solid #555;"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 43. PURCHASE PENDING REGISTER ================= -->
+<div class="modal-overlay" id="purchasePendingRegister">
+<div class="modal" style="width:960px; background:#ffffe1; border:2px solid #555;">
+<div class="modal-title">Purchase Pending Register<span onclick="closeAll()">✖</span></div>
+<div style="padding:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label>Trader</label>
+            <input id="ppndAccountName" list="accountNamesList" placeholder="All Traders" style="width:240px;" onchange="onPpndTraderChange()">
+            <input type="hidden" id="ppndAccountId">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px;" onclick="loadPurchasePendingRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePendingRegister', 'Purchase Pending Register', true)">Print</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePendingRegister', 'Purchase Pending Register', false)">View</button>
+            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchasePendingRegister', 'Purchase Pending Register')">Excel</button>
+            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        </div>
+    </div>
+    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pur No</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
+                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Net Payable</th>
+                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Paid Amount</th>
+                    <th style="width:130px; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Pending Balance</th>
+                </tr>
+            </thead>
+            <tbody id="purchasePendingRegisterBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
+                    <td colspan="4" style="text-align:right; padding:4px; border-top:2px solid #555;">Total Pending:</td>
+                    <td id="ppndTotNet" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="ppndTotPaid" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="ppndTotBal" style="text-align:right; padding:4px; border-top:2px solid #555; color:#c00;">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+
 <!-- ================= VISUAL FOXPRO IN-APP REPORT PREVIEW MODAL ================= -->
 <div class="modal-overlay" id="vfpReportPreviewModal" style="z-index:30000; display:none; background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
     <div class="modal" style="width:960px; max-width:96vw; height:92vh; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(0,0,0,0.7); border:2px solid #333; background:#808080; padding:3px; font-family:Tahoma, Arial, sans-serif;">
@@ -2613,2272 +2976,6 @@ function printVfpPreviewContent() {
         }
     }, 250);
 }
-
-function toggleVfpPreviewZoom() {
-    const paper = document.getElementById('vfpPreviewPaper');
-    const btn = document.getElementById('vfpPreviewZoomBtn');
-    if (!paper) return;
-    isPreviewZoomed = !isPreviewZoomed;
-    if (isPreviewZoomed) {
-        paper.style.width = '100%';
-        paper.style.fontSize = '14px';
-        if (btn) btn.innerHTML = '<span>🔍 Fit Page</span>';
-    } else {
-        paper.style.width = '820px';
-        paper.style.fontSize = '12px';
-        if (btn) btn.innerHTML = '<span>🔍 Fit Width</span>';
-    }
-}
-
-function closeVfpReportPreview() {
-    const modal = document.getElementById('vfpReportPreviewModal');
-    if (modal) modal.style.display = 'none';
-}
-
-// =========================================================================
-// CHITTA FIND DIALOG LOGIC & REAL-TIME FARMER AUTOCOMPLETE
-// =========================================================================
-let currentChittaFindRowIndex = -1;
-let currentChittaFindItems = [];
-
-function findChitta() {
-    const dialog = document.getElementById('chittaFindDialog');
-    if (!dialog) return;
-    const input = document.getElementById('chittaFindInput');
-    const msg = document.getElementById('chittaFindMessage');
-    if (input) input.value = '';
-    if (msg) msg.innerText = '';
-    currentChittaFindRowIndex = -1;
-
-    if (typeof accounts === 'undefined' || !accounts || accounts.length === 0) {
-        if (typeof fetchAccounts === 'function') {
-            fetchAccounts().then(() => renderChittaFindResults(''));
-        }
-    } else {
-        renderChittaFindResults('');
-    }
-
-    dialog.style.display = 'flex';
-    setTimeout(() => {
-        if (input) {
-            input.focus();
-            input.select();
-        }
-    }, 50);
-}
-
-function closeChittaFindDialog() {
-    const dialog = document.getElementById('chittaFindDialog');
-    if (dialog) dialog.style.display = 'none';
-    currentChittaFindRowIndex = -1;
-    const noInput = document.getElementById('chittaNo') || document.getElementById('farmerName');
-    if (noInput) noInput.focus();
-}
-
-function renderChittaFindResults(filterText) {
-    const tbody = document.getElementById('chittaFindResultsBody');
-    const countEl = document.getElementById('chittaFindCount');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    const q = (filterText || '').trim().toLowerCase();
-
-    let items = [];
-    const seenFarmerIds = new Set();
-
-    // 1. Search in Chittas
-    if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
-        chittas.forEach((c, idx) => {
-            const no = String(c.chittaNo || '').toLowerCase();
-            const farmerName = (c.farmerAccount?.accountName || c.farmerName || '').toLowerCase();
-            const code = String(c.farmerAccount?.partyId || c.farmerAccount?.id || '').toLowerCase();
-            const dt = (c.chittaDate ? String(c.chittaDate).substring(0, 10) : '').toLowerCase();
-
-            if (!q || no.includes(q) || farmerName.includes(q) || code.includes(q) || dt.includes(q)) {
-                if (c.farmerAccount?.id) seenFarmerIds.add(c.farmerAccount.id);
-                items.push({
-                    type: 'CHITTA',
-                    chitta: c,
-                    chittaIndex: idx,
-                    code: c.farmerAccount?.partyId || c.farmerAccount?.id || '',
-                    farmerName: c.farmerAccount?.accountName || c.farmerName || 'Unknown',
-                    place: c.farmerAccount?.regionalName || (c.farmerAccount?.accountGroup ? c.farmerAccount.accountGroup.groupName : '') || '',
-                    chittaNo: c.chittaNo || '',
-                    date: c.chittaDate ? String(c.chittaDate).substring(0, 10) : '',
-                    netAmount: parseFloat(c.netPayable) || 0
-                });
-            }
-        });
-    }
-
-    // 2. Search in Accounts Master for all matching Farmers/Parties from the application
-    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-        accounts.forEach(acc => {
-            if (!acc || seenFarmerIds.has(acc.id)) return;
-            const name = (acc.accountName || '').toLowerCase();
-            const code = String(acc.partyId || acc.id || '').toLowerCase();
-            const phone = String(acc.phone1 || '').toLowerCase();
-            const group = (acc.accountGroup?.groupName || '').toLowerCase();
-            const place = (acc.regionalName || '').toLowerCase();
-
-            if (!q || name.includes(q) || code.includes(q) || phone.includes(q) || group.includes(q) || place.includes(q)) {
-                items.push({
-                    type: 'ACCOUNT',
-                    account: acc,
-                    chitta: null,
-                    chittaIndex: -1,
-                    code: acc.partyId || acc.id || '',
-                    farmerName: acc.accountName || '',
-                    place: acc.regionalName || acc.accountGroup?.groupName || '',
-                    chittaNo: '-',
-                    date: '-',
-                    netAmount: 0
-                });
-            }
-        });
-    }
-
-    if (countEl) countEl.innerText = items.length + ' matching record(s)';
-
-    if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">No matching farmers or chittas found for "' + (filterText || '') + '"</td></tr>';
-        currentChittaFindItems = [];
-        currentChittaFindRowIndex = -1;
-        return;
-    }
-
-    // Sort: chittas first, then matching accounts alphabetically
-    items.sort((a, b) => {
-        if (a.type !== b.type) return a.type === 'CHITTA' ? -1 : 1;
-        return a.farmerName.localeCompare(b.farmerName);
-    });
-
-    currentChittaFindItems = items.slice(0, 75);
-    currentChittaFindRowIndex = 0; // highlight first row by default
-
-    currentChittaFindItems.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.style.borderBottom = '1px solid #eee';
-        tr.dataset.index = index;
-
-        if (index === 0) {
-            tr.style.background = '#0a246a';
-            tr.style.color = '#fff';
-        } else {
-            tr.style.background = (index % 2 === 0) ? '#fff' : '#fafafa';
-        }
-
-        tr.onmouseover = () => {
-            highlightChittaFindRow(index);
-        };
-        tr.onclick = () => selectChittaFindItem(item);
-
-        const chittaBadge = item.chittaNo !== '-' 
-            ? '<span style="font-weight:bold;">#' + item.chittaNo + '</span>'
-            : '<span style="opacity:0.7; font-style:italic;">New</span>';
-
-        const amtStr = item.netAmount > 0 
-            ? '₹' + item.netAmount.toFixed(2)
-            : '-';
-
-        tr.innerHTML = `
-            <td style="padding:5px 6px; border-right:1px solid #eee; font-weight:bold;">${item.code}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee; font-weight:bold;">${item.farmerName}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee;">${item.place}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee; text-align:center;">${chittaBadge}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee; text-align:center; font-size:11px;">${item.date}</td>
-            <td style="padding:5px 6px; text-align:right; font-weight:bold;">${amtStr}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function highlightChittaFindRow(idx) {
-    currentChittaFindRowIndex = idx;
-    const rows = document.querySelectorAll('#chittaFindResultsBody tr');
-    rows.forEach((r, i) => {
-        if (i === idx) {
-            r.style.background = '#0a246a';
-            r.style.color = '#fff';
-            r.scrollIntoView({ block: 'nearest' });
-        } else {
-            r.style.background = (i % 2 === 0) ? '#fff' : '#fafafa';
-            r.style.color = '#000';
-        }
-    });
-}
-
-function onChittaFindInputChange() {
-    const q = document.getElementById('chittaFindInput')?.value || '';
-    const msg = document.getElementById('chittaFindMessage');
-    if (msg) msg.innerText = '';
-    renderChittaFindResults(q);
-}
-
-function handleChittaFindKey(e) {
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (currentChittaFindItems.length > 0) {
-            const nextIdx = Math.min(currentChittaFindRowIndex + 1, currentChittaFindItems.length - 1);
-            highlightChittaFindRow(nextIdx);
-        }
-    } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (currentChittaFindItems.length > 0) {
-            const prevIdx = Math.max(currentChittaFindRowIndex - 1, 0);
-            highlightChittaFindRow(prevIdx);
-        }
-    } else if (e.key === 'Enter') {
-        e.preventDefault();
-        performChittaFind();
-    } else if (e.key === 'Escape') {
-        closeChittaFindDialog();
-    }
-}
-
-async function selectChittaFindItem(item) {
-    if (!item) return;
-    closeChittaFindDialog();
-
-    if (item.type === 'CHITTA' && item.chitta) {
-        if (item.chittaIndex >= 0) {
-            displayChitta(item.chittaIndex);
-        } else {
-            openChittaByRecord(item.chitta);
-        }
-        showToast('Loaded Chitta #' + (item.chitta.chittaNo || ''));
-    } else if (item.type === 'ACCOUNT' && item.account) {
-        openWin('openingChitta');
-
-        // Find if this farmer already has a chitta in chittas array
-        if (typeof chittas !== 'undefined' && chittas) {
-            const fIdx = chittas.findIndex(x => x.farmerAccount && (x.farmerAccount.id === item.account.id || String(x.farmerAccount.partyId) === String(item.account.partyId)));
-            if (fIdx !== -1) {
-                displayChitta(fIdx);
-                showToast('Loaded latest Chitta for ' + item.account.accountName);
-                return;
-            }
-        }
-
-        // No previous chitta: start new chitta for this farmer
-        clearChitta();
-        setChittaMode('EDIT');
-        if (typeof autoAssignNextChittaNo === 'function') await autoAssignNextChittaNo();
-        document.getElementById('farmerAccountId').value = item.account.partyId || item.account.id || '';
-        document.getElementById('farmerName').value = item.account.accountName || '';
-        document.getElementById('farmerPhone').value = item.account.phone1 || item.account.phone || '';
-        showToast('Selected Farmer: ' + item.account.accountName);
-
-        setTimeout(() => {
-            const firstGridItem = document.querySelector('#chittaGrid .grid-item');
-            if (firstGridItem && !firstGridItem.disabled && !firstGridItem.readOnly) {
-                firstGridItem.focus();
-            }
-        }, 50);
-    }
-}
-
-function performChittaFind() {
-    if (currentChittaFindItems && currentChittaFindItems.length > 0) {
-        const targetIdx = (currentChittaFindRowIndex >= 0 && currentChittaFindRowIndex < currentChittaFindItems.length) 
-            ? currentChittaFindRowIndex 
-            : 0;
-        selectChittaFindItem(currentChittaFindItems[targetIdx]);
-        return;
-    }
-
-    const q = (document.getElementById('chittaFindInput')?.value || '').trim().toLowerCase();
-    const msg = document.getElementById('chittaFindMessage');
-    if (!q) {
-        if (msg) msg.innerText = 'Please enter a Farmer Name or Chitta No to search.';
-        return;
-    }
-
-    // Direct match priority:
-    // 1. By Chitta No
-    if (typeof chittas !== 'undefined' && chittas) {
-        const cMatch = chittas.find(c => String(c.chittaNo || '').trim() === q);
-        if (cMatch) {
-            selectChittaFindItem({ type: 'CHITTA', chitta: cMatch, chittaIndex: chittas.indexOf(cMatch) });
-            return;
-        }
-    }
-
-    // 2. By Exact Farmer Name
-    if (typeof accounts !== 'undefined' && accounts) {
-        const aExact = accounts.find(a => a.accountName && a.accountName.toLowerCase() === q);
-        if (aExact) {
-            selectChittaFindItem({ type: 'ACCOUNT', account: aExact });
-            return;
-        }
-    }
-
-    if (msg) msg.innerText = 'No account or chitta found matching "' + q + '".';
-}
-
-// =========================================================================
-
-// =========================================================================
-// FARMER CODE FORMATTER (ENFORCES <= 4 LETTERS/CHARS)
-// =========================================================================
-function getDisplayFarmerCode(acc) {
-    if (!acc) return '';
-    let code = acc.partyId || acc.party_id || acc.id || '';
-    code = String(code).trim();
-    if (code.startsWith('P-') || code.length > 4) {
-        code = String(acc.id || '').substring(0, 4);
-    }
-    return code.substring(0, 4);
-}
-
-// REAL-TIME FARMER NAME AUTO-SUGGESTION FOR #farmerName
-// =========================================================================
-let currentFarmerSuggestMatches = [];
-let currentFarmerSuggestIndex = 0;
-
-function setFarmerSuggestHighlight(newIdx) {
-    const box = document.getElementById('farmerNameSuggestBox');
-    if (!box) return;
-    const items = box.querySelectorAll('.farmer-suggest-item');
-    if (!items || items.length === 0) return;
-    
-    if (newIdx < 0) newIdx = 0;
-    if (newIdx >= items.length) newIdx = items.length - 1;
-    currentFarmerSuggestIndex = newIdx;
-
-    items.forEach((item, idx) => {
-        if (idx === currentFarmerSuggestIndex) {
-            item.style.background = '#0a246a';
-            item.style.color = '#ffffff';
-            item.scrollIntoView({ block: 'nearest' });
-        } else {
-            item.style.background = '#ffffff';
-            item.style.color = '#000000';
-        }
-    });
-}
-
-function onFarmerNameInput() {
-    const input = document.getElementById('farmerName');
-    const box = document.getElementById('farmerNameSuggestBox');
-    if (!input || !box) return;
-
-    const val = (input.value || '').trim().toLowerCase();
-    if (val.length === 0) {
-        box.style.display = 'none';
-        box.innerHTML = '';
-        currentFarmerSuggestMatches = [];
-        currentFarmerSuggestIndex = 0;
-        return;
-    }
-
-    if (typeof accounts === 'undefined' || !accounts || accounts.length === 0) {
-        if (typeof fetchAccounts === 'function') {
-            fetchAccounts().then(() => onFarmerNameInput());
-        }
-        return;
-    }
-
-    const matches = accounts.filter(a => {
-        if (!a) return false;
-        const name = (a.accountName || '').toLowerCase();
-        const code = String(a.partyId || a.id || '').toLowerCase();
-        const place = (a.regionalName || a.accountGroup?.groupName || '').toLowerCase();
-        return name.includes(val) || code.includes(val) || place.includes(val);
-    }).slice(0, 30);
-
-    currentFarmerSuggestMatches = matches;
-    currentFarmerSuggestIndex = 0;
-
-    if (matches.length === 0) {
-        box.innerHTML = '<div style="padding:8px 10px; color:#888; font-style:italic;">No matching accounts in master</div>';
-        box.style.display = 'block';
-        return;
-    }
-
-    box.innerHTML = '';
-    matches.forEach((acc, i) => {
-        const div = document.createElement('div');
-        div.className = 'farmer-suggest-item';
-        div.dataset.index = i;
-        div.style.padding = '6px 10px';
-        div.style.cursor = 'pointer';
-        div.style.borderBottom = '1px solid #eee';
-        div.style.display = 'flex';
-        div.style.justifyContent = 'space-between';
-        div.style.alignItems = 'center';
-        
-        if (i === 0) {
-            div.style.background = '#0a246a';
-            div.style.color = '#fff';
-        } else {
-            div.style.background = '#fff';
-            div.style.color = '#000';
-        }
-
-        div.onmouseenter = () => setFarmerSuggestHighlight(i);
-        div.onmousedown = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectFarmerFromSuggest(acc);
-        };
-        div.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectFarmerFromSuggest(acc);
-        };
-
-        const codeStr = getDisplayFarmerCode(acc);
-        const placeStr = acc.regionalName || (acc.accountGroup ? acc.accountGroup.groupName : '') || '';
-
-        div.innerHTML = `
-            <div><strong>${acc.accountName}</strong> <span style="font-size:11px; opacity:0.8;">(${codeStr})</span></div>
-            <div style="font-size:11px; opacity:0.8;">${placeStr}</div>
-        `;
-        box.appendChild(div);
-    });
-
-    box.style.display = 'block';
-}
-
-function handleFarmerNameKey(e) {
-    const box = document.getElementById('farmerNameSuggestBox');
-    if (!box || box.style.display === 'none') {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            onFarmerNameChange();
-            const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
-            if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
-                firstItem.focus();
-                if (typeof firstItem.select === 'function') firstItem.select();
-            }
-        }
-        return;
-    }
-
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentFarmerSuggestMatches.length > 0) {
-            setFarmerSuggestHighlight(currentFarmerSuggestIndex + 1);
-        }
-        return;
-    }
-    
-    if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentFarmerSuggestMatches.length > 0) {
-            setFarmerSuggestHighlight(currentFarmerSuggestIndex - 1);
-        }
-        return;
-    }
-    
-    if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        box.style.display = 'none';
-        return;
-    }
-    
-    if (e.key === 'Enter' || e.key === 'Tab') {
-        if (currentFarmerSuggestMatches && currentFarmerSuggestMatches.length > 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            const chosen = currentFarmerSuggestMatches[currentFarmerSuggestIndex] || currentFarmerSuggestMatches[0];
-            selectFarmerFromSuggest(chosen);
-            return false;
-        }
-    }
-}
-
-
-function onFarmerNameChange() {
-    const fInput = document.getElementById('farmerName');
-    if (!fInput) return;
-    const nameVal = (fInput.value || '').trim();
-    if (!nameVal) {
-        loadFarmerChittaHistory(null);
-        return;
-    }
-    let matchedAcc = null;
-    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-        const lower = nameVal.toLowerCase();
-        matchedAcc = accounts.find(a => (a.accountName || '').trim().toLowerCase() === lower);
-        if (!matchedAcc) {
-            matchedAcc = accounts.find(a => (a.accountName || '').trim().toLowerCase().startsWith(lower));
-        }
-    }
-    if (matchedAcc) {
-        const idInput = document.getElementById('farmerAccountId');
-        const phoneInput = document.getElementById('farmerPhone');
-        if (idInput && !idInput.value) idInput.value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(matchedAcc) : (matchedAcc.partyId || matchedAcc.id || '');
-        if (phoneInput && !phoneInput.value) phoneInput.value = matchedAcc.phone1 || matchedAcc.mobile || matchedAcc.phone || '';
-        loadFarmerChittaHistory(matchedAcc);
-    } else {
-        loadFarmerChittaHistory(nameVal);
-    }
-}
-
-function onFarmerNameBlur() {
-    setTimeout(() => {
-        const box = document.getElementById('farmerNameSuggestBox');
-        if (!box || box.style.display === 'none') {
-            onFarmerNameChange();
-        }
-    }, 200);
-}
-
-function loadFarmerChittaHistory(farmerAccOrName) {
-    const histBody = document.getElementById('chittaHistoryBody');
-    const histTotalEl = document.getElementById('chittaHistoryTotal');
-    if (!histBody) return;
-
-    const renderEmptyRows = () => {
-        histBody.innerHTML = `
-            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-        `;
-        if (histTotalEl) histTotalEl.value = '';
-    };
-
-    if (!farmerAccOrName) {
-        renderEmptyRows();
-        return;
-    }
-
-    let targetId = null;
-    let targetPartyId = null;
-    let targetName = null;
-
-    if (typeof farmerAccOrName === 'object' && farmerAccOrName !== null) {
-        targetId = farmerAccOrName.id ? String(farmerAccOrName.id) : null;
-        targetPartyId = farmerAccOrName.partyId ? String(farmerAccOrName.partyId) : null;
-        targetName = farmerAccOrName.accountName ? farmerAccOrName.accountName.trim().toLowerCase() : null;
-    } else if (typeof farmerAccOrName === 'string' || typeof farmerAccOrName === 'number') {
-        const str = String(farmerAccOrName).trim();
-        if (!str) {
-            renderEmptyRows();
-            return;
-        }
-        if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-            const lower = str.toLowerCase();
-            const found = accounts.find(a => 
-                (a.accountName && a.accountName.trim().toLowerCase() === lower) ||
-                (a.partyId && String(a.partyId).trim().toLowerCase() === lower) ||
-                (a.id && String(a.id).trim().toLowerCase() === lower) ||
-                (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === lower)
-            );
-            if (found) {
-                targetId = found.id ? String(found.id) : null;
-                targetPartyId = found.partyId ? String(found.partyId) : null;
-                targetName = found.accountName ? found.accountName.trim().toLowerCase() : null;
-            } else {
-                targetName = lower;
-            }
-        } else {
-            targetName = str.toLowerCase();
-        }
-    }
-
-    // Pool of chittas
-    let pool = [];
-    if (typeof chittas !== 'undefined' && Array.isArray(chittas) && chittas.length > 0) {
-        pool = pool.concat(chittas);
-    }
-    if (typeof window !== 'undefined' && Array.isArray(window.allPendingChittas) && window.allPendingChittas.length > 0) {
-        window.allPendingChittas.forEach(pc => {
-            if (!pool.some(c => (c.id && pc.id && c.id === pc.id) || (c.chittaNo && pc.chittaNo && String(c.chittaNo).trim() === String(pc.chittaNo).trim()))) {
-                pool.push(pc);
-            }
-        });
-    }
-
-    // If pool is empty, fetch chittas asynchronously and re-populate
-    if (pool.length === 0 && typeof fetchChittas === 'function') {
-        fetchChittas().then(() => {
-            if (chittas && chittas.length > 0) {
-                loadFarmerChittaHistory(farmerAccOrName);
-            }
-        });
-    }
-
-    const unpaid = pool.filter(c => {
-        const isPaid = Boolean(c.paid) || Boolean(c.payDate);
-        if (isPaid) return false;
-
-        if (targetId && c.farmerAccount && String(c.farmerAccount.id) === targetId) return true;
-        if (targetPartyId && c.farmerAccount && String(c.farmerAccount.partyId) === targetPartyId) return true;
-        if (targetName && c.farmerAccount && c.farmerAccount.accountName && c.farmerAccount.accountName.trim().toLowerCase() === targetName) return true;
-        if (targetName && c.farmerName && c.farmerName.trim().toLowerCase() === targetName) return true;
-        if (targetId && c.farmerAccountId && String(c.farmerAccountId) === targetId) return true;
-        if (targetPartyId && c.farmerAccountId && String(c.farmerAccountId) === targetPartyId) return true;
-        return false;
-    });
-
-    unpaid.sort((a, b) => {
-        const da = String(a.chittaDate || '').substring(0, 10);
-        const db = String(b.chittaDate || '').substring(0, 10);
-        if (da !== db) return da.localeCompare(db);
-        return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
-    });
-
-    histBody.innerHTML = '';
-    let histTotal = 0;
-
-    if (unpaid.length === 0) {
-        renderEmptyRows();
-    } else {
-        unpaid.forEach((c, idx) => {
-            const amt = parseFloat(c.netPayable !== undefined && c.netPayable !== null ? c.netPayable : (parseFloat(c.grossAmount || 0) - parseFloat(c.commissionDeduction || 0) - parseFloat(c.advanceAmount || 0) - parseFloat(c.freightAmount || 0))) || 0;
-            histTotal += amt;
-            const dt = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toISOString().substring(0, 10)) : '';
-            const tr = document.createElement('tr');
-            tr.style.cursor = 'pointer';
-            tr.title = `Click to view Chitta #${c.chittaNo}`;
-            tr.onmouseenter = () => { if (tr.dataset.selected !== 'true') tr.style.background = '#eef6ff'; };
-            tr.onmouseleave = () => { if (tr.dataset.selected !== 'true') { tr.style.background = ''; tr.style.color = ''; } };
-            tr.onclick = () => {
-                const rows = histBody.querySelectorAll('tr');
-                rows.forEach(r => { r.style.background = ''; r.style.color = ''; r.dataset.selected = 'false'; });
-                tr.style.background = '#0a246a';
-                tr.style.color = '#fff';
-                tr.dataset.selected = 'true';
-                if (typeof chittas !== 'undefined' && chittas.length > 0) {
-                    const foundIdx = chittas.findIndex(x => (c.id && x.id === c.id) || (String(x.chittaNo).trim() === String(c.chittaNo).trim()));
-                    if (foundIdx !== -1) {
-                        displayChitta(foundIdx);
-                    }
-                }
-            };
-            tr.innerHTML = `
-                <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-size:11px;">${dt}</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa; text-align:center;">${c.chittaNo || ''}</td>
-                <td style="border-bottom:1px solid #ccc; padding:2px; text-align:right; font-weight:bold;">${amt.toFixed(2)}</td>
-            `;
-            histBody.appendChild(tr);
-        });
-        for (let i = unpaid.length; i < 5; i++) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td>';
-            histBody.appendChild(tr);
-        }
-    }
-
-    if (histTotalEl) {
-        histTotalEl.value = histTotal > 0 ? histTotal.toFixed(2) : '';
-    }
-}
-
-function onFarmerCodeChange() {
-    let code = (document.getElementById('farmerAccountId')?.value || '').trim();
-    if (!code) {
-        loadFarmerChittaHistory(null);
-        return;
-    }
-    if (code.length > 4) {
-        code = code.substring(0, 4);
-        document.getElementById('farmerAccountId').value = code;
-    }
-    const q = code.toLowerCase();
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
-        (a.partyId && String(a.partyId).toLowerCase() === q) ||
-        (String(a.id).toLowerCase() === q) ||
-        (String(a.id).padStart(4, '0') === q)
-    );
-    if (acc) {
-        selectFarmerFromSuggest(acc);
-    } else {
-        loadFarmerChittaHistory(code);
-    }
-}
-
-function handleFarmerCodeKey(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        onFarmerCodeChange();
-        const next = document.getElementById('farmerName');
-        if (next) {
-            next.focus();
-            if (typeof next.select === 'function') next.select();
-        }
-    }
-}
-
-function selectFarmerFromSuggest(acc) {
-    if (!acc) return;
-    const input = document.getElementById('farmerName');
-    const idInput = document.getElementById('farmerAccountId');
-    const phoneInput = document.getElementById('farmerPhone');
-    const box = document.getElementById('farmerNameSuggestBox');
-
-    if (input) input.value = acc.accountName || '';
-    if (idInput) idInput.value = getDisplayFarmerCode(acc);
-    if (phoneInput) phoneInput.value = acc.phone1 || acc.mobile || acc.phone || '';
-    if (box) {
-        box.style.display = 'none';
-        box.innerHTML = '';
-    }
-    currentFarmerSuggestMatches = [];
-    currentFarmerSuggestIndex = 0;
-
-    loadFarmerChittaHistory(acc);
-
-    // Move focus to next field (Item description in first row of grid)
-    setTimeout(() => {
-        const firstGridItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
-        if (firstGridItem && !firstGridItem.disabled && !firstGridItem.readOnly) {
-            firstGridItem.focus();
-            if (typeof firstGridItem.select === 'function') firstGridItem.select();
-        }
-    }, 50);
-}
-
-// Hide suggest box on outside click
-document.addEventListener('click', function(e) {
-    const box = document.getElementById('farmerNameSuggestBox');
-    const input = document.getElementById('farmerName');
-    if (box && e.target !== input && !box.contains(e.target)) {
-        box.style.display = 'none';
-    }
-});
-
-// =========================================================================
-
-// =========================================================================
-// REAL-TIME FARMER NAME AUTO-SUGGESTION FOR #cpPayFarmerName (CHITTA PAYMENT)
-// =========================================================================
-let currentCpFarmerSuggestMatches = [];
-let currentCpFarmerSuggestIndex = 0;
-
-function setCpFarmerSuggestHighlight(newIdx) {
-    const box = document.getElementById('cpFarmerNameSuggestBox');
-    if (!box) return;
-    const items = box.querySelectorAll('.cp-farmer-suggest-item');
-    if (!items || items.length === 0) return;
-    
-    if (newIdx < 0) newIdx = 0;
-    if (newIdx >= items.length) newIdx = items.length - 1;
-    currentCpFarmerSuggestIndex = newIdx;
-
-    items.forEach((item, idx) => {
-        if (idx === currentCpFarmerSuggestIndex) {
-            item.style.background = '#0a246a';
-            item.style.color = '#ffffff';
-            item.scrollIntoView({ block: 'nearest' });
-        } else {
-            item.style.background = '#ffffff';
-            item.style.color = '#000000';
-        }
-    });
-}
-
-function onCpFarmerNameInput() {
-    const input = document.getElementById('cpPayFarmerName');
-    const box = document.getElementById('cpFarmerNameSuggestBox');
-    if (!input || !box) return;
-
-    const val = (input.value || '').trim().toLowerCase();
-    if (val.length === 0) {
-        box.style.display = 'none';
-        box.innerHTML = '';
-        currentCpFarmerSuggestMatches = [];
-        currentCpFarmerSuggestIndex = 0;
-        return;
-    }
-
-    if (typeof accounts === 'undefined' || !accounts || accounts.length === 0) {
-        if (typeof fetchAccounts === 'function') {
-            fetchAccounts().then(() => onCpFarmerNameInput());
-        }
-        return;
-    }
-
-    const matches = accounts.filter(a => {
-        if (!a) return false;
-        const name = (a.accountName || '').toLowerCase();
-        const code = String(getDisplayFarmerCode(a) || a.partyId || a.id || '').toLowerCase();
-        const place = (a.regionalName || a.place || a.accountGroup?.groupName || '').toLowerCase();
-        return name.includes(val) || code.includes(val) || place.includes(val);
-    }).slice(0, 30);
-
-    currentCpFarmerSuggestMatches = matches;
-    currentCpFarmerSuggestIndex = 0;
-
-    if (matches.length === 0) {
-        box.innerHTML = '<div style="padding:8px 10px; color:#888; font-style:italic;">No matching accounts in master</div>';
-        box.style.display = 'block';
-        return;
-    }
-
-    box.innerHTML = '';
-    matches.forEach((acc, i) => {
-        const div = document.createElement('div');
-        div.className = 'cp-farmer-suggest-item';
-        div.dataset.index = i;
-        div.style.padding = '6px 10px';
-        div.style.cursor = 'pointer';
-        div.style.borderBottom = '1px solid #eee';
-        div.style.display = 'flex';
-        div.style.justifyContent = 'space-between';
-        div.style.alignItems = 'center';
-        
-        if (i === 0) {
-            div.style.background = '#0a246a';
-            div.style.color = '#fff';
-        } else {
-            div.style.background = '#fff';
-            div.style.color = '#000';
-        }
-
-        div.onmouseenter = () => setCpFarmerSuggestHighlight(i);
-        div.onmousedown = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectCpFarmerFromSuggest(acc);
-        };
-        div.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectCpFarmerFromSuggest(acc);
-        };
-
-        const codeStr = getDisplayFarmerCode(acc);
-        const placeStr = acc.regionalName || acc.place || (acc.accountGroup ? acc.accountGroup.groupName : '') || '';
-
-        div.innerHTML = `
-            <div><strong>${acc.accountName}</strong> <span style="font-size:11px; opacity:0.8;">(${codeStr})</span></div>
-            <div style="font-size:11px; opacity:0.8;">${placeStr}</div>
-        `;
-        box.appendChild(div);
-    });
-
-    box.style.display = 'block';
-}
-
-function selectCpFarmerFromSuggest(acc) {
-    if (!acc) return;
-    const input = document.getElementById('cpPayFarmerName');
-    const idInput = document.getElementById('cpPayFarmerCode');
-    const phoneInput = document.getElementById('cpPayPhone');
-    const box = document.getElementById('cpFarmerNameSuggestBox');
-
-    if (input) input.value = acc.accountName || '';
-    if (idInput) idInput.value = getDisplayFarmerCode(acc);
-    if (phoneInput) phoneInput.value = acc.phone1 || acc.mobile || acc.phone || '';
-    if (box) {
-        box.style.display = 'none';
-        box.innerHTML = '';
-    }
-    currentCpFarmerSuggestMatches = [];
-    currentCpFarmerSuggestIndex = 0;
-
-    loadFarmerChittasForPayment(acc);
-}
-
-function handleCpFarmerNameKey(e) {
-    const box = document.getElementById('cpFarmerNameSuggestBox');
-    if (!box || box.style.display === 'none') {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const next = document.getElementById('cpPayChittaNo') || document.getElementById('cpPayAmount');
-            if (next) next.focus();
-        }
-        return;
-    }
-
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentCpFarmerSuggestMatches.length > 0) {
-            setCpFarmerSuggestHighlight(currentCpFarmerSuggestIndex + 1);
-        }
-        return;
-    }
-    
-    if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (currentCpFarmerSuggestMatches.length > 0) {
-            setCpFarmerSuggestHighlight(currentCpFarmerSuggestIndex - 1);
-        }
-        return;
-    }
-    
-    if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        box.style.display = 'none';
-        return;
-    }
-    
-    if (e.key === 'Enter' || e.key === 'Tab') {
-        if (currentCpFarmerSuggestMatches && currentCpFarmerSuggestMatches.length > 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            const chosen = currentCpFarmerSuggestMatches[currentCpFarmerSuggestIndex] || currentCpFarmerSuggestMatches[0];
-            selectCpFarmerFromSuggest(chosen);
-            return false;
-        }
-    }
-}
-
-// ACCOUNT MASTER FIND DIALOG LOGIC
-// =========================================================================
-let currentAccountFindRowIndex = -1;
-let currentAccountFindItems = [];
-
-function findAccount() {
-    const dialog = document.getElementById('accountFindDialog');
-    if (!dialog) return;
-    const input = document.getElementById('accountFindInput');
-    const msg = document.getElementById('accountFindMessage');
-    if (input) input.value = '';
-    if (msg) msg.innerText = '';
-    currentAccountFindRowIndex = -1;
-
-    if (typeof accounts === 'undefined' || !accounts || accounts.length === 0) {
-        if (typeof fetchAccounts === 'function') {
-            fetchAccounts().then(() => renderAccountFindResults(''));
-        }
-    } else {
-        renderAccountFindResults('');
-    }
-
-    dialog.style.display = 'flex';
-    setTimeout(() => {
-        if (input) {
-            input.focus();
-            input.select();
-        }
-    }, 50);
-}
-
-function closeAccountFindDialog() {
-    const dialog = document.getElementById('accountFindDialog');
-    if (dialog) dialog.style.display = 'none';
-    currentAccountFindRowIndex = -1;
-}
-
-function renderAccountFindResults(filterText) {
-    const tbody = document.getElementById('accountFindResultsBody');
-    const countEl = document.getElementById('accountFindCount');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    const q = (filterText || '').trim().toLowerCase();
-
-    let items = [];
-    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-        accounts.forEach((acc, idx) => {
-            if (!acc) return;
-            const name = (acc.accountName || '').toLowerCase();
-            const code = String(acc.partyId || acc.id || '').toLowerCase();
-            const phone = String(acc.phone1 || '').toLowerCase();
-            const group = (acc.accountGroup?.groupName || '').toLowerCase();
-            const place = (acc.regionalName || '').toLowerCase();
-
-            if (!q || name.includes(q) || code.includes(q) || phone.includes(q) || group.includes(q) || place.includes(q)) {
-                items.push({
-                    account: acc,
-                    accountIndex: idx,
-                    code: acc.partyId || acc.id || '',
-                    name: acc.accountName || '',
-                    group: acc.accountGroup?.groupName || '',
-                    place: acc.regionalName || '',
-                    phone: acc.phone1 || ''
-                });
-            }
-        });
-    }
-
-    if (countEl) countEl.innerText = items.length + ' matching record(s)';
-
-    if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px; color:#888;">No matching accounts found for "' + (filterText || '') + '"</td></tr>';
-        currentAccountFindItems = [];
-        currentAccountFindRowIndex = -1;
-        return;
-    }
-
-    items.sort((a, b) => a.name.localeCompare(b.name));
-    currentAccountFindItems = items.slice(0, 75);
-    currentAccountFindRowIndex = 0;
-
-    currentAccountFindItems.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.style.borderBottom = '1px solid #eee';
-        tr.dataset.index = index;
-
-        if (index === 0) {
-            tr.style.background = '#0a246a';
-            tr.style.color = '#fff';
-        } else {
-            tr.style.background = (index % 2 === 0) ? '#fff' : '#fafafa';
-        }
-
-        tr.onmouseover = () => highlightAccountFindRow(index);
-        tr.onclick = () => selectAccountFindItem(item);
-
-        tr.innerHTML = `
-            <td style="padding:5px 6px; border-right:1px solid #eee; font-weight:bold;">${item.code}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee; font-weight:bold;">${item.name}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee;">${item.group}</td>
-            <td style="padding:5px 6px; border-right:1px solid #eee;">${item.place}</td>
-            <td style="padding:5px 6px; font-size:11px;">${item.phone}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function highlightAccountFindRow(idx) {
-    currentAccountFindRowIndex = idx;
-    const rows = document.querySelectorAll('#accountFindResultsBody tr');
-    rows.forEach((r, i) => {
-        if (i === idx) {
-            r.style.background = '#0a246a';
-            r.style.color = '#fff';
-            r.scrollIntoView({ block: 'nearest' });
-        } else {
-            r.style.background = (i % 2 === 0) ? '#fff' : '#fafafa';
-            r.style.color = '#000';
-        }
-    });
-}
-
-function onAccountFindInputChange() {
-    const q = document.getElementById('accountFindInput')?.value || '';
-    const msg = document.getElementById('accountFindMessage');
-    if (msg) msg.innerText = '';
-    renderAccountFindResults(q);
-}
-
-function handleAccountFindKey(e) {
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (currentAccountFindItems.length > 0) {
-            const nextIdx = Math.min(currentAccountFindRowIndex + 1, currentAccountFindItems.length - 1);
-            highlightAccountFindRow(nextIdx);
-        }
-    } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (currentAccountFindItems.length > 0) {
-            const prevIdx = Math.max(currentAccountFindRowIndex - 1, 0);
-            highlightAccountFindRow(prevIdx);
-        }
-    } else if (e.key === 'Enter') {
-        e.preventDefault();
-        performAccountFind();
-    } else if (e.key === 'Escape') {
-        closeAccountFindDialog();
-    }
-}
-
-function selectAccountFindItem(item) {
-    if (!item) return;
-    closeAccountFindDialog();
-    openWin('account');
-    if (item.accountIndex >= 0 && typeof displayAccount === 'function') {
-        displayAccount(item.accountIndex);
-        showToast('Loaded Account: ' + item.name);
-    }
-}
-
-function performAccountFind() {
-    if (currentAccountFindItems && currentAccountFindItems.length > 0) {
-        const targetIdx = (currentAccountFindRowIndex >= 0 && currentAccountFindRowIndex < currentAccountFindItems.length) 
-            ? currentAccountFindRowIndex 
-            : 0;
-        selectAccountFindItem(currentAccountFindItems[targetIdx]);
-        return;
-    }
-
-    const q = (document.getElementById('accountFindInput')?.value || '').trim().toLowerCase();
-    const msg = document.getElementById('accountFindMessage');
-    if (!q) {
-        if (msg) msg.innerText = 'Please enter an account name or code.';
-        return;
-    }
-
-    if (typeof accounts !== 'undefined' && accounts) {
-        const idx = accounts.findIndex(a => 
-            (a.accountName && a.accountName.toLowerCase() === q) ||
-            (a.partyId && String(a.partyId).toLowerCase() === q)
-        );
-        if (idx !== -1) {
-            selectAccountFindItem({ account: accounts[idx], accountIndex: idx, name: accounts[idx].accountName });
-            return;
-        }
-    }
-    if (msg) msg.innerText = 'No account found matching "' + q + '".';
-}
-
-// =========================================================================
-// SALES BILL FIND DIALOG LOGIC
-// =========================================================================
-function findBill() {
-    const dialog = document.getElementById('billFindDialog');
-    if (!dialog) return;
-    const input = document.getElementById('billFindInput');
-    const msg = document.getElementById('billFindMessage');
-    if (input) input.value = '';
-    if (msg) msg.innerText = '';
-    renderBillFindResults('');
-    dialog.style.display = 'flex';
-    setTimeout(() => { if (input) input.focus(); }, 50);
-}
-
-function closeBillFindDialog() {
-    const dialog = document.getElementById('billFindDialog');
-    if (dialog) dialog.style.display = 'none';
-    const noInput = document.getElementById('billNo');
-    if (noInput) noInput.focus();
-}
-
-function renderBillFindResults(filterText) {
-    const tbody = document.getElementById('billFindResultsBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    const q = (filterText || '').trim().toLowerCase();
-
-    if (!bills || bills.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#888;">No Bill records loaded</td></tr>';
-        return;
-    }
-
-    const matches = bills.filter(b => {
-        if (!q) return true;
-        const no = String(b.billNo || '').toLowerCase();
-        const buyer = (b.buyerAccount?.accountName || b.buyerName || '').toLowerCase();
-        const dt = (b.billDate || '').toLowerCase();
-        return no.includes(q) || buyer.includes(q) || dt.includes(q);
-    });
-
-    if (matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#888;">No matching bills found</td></tr>';
-        return;
-    }
-
-    matches.slice(0, 50).forEach(b => {
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.style.borderBottom = '1px solid #eee';
-        tr.onmouseover = () => tr.style.background = '#d8eed5';
-        tr.onmouseout = () => tr.style.background = '#fff';
-        tr.onclick = () => selectBillFindItem(b);
-
-        const buyer = b.buyerAccount?.accountName || b.buyerName || '';
-        const dt = b.billDate ? String(b.billDate).substring(0, 10) : '';
-        const net = parseFloat(b.netAmount || b.grossAmount) || 0;
-
-        tr.innerHTML = `
-            <td style="padding:4px 6px; border-right:1px solid #eee; font-weight:bold; color:#0055aa;">${b.billNo || ''}</td>
-            <td style="padding:4px 6px; border-right:1px solid #eee;">${dt}</td>
-            <td style="padding:4px 6px; border-right:1px solid #eee;">${buyer}</td>
-            <td style="padding:4px 6px; text-align:right; font-weight:bold;">${net.toFixed(2)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function onBillFindInputChange() {
-    const q = document.getElementById('billFindInput')?.value || '';
-    renderBillFindResults(q);
-}
-
-function handleBillFindKey(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        performBillFind();
-    } else if (e.key === 'Escape') {
-        closeBillFindDialog();
-    }
-}
-
-function selectBillFindItem(b) {
-    if (!b) return;
-    const idx = bills.findIndex(x => x.id === b.id || String(x.billNo) === String(b.billNo));
-    if (idx !== -1) {
-        displayBill(idx);
-    } else {
-        openBillByRecord(b);
-    }
-    closeBillFindDialog();
-    showToast('Loaded Bill #' + (b.billNo || ''));
-}
-
-function performBillFind() {
-    const q = (document.getElementById('billFindInput')?.value || '').trim().toLowerCase();
-    const msg = document.getElementById('billFindMessage');
-    if (!q) {
-        if (msg) msg.innerText = 'Please enter a search term.';
-        return;
-    }
-    const match = bills.find(b => {
-        const no = String(b.billNo || '').toLowerCase();
-        const buyer = (b.buyerAccount?.accountName || b.buyerName || '').toLowerCase();
-        const dt = (b.billDate || '').toLowerCase();
-        return no === q || no.includes(q) || buyer.includes(q) || dt.includes(q);
-    });
-    if (match) {
-        selectBillFindItem(match);
-    } else {
-        if (msg) msg.innerText = `No Bill found matching "${q}".`;
-    }
-}
-
-// =========================================================================
-// REGISTER CLICK-TO-OPEN IDENTIFIERS
-// =========================================================================
-function openChittaByRecordId(id, no) {
-    let c = null;
-    if (id && typeof chittas !== 'undefined' && chittas) {
-        c = chittas.find(x => String(x.id) === String(id));
-    }
-    if (!c && no && typeof chittas !== 'undefined' && chittas) {
-        c = chittas.find(x => String(x.chittaNo) === String(no));
-    }
-    if (!c) c = { id: id ? parseInt(id) : null, chittaNo: no };
-    openChittaByRecord(c);
-}
-
-function openBillByRecordId(id, no) {
-    let b = null;
-    if (id && typeof bills !== 'undefined' && bills) {
-        b = bills.find(x => String(x.id) === String(id));
-    }
-    if (!b && no && typeof bills !== 'undefined' && bills) {
-        b = bills.find(x => String(x.billNo) === String(no));
-    }
-    if (!b) b = { id: id ? parseInt(id) : null, billNo: no };
-    openBillByRecord(b);
-}
-
-
-// --- UI BEHAVIOR ---
-function formatPeriodYear(p) {
-    if (!p) return '';
-    if (p.periodName && /^\d{4}\s*-\s*\d{4}$/.test(p.periodName.trim())) {
-        return p.periodName.trim();
-    }
-    if (p.startDate && p.endDate) {
-        const s = String(p.startDate);
-        const e = String(p.endDate);
-        const y1 = s.substring(0, 4);
-        const y2 = e.substring(0, 4);
-        if (y1 && y2 && y1.length === 4 && y2.length === 4) {
-            return `${y1} - ${y2}`;
-        }
-    }
-    if (p.periodName) {
-        const match = p.periodName.match(/(\d{2,4}).*?to.*?(\d{2,4})/i);
-        if (match) {
-            let y1 = match[1];
-            let y2 = match[2];
-            if (y1.length === 2) y1 = (parseInt(y1, 10) > 50 ? '19' : '20') + y1;
-            if (y2.length === 2) y2 = (parseInt(y2, 10) > 50 ? '19' : '20') + y2;
-            return `${y1} - ${y2}`;
-        }
-        return p.periodName;
-    }
-    return '';
-}
-
-// --- 21. ACCOUNT PERIOD LOGIC ---
-function getActivePeriod() {
-    let saved = localStorage.getItem('kanimc_active_period');
-    let periods = window.allFinancialPeriods || [];
-    if (saved) {
-        let p = periods.find(x => formatPeriodYear(x) === saved || x.periodName === saved || String(x.id) === saved);
-        if (p) return p;
-    }
-    // Automatically match the period containing today
-    const today = getTodayDateStr();
-    let currentPeriod = periods.find(p => p.startDate && p.endDate && today >= String(p.startDate).substring(0, 10) && today <= String(p.endDate).substring(0, 10));
-    if (currentPeriod) return currentPeriod;
-    if (periods.length > 0) return periods[periods.length - 1];
-    return null;
-}
-
-function getActivePeriodDates() {
-    let p = getActivePeriod();
-    if (p && p.startDate && p.endDate) {
-        return { startDate: String(p.startDate).substring(0, 10), endDate: String(p.endDate).substring(0, 10) };
-    }
-    const today = getTodayDateStr();
-    const curYear = parseInt(today.substring(0, 4), 10);
-    return { startDate: `${curYear}-04-26`, endDate: `${curYear + 1}-04-25` };
-}
-
-function getPeriodCurrentDate() {
-    return getTodayDateStr();
-}
-
-function applyPeriodDateDefaults(forceReset) {
-    const curDate = getTodayDateStr();
-    const pDates = getActivePeriodDates();
-    const fromDate = pDates.startDate || `${new Date().getFullYear()}-04-26`;
-    const toDate = curDate;
-
-    const singleDateInputs = [
-        'chittaDate', 'chittaPaidOn', 'billDate',
-        'cpPayDate', 'cpPayPaidOn', 'dcoDate',
-        'cpDate', 'rvDate', 'amDate', 'dobDate',
-        'obRegDate', 'daybookDate', 'daybookFromDate', 'daybookToDate',
-        'chittaPendRegDate', 'chittaPendingRegDate'
-    ];
-
-    singleDateInputs.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            if (forceReset || !el.value || el.value.startsWith('2023-') || el.value.startsWith('2024-') || el.value === '2025-04-25') {
-                el.value = curDate;
-            }
-        }
-    });
-
-    const rangeInputs = [
-        { from: 'chittaRegFromDate', to: 'chittaRegToDate' },
-        { from: 'chittaPayRegFromDate', to: 'chittaPayRegToDate' },
-        { from: 'billRegFromDate', to: 'billRegToDate' },
-        { from: 'cashRegFromDate', to: 'cashRegToDate' },
-        { from: 'receiptRegFromDate', to: 'receiptRegToDate' },
-        { from: 'ledgerRegFromDate', to: 'ledgerRegToDate' },
-        { from: 'itemRegFromDate', to: 'itemRegToDate' },
-        { from: 'itemSumFromDate', to: 'itemSumToDate' },
-        { from: 'commRegFromDate', to: 'commRegToDate' },
-        { from: 'commSumFromDate', to: 'commSumToDate' },
-        { from: 'outstandingFrom', to: 'outstandingTo' },
-        { from: 'advFromDate', to: 'advToDate' }
-    ];
-
-    rangeInputs.forEach(pair => {
-        const f = document.getElementById(pair.from);
-        const t = document.getElementById(pair.to);
-        if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26')) {
-            f.value = fromDate;
-        }
-        if (t && (forceReset || !t.value || t.value.startsWith('2023-') || t.value.startsWith('2024-') || t.value === '2025-04-25')) {
-            t.value = toDate;
-        }
-    });
-}
-
-async function onPeriodChanged(newPeriodLabel) {
-    localStorage.setItem('kanimc_active_period', newPeriodLabel);
-    applyPeriodDateDefaults(true);
-    if (typeof fetchChittas === 'function') await fetchChittas();
-    if (typeof fetchBills === 'function') await fetchBills();
-    if (typeof fetchCashPayments === 'function') await fetchCashPayments();
-    if (typeof fetchReceipts === 'function') await fetchReceipts();
-    if (typeof clearChitta === 'function') clearChitta();
-    if (typeof clearBill === 'function') clearBill();
-    if (typeof clearCashPayment === 'function') clearCashPayment();
-    if (typeof clearReceipt === 'function') clearReceipt();
-}
-
-async function loadFinancialPeriods() {
-    try {
-        let res = await fetch('/api/periods');
-        if (!res.ok) {
-            res = await fetch('/api/admin/periods', {
-                headers: ADMIN_AUTH_HEADERS
-            });
-        }
-        if (res.ok) {
-            const periods = await res.json();
-            if (!Array.isArray(periods) || periods.length === 0) return;
-            window.allFinancialPeriods = periods;
-
-            // Determine active period from localStorage or latest available period
-            let savedPeriod = localStorage.getItem('kanimc_active_period');
-            if (savedPeriod && savedPeriod.includes('to')) {
-                savedPeriod = formatPeriodYear({ periodName: savedPeriod }) || savedPeriod;
-                localStorage.setItem('kanimc_active_period', savedPeriod);
-            }
-            if (!savedPeriod) {
-                const sortedByEnd = [...periods].sort((a,b) => (b.endDate || '').localeCompare(a.endDate || ''));
-                savedPeriod = formatPeriodYear(sortedByEnd[0]) || '2024 - 2025';
-                localStorage.setItem('kanimc_active_period', savedPeriod);
-            }
-
-            const sel = document.getElementById('apPeriodSelect');
-            const loginSel = document.getElementById('period');
-            
-            if (sel) {
-                sel.innerHTML = '';
-                periods.forEach(p => {
-                    const opt = document.createElement('option');
-                    const label = formatPeriodYear(p);
-                    opt.value = p.id;
-                    opt.innerText = label;
-                    if (label === savedPeriod || String(p.id) === String(savedPeriod)) {
-                        opt.selected = true;
-                    }
-                    sel.appendChild(opt);
-                });
-            }
-
-            if (loginSel) {
-                loginSel.innerHTML = '';
-                periods.forEach(p => {
-                    const opt = document.createElement('option');
-                    const label = formatPeriodYear(p);
-                    opt.value = label;
-                    opt.innerText = label;
-                    if (label === savedPeriod) {
-                        opt.selected = true;
-                    }
-                    loginSel.appendChild(opt);
-                });
-            }
-
-            const userEl = document.getElementById('userInfo');
-            if (userEl) {
-                const u = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
-                userEl.innerText = `${u} | ${savedPeriod}`;
-            }
-
-            // Automatically apply period current date across all inputs
-            applyPeriodDateDefaults(false);
-        }
-    } catch(e) {
-        console.error('Error loading periods:', e);
-    }
-}
-
-function getTodayDateStr() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return y + "-" + m + "-" + day;
-}
-
-function getPeriodCurrentDate() {
-    return getTodayDateStr();
-}
-
-function closeAll(){ 
-    document.querySelectorAll('.modal-overlay').forEach(m => {
-        m.style.display = 'none';
-    }); 
-    document.querySelectorAll('.has-submenu.open').forEach(s => s.classList.remove('open'));
-}
-
-function openWin(id, targetParam){
-    if (!canAccessWindow(id)) {
-        alert('Access Denied: You do not have permission to open this window.');
-        return;
-    }
-    closeAll();
-    document.querySelectorAll('.dropdown').forEach(d=>d.style.display='none');
-    
-    // Permission check for restricted users
-    if (typeof canAccessWindow === 'function' && !canAccessWindow(id)) {
-        alert("Access Denied: Your user account (" + (typeof currentUser !== 'undefined' ? currentUser : 'USER1') + ") does not have permission to access this module.");
-        return;
-    }
-    
-    const el=document.getElementById(id);
-    if(el) { 
-        el.style.display='flex'; 
-        if (id === 'openingChitta') {
-            const chittaDateEl = document.getElementById('chittaDate');
-            if (chittaDateEl && !chittaDateEl.value) chittaDateEl.value = getTodayDateStr();
-            chittaActionNew();
-        }
-        const firstInput = el.querySelector('input:not([type=button]), select'); 
-        if(firstInput) firstInput.focus(); 
-        
-        // Modal logic dispatch
-        if(id === 'company' && typeof loadCompanyMaster === 'function') {
-            loadCompanyMaster();
-        } else if(id === 'groupList' && typeof loadGroupListTable === 'function') {
-            loadGroupListTable();
-        } else if(id === 'place' && typeof loadPlaces === 'function') {
-            loadPlaces();
-        } else if(id === 'product' && typeof displayProduct === 'function') {
-            if (typeof items !== 'undefined' && items && items.length > 0) {
-                if (typeof currentProductIndex !== 'undefined' && currentProductIndex >= 0) displayProduct(currentProductIndex);
-                else displayProduct(0);
-            } else if (typeof fetchItems === 'function') {
-                fetchItems().then(() => displayProduct(0));
-            }
-        } else if(id === 'chittaPayment') {
-            if (!targetParam && typeof clearChittaPaymentForm === 'function') clearChittaPaymentForm();
-            if (typeof loadAllPendingChittasForPayment === 'function') loadAllPendingChittasForPayment(targetParam);
-        } else if(id === 'commission' && typeof loadCommissionRates === 'function') {
-            loadCommissionRates();
-        } else if(id === 'openingBalance' && typeof loadOpeningBalances === 'function') {
-            loadOpeningBalances();
-        } else if(id === 'dailyCashOpening' && typeof loadDcoList === 'function') {
-            loadDcoList();
-        } else if(id === 'accountMapping' && typeof loadAccountMappings === 'function') {
-            loadAccountMappings();
-        } else if(id === 'softwareSettings' && typeof loadSoftwareSettings === 'function') {
-            loadSoftwareSettings();
-        } else if(id === 'accountPeriod' && typeof loadFinancialPeriods === 'function') {
-            loadFinancialPeriods();
-        } else if(id === 'yearCreation' && typeof loadYearCreation === 'function') {
-            loadYearCreation();
-        } else if(id === 'chittaRegister') {
-            loadChittaRegister();
-        } else if(id === 'chittaPendingRegister') {
-            loadChittaPendingRegister();
-        } else if(id === 'chittaPaymentRegister') {
-            loadChittaPaymentRegister();
-        } else if(id === 'billRegister') {
-            loadBillRegister();
-        } else if(id === 'cashPaymentRegister') {
-            loadCashPaymentRegister();
-        } else if(id === 'receiptRegister') {
-            loadReceiptRegister();
-        } else if(id === 'ledgerReport' || id === 'ledger') {
-            loadLedger();
-        } else if(id === 'daybookReport') {
-            loadDaybook();
-        } else if(id === 'itemRegister') {
-            loadItemRegister();
-        } else if(id === 'itemSummaryReport') {
-            loadItemSummary();
-        } else if(id === 'commissionRegister') {
-            loadCommissionRegister();
-        } else if(id === 'commissionSummary') {
-            loadCommissionSummary();
-        } else if(id === 'openingBalanceRegister') {
-            loadOpeningBalanceRegister();
-        } else if(id === 'dailyOpeningBalanceRegister') {
-            loadDailyOpeningBalance();
-        } else if(id === 'cashPayment' && typeof onOpenCashPayment === 'function') {
-            onOpenCashPayment();
-        } else if(id === 'receipt' && typeof onOpenReceipt === 'function') {
-            onOpenReceipt();
-        } else if(id === 'outstandingReport') {
-            loadOutstandingReport();
-        }
-    }
-}
-
-function closeWin(id) {
-    if (id) {
-        const el = document.getElementById(id);
-        if (el) {
-            el.style.display = 'none';
-        }
-    } else {
-        closeAll();
-    }
-}
-
-
-function selectGroup(groupName) {
-    document.getElementById('accGroupId').value = groupName;
-    openWin('account');
-}
-
-// --- SUBMENU & MENU TOGGLE ---
-function toggleSubmenu(event, el) {
-    event.stopPropagation();
-    const isOpen = el.classList.contains('open');
-    const parent = el.parentElement;
-    if (parent) {
-        parent.querySelectorAll('.has-submenu.open').forEach(item => {
-            if (item !== el) item.classList.remove('open');
-        });
-    }
-    if (isOpen) {
-        el.classList.remove('open');
-    } else {
-        el.classList.add('open');
-    }
-}
-
-function toggleMenu(menuId) {
-    const d = document.getElementById(menuId);
-    if (!d) return;
-    const isShowing = d.style.display === 'block';
-    document.querySelectorAll('.dropdown').forEach(dropdown => {
-        dropdown.style.display = 'none';
-        dropdown.querySelectorAll('.has-submenu.open').forEach(sub => sub.classList.remove('open'));
-    });
-    if (!isShowing) {
-        d.style.display = 'block';
-    }
-}
-
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.menu-item')) {
-        document.querySelectorAll('.dropdown').forEach(d => {
-            d.style.display = 'none';
-            d.querySelectorAll('.has-submenu.open').forEach(sub => sub.classList.remove('open'));
-        });
-    }
-});
-
-// Global Enter-to-Tab logic for ALL modals (mimics VFP9)
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        const activeEl = document.activeElement;
-        
-        // Find if we are inside a visible modal
-        const modal = activeEl.closest('.modal');
-        if (!modal || activeEl.closest('#openingChitta')) return;
-        
-        // Find all focusable elements in this modal (inputs, selects, buttons)
-        const focusable = Array.from(modal.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, button'));
-        
-        const idx = focusable.indexOf(activeEl);
-        if (idx !== -1) {
-            e.preventDefault();
-            
-            // Custom VFP9 rule for Grid Qty fields: 
-            // If empty and we press enter, jump to the end of the form (freight/commPct)
-            if (activeEl.classList.contains('b-grid-qty') && !activeEl.value) {
-                const freight = modal.querySelector('#billFreight');
-                if (freight) { freight.focus(); return; }
-            }
-            if (activeEl.classList.contains('grid-qty') && !activeEl.value) {
-                const comm = modal.querySelector('#chittaCommPct');
-                if (comm) { comm.focus(); return; }
-            }
-            
-            // Focus the next focusable element
-            if (idx < focusable.length - 1) {
-                focusable[idx + 1].focus();
-            }
-        }
-    }
-});
-
-// Global Account Name Auto-fetch
-document.addEventListener('change', function(e) {
-    const el = e.target;
-    // If the changed element is an Account Name field
-    if (el.id && el.id.endsWith('AccountName')) {
-        const prefix = el.id.replace('AccountName', '');
-        const idField = document.getElementById(prefix + 'AccountId') || document.getElementById('advAccountId');
-        if (idField && typeof accounts !== 'undefined') {
-            const acc = accounts.find(a => (a.accountName || '').toLowerCase().includes(el.value.trim().toLowerCase()));
-            if (acc) {
-                idField.value = acc.partyId || acc.id;
-            } else {
-                idField.value = '';
-            }
-        }
-    }
-
-    // If the changed element is an Account ID field (ends with AccountId)
-    if (el.id && el.id.endsWith('AccountId')) {
-        const prefix = el.id.replace('AccountId', '');
-        const nameField = document.getElementById(prefix + 'AccountName') || document.getElementById('buyerName') || document.getElementById('advAccountName');
-        if (nameField && typeof accounts !== 'undefined') {
-            const valStr = el.value.trim();
-            const acc = accounts.find(a => String(a.partyId) === valStr || String(a.id) === valStr);
-            if (acc) {
-                nameField.value = acc.accountName;
-            } else {
-                nameField.value = '';
-            }
-        }
-    }
-});
-
-
-// --- USER AUTHENTICATION & ACCESS CONTROL ---
-let currentUser = 'ADMIN';
-
-const USER_CREDENTIALS = {
-    'ADMIN': 'admin',
-    'USER1': '250'
-};
-
-const USER1_ALLOWED_WINDOWS = new Set([
-    'account',                  // Account Master
-    'groupList',                // Group lookup for account
-    'openingChitta',            // Chitta entry
-    'chittaPayment',            // Chitta Payment
-    'chittaRegister',           // Chitta Register
-    'chittaPaymentRegister',    // Chitta Payment Register
-    'chittaPendingRegister',    // Chitta Pending Register
-    'billRegister',             // Bill Register
-    'itemRegister',             // Item Register
-    'itemSummaryReport',        // Item Summary
-    'obFindDialog',
-    'cpFindDialog',
-    'rvFindDialog',
-    'chittaFindDialog',
-    'billFindDialog',
-    'vfpReportPreviewModal'
-]);
-
-function onUserChange() {
-    const u = document.getElementById('username')?.value || 'ADMIN';
-    const pInput = document.getElementById('password');
-    const err = document.getElementById('loginErrorMsg');
-    if (err) err.innerText = '';
-    if (pInput) {
-        pInput.value = (u === 'ADMIN') ? 'admin' : '250';
-        pInput.focus();
-        pInput.select();
-    }
-}
-
-function login() {
-    const u = (document.getElementById('username')?.value || 'ADMIN').trim().toUpperCase();
-    const p = (document.getElementById('password')?.value || '').trim();
-    const period = document.getElementById('period')?.value || '2023 - 2024';
-    const err = document.getElementById('loginErrorMsg');
-    
-    const expectedPass = USER_CREDENTIALS[u];
-    if (expectedPass === undefined) {
-        if (err) err.innerText = 'Invalid username!';
-        return;
-    }
-    if (p.toLowerCase() !== expectedPass.toLowerCase()) {
-        if (err) err.innerText = 'Invalid password!';
-        const pInput = document.getElementById('password');
-        if (pInput) { pInput.focus(); pInput.select(); }
-        return;
-    }
-    
-    currentUser = u;
-    if (err) err.innerText = '';
-    
-    const info = document.getElementById('userInfo');
-    if (info) info.innerText = `${currentUser} | ${period}`;
-    
-    applyUserPermissions(currentUser);
-    
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('app').style.filter = 'none';
-    document.getElementById('app').style.pointerEvents = 'auto';
-    showToast(`Logged in as ${currentUser}`);
-}
-
-function logout() {
-    closeAll();
-    currentUser = 'ADMIN';
-    document.getElementById('app').style.filter = 'blur(3px)';
-    document.getElementById('app').style.pointerEvents = 'none';
-    const overlay = document.getElementById('loginOverlay');
-    if (overlay) overlay.style.display = 'flex';
-    const uSel = document.getElementById('username');
-    if (uSel) uSel.value = 'ADMIN';
-    const pInput = document.getElementById('password');
-    if (pInput) pInput.value = 'admin';
-    const err = document.getElementById('loginErrorMsg');
-    if (err) err.innerText = '';
-    applyUserPermissions('ADMIN');
-}
-
-function canAccessWindow(windowId) {
-    if (currentUser === 'ADMIN') return true;
-    if (currentUser === 'USER1') {
-        return USER1_ALLOWED_WINDOWS.has(windowId);
-    }
-    return false;
-}
-
-function applyUserPermissions(user) {
-    const isUser1 = (user === 'USER1');
-    
-    const masterItems = document.querySelectorAll('#master > .dropdown-item');
-    masterItems.forEach(item => {
-        const text = item.textContent || '';
-        if (isUser1) {
-            if (text.includes('Account')) {
-                item.style.display = 'flex';
-                const subItems = item.querySelectorAll('.submenu .dropdown-item');
-                subItems.forEach(si => {
-                    const siOnclick = si.getAttribute('onclick') || '';
-                    si.style.display = siOnclick.includes("'account'") ? 'flex' : 'none';
-                });
-            } else if (text.includes('Opening')) {
-                item.style.display = 'flex';
-                const subItems = item.querySelectorAll('.submenu .dropdown-item');
-                subItems.forEach(si => {
-                    const siOnclick = si.getAttribute('onclick') || '';
-                    si.style.display = siOnclick.includes("'openingChitta'") ? 'flex' : 'none';
-                });
-            } else {
-                item.style.display = 'none';
-            }
-        } else {
-            item.style.display = 'flex';
-            const subItems = item.querySelectorAll('.submenu .dropdown-item');
-            subItems.forEach(si => si.style.display = 'flex');
-        }
-    });
-    
-    const transItems = document.querySelectorAll('#transaction > .dropdown-item');
-    transItems.forEach(item => {
-        const onclickAttr = item.getAttribute('onclick') || '';
-        if (isUser1) {
-            const allowed = onclickAttr.includes("'openingChitta'") || onclickAttr.includes("'chittaPayment'");
-            item.style.display = allowed ? 'flex' : 'none';
-        } else {
-            item.style.display = 'flex';
-        }
-    });
-    
-    const reportItems = document.querySelectorAll('#reports > .dropdown-item');
-    reportItems.forEach(item => {
-        const onclickAttr = item.getAttribute('onclick') || '';
-        if (isUser1) {
-            const allowed = onclickAttr.includes("'chittaRegister'") || onclickAttr.includes("'itemSummaryReport'");
-            item.style.display = allowed ? 'flex' : 'none';
-        } else {
-            item.style.display = 'flex';
-        }
-    });
-    
-    const utilMenu = document.querySelector('.menu-bar .menu-item[onclick*="utility"]');
-    if (utilMenu) {
-        utilMenu.style.display = isUser1 ? 'none' : 'block';
-    }
-    
-    const toolbarTools = document.querySelectorAll('.toolbar .tool');
-    toolbarTools.forEach(tool => {
-        const onclickAttr = tool.getAttribute('onclick') || '';
-        if (isUser1) {
-            const allowed = onclickAttr.includes("'account'") || 
-                            onclickAttr.includes("'openingChitta'") || 
-                            onclickAttr.includes("'chittaPayment'") || 
-                            onclickAttr.includes("'chittaRegister'") || 
-                            onclickAttr.includes("'itemSummaryReport'");
-            tool.style.display = allowed ? 'block' : 'none';
-        } else {
-            tool.style.display = 'block';
-        }
-    });
-    
-    const btnPayment = document.getElementById('btnChittaPayment');
-    if (btnPayment) {
-        btnPayment.style.display = 'inline-block';
-        btnPayment.disabled = false;
-    }
-    
-    }
-
-function showToast(msg) {
-    const x = document.getElementById("toast");
-    x.innerText = msg;
-    x.className = "show";
-    setTimeout(() => { x.className = x.className.replace("show", ""); }, 3000);
-}
-
-// --- ITEM MASTER LOGIC ---
-let items = [];
-
-async function fetchItems() {
-    try {
-        const res = await fetch('/api/items');
-        if(res.ok) {
-            items = await res.json();
-            const datalist = document.getElementById('itemMasterList');
-            if(datalist) {
-                datalist.innerHTML = '';
-                items.forEach(i => {
-                    const opt = document.createElement('option');
-                    opt.value = i.des;
-                    opt.dataset.id = i.id;
-                    datalist.appendChild(opt);
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-}
-
-// Call fetchItems when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    fetchItems();
-});
-
-// --- CHITTA LOGIC ---
-function calcChitta() {
-    const rates = document.querySelectorAll('#chittaGrid .grid-rate');
-    const qtys = document.querySelectorAll('#chittaGrid .grid-qty');
-    const amts = document.querySelectorAll('#chittaGrid .grid-amt');
-    
-    let totalGross = 0;
-    
-    for(let i=0; i < rates.length; i++) {
-        let r = parseFloat(rates[i].value) || 0;
-        let q = parseFloat(qtys[i].value) || 0;
-        let amt = Math.round(r * q * 100) / 100;
-        if(amt > 0) { amts[i].value = amt.toFixed(2); totalGross += amt; } else { amts[i].value = ''; }
-    }
-    totalGross = Math.round(totalGross * 100) / 100;
-    
-    const grossEl = document.getElementById('chittaGross');
-    if(grossEl) grossEl.value = totalGross.toFixed(2);
-    
-    let commPct = 0;
-    const commPctEl = document.getElementById('chittaCommPct');
-    if (commPctEl) commPct = parseFloat(commPctEl.value) || 0;
-    
-    let commAmt = Math.round((totalGross * (commPct / 100)) * 100) / 100;
-    const commAmtEl = document.getElementById('chittaCommAmt');
-    if(commAmtEl) commAmtEl.value = commAmt.toFixed(2);
-    
-    let advance = 0;
-    const advanceEl = document.getElementById('chittaAdvance');
-    if(advanceEl) advance = parseFloat(advanceEl.value) || 0;
-    
-    let freight = 0;
-    const freightEl = document.getElementById('chittaFreight');
-    if(freightEl) freight = parseFloat(freightEl.value) || 0;
-    
-    let net = Math.round((totalGross - commAmt - advance - freight) * 100) / 100;
-    const netEl = document.getElementById('chittaNet');
-    if(netEl) netEl.value = net.toFixed(2);
-}
-
-
-let chittas = [];
-let currentChittaIndex = -1;
-let chittaMode = 'VIEW'; // VIEW or EDIT
-
-function setChittaMode(mode) {
-    chittaMode = mode;
-    
-    const fields = document.querySelectorAll('.chitta-field, #chittaGrid .grid-item, #chittaGrid .grid-rate, #chittaGrid .grid-qty');
-    fields.forEach(f => {
-        if(mode === 'VIEW') {
-            f.setAttribute('readonly', 'true');
-            f.setAttribute('disabled', 'true');
-        } else {
-            f.removeAttribute('readonly');
-            f.removeAttribute('disabled');
-        }
-    });
-
-    // Handle Buttons - KEEP NEW AND SAVE ALWAYS USABLE
-    const btnNew = document.getElementById('btnChittaNew');
-    if (btnNew) btnNew.disabled = false;
-    const btnSave = document.getElementById('btnChittaSave');
-    if (btnSave) btnSave.disabled = (mode === 'VIEW');
-
-    const btnChange = document.getElementById('btnChittaChange');
-    if (btnChange) btnChange.disabled = (mode === 'EDIT');
-    const btnDel = document.getElementById('btnChittaDelete');
-    if (btnDel) btnDel.disabled = (mode === 'EDIT');
-    const btnTop = document.getElementById('btnChittaTop');
-    if (btnTop) btnTop.disabled = (mode === 'EDIT');
-    const btnPrev = document.getElementById('btnChittaPrev');
-    if (btnPrev) btnPrev.disabled = (mode === 'EDIT');
-    const btnNext = document.getElementById('btnChittaNext');
-    if (btnNext) btnNext.disabled = (mode === 'EDIT');
-    const btnBottom = document.getElementById('btnChittaBottom');
-    if (btnBottom) btnBottom.disabled = (mode === 'EDIT');
-    
-    const btnFind = document.getElementById('btnChittaFind') || document.getElementById('btnChittaSave');
-    if (btnFind) btnFind.innerHTML = '<u>F</u>ind';
-    
-    const btnCloseCancel = document.getElementById('btnChittaCloseCancel');
-    if (btnCloseCancel) {
-        if(mode === 'EDIT') {
-            btnCloseCancel.innerHTML = '<u>C</u>ancel';
-        } else {
-            btnCloseCancel.innerHTML = '<u>C</u>lose';
-        }
-    }
-}
-
-async function autoAssignNextChittaNo() {
-    const curDate = document.getElementById('chittaDate')?.value || getTodayDateStr();
-    try {
-        const res = await fetch(`/api/chittas/next-no?date=${encodeURIComponent(curDate)}`);
-        if (res.ok) {
-            const data = await res.json();
-            if (data && data.nextNo) {
-                document.getElementById('chittaNo').value = data.nextNo;
-                return;
-            }
-        }
-    } catch(e) {}
-    
-    // Fallback: calculate client-side from loaded chittas for this date
-    let max = 0;
-    (chittas || []).forEach(c => {
-        if (c.chittaDate && c.chittaDate.substring(0, 10) === curDate) {
-            const n = parseInt(c.chittaNo, 10);
-            if (!isNaN(n) && n > max) max = n;
-        }
-    });
-    document.getElementById('chittaNo').value = String(max + 1);
-}
-
-async function chittaActionNew() {
-    // Always cleanly initialize a fresh new Chitta entry
-    clearChitta();
-    setChittaMode('EDIT');
-    await autoAssignNextChittaNo();
-    const curNo = document.getElementById('chittaNo')?.value || '';
-    showToast(`🟢 Ready for New Chitta #${curNo}. Enter Farmer Name and Items, then click Save (F9).`);
-    const fCodeInput = document.getElementById('farmerAccountId');
-    const fNameInput = document.getElementById('farmerName');
-    const focusTarget = fCodeInput || fNameInput;
-    if (focusTarget) {
-        focusTarget.focus();
-        if (typeof focusTarget.select === 'function') focusTarget.select();
-    }
-}
-
-function chittaActionChange() {
-    if(currentChittaIndex >= 0) {
-        setChittaMode('EDIT');
-        showToast("Chitta is now in edit mode.");
-        const firstGridItem = document.querySelector('#chittaGrid .grid-item');
-        if (firstGridItem && !firstGridItem.disabled && !firstGridItem.readOnly) {
-            firstGridItem.focus();
-        }
-    } else {
-        alert("Select a record to change.");
-    }
-}
-
-function chittaActionFindSave() {
-    if(chittaMode === 'EDIT') {
-        saveChitta();
-    } else {
-        findChitta();
-    }
-}
-
-function chittaActionCloseCancel() {
-    if(chittaMode === 'EDIT') {
-        // Cancel edits, revert to current record
-        if(currentChittaIndex >= 0) {
-            displayChitta(currentChittaIndex);
-        } else {
-            clearChitta();
-        }
-        setChittaMode('VIEW');
-    } else {
-        closeAll();
-    }
-}
-
-
-
-
-// =========================================================================
-// MULTI-DEVICE SINGLE DATABASE REAL-TIME LIVE SYNC ENGINE
-// =========================================================================
-let lastSyncVersion = null;
-let lastSyncChittaCount = null;
-let lastSyncPaidCount = null;
-let lastSyncAccountCount = null;
-let isSyncInProgress = false;
-
-function openMultiDeviceModal() {
-    const m = document.getElementById('multiDeviceModal');
-    if (m) m.style.display = 'flex';
-}
-
-function closeMultiDeviceModal() {
-    const m = document.getElementById('multiDeviceModal');
-    if (m) m.style.display = 'none';
-}
-
-function copyWifiUrl() {
-    const url = document.getElementById('wifiServerUrl')?.value;
-    if (url && navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => showToast('Wi-Fi URL copied: ' + url));
-    } else {
-        showToast('Wi-Fi URL: ' + url);
-    }
-}
-
-function copyCloudUrl() {
-    const url = document.getElementById('cloudServerUrl')?.value;
-    if (url && navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => showToast('Cloud URL copied: ' + url));
-    } else {
-        showToast('Cloud URL: ' + url);
-    }
-}
-
-async function forceSyncNow() {
-    showToast('Synchronizing with Central Database...');
-    lastSyncVersion = null;
-    if (typeof window.processOfflineSyncQueue === 'function') {
-        await window.processOfflineSyncQueue();
-    }
-    await checkSyncStatus(true);
-    showToast('Synchronization Complete!');
-}
-
-function showLiveSyncToast(msg) {
-    let t = document.getElementById('liveSyncToast');
-    if (!t) {
-        t = document.createElement('div');
-        t.id = 'liveSyncToast';
-        t.style.cssText = 'position:fixed; top:40px; right:20px; background:#1b5e20; color:#fff; padding:8px 16px; border-radius:4px; font-size:12px; font-weight:bold; z-index:99999; box-shadow:0 4px 12px rgba(0,0,0,0.3); transition:all 0.3s ease;';
-        document.body.appendChild(t);
-    }
-    t.innerText = msg;
-    t.style.display = 'block';
-    t.style.opacity = '1';
-    setTimeout(() => {
-        t.style.opacity = '0';
-        setTimeout(() => { t.style.display = 'none'; }, 300);
-    }, 2200);
-}
-
-function updateLiveSyncBadge(isOnline, status) {
-    const badge = document.getElementById('liveSyncStatusIndicator');
-    const modalText = document.getElementById('syncModalStatusText');
-    const qLen = (typeof window.getOfflineQueueLength === 'function') ? window.getOfflineQueueLength() : 0;
-    if (isOnline) {
-        if (badge) {
-            badge.style.background = '#d4edda';
-            badge.style.color = '#155724';
-            badge.style.borderColor = '#c3e6cb';
-            if (qLen > 0) {
-                badge.innerText = '?? Syncing (' + qLen + ' pending)...';
-            } else {
-                badge.innerText = '?? Single DB: Connected | Auto-Sync ON';
-            }
-        }
-        if (modalText && status) {
-            modalText.innerText = 'Connected ? Chittas: ' + (status.chittaCount || 0) + ' (' + (status.paidCount || 0) + ' Paid) ? Accounts: ' + (status.accountCount || 0) + (qLen > 0 ? ' ? ' + qLen + ' syncing' : '');
-            modalText.style.color = '#28a745';
-        }
-    } else {
-        if (badge) {
-            badge.style.background = '#fff3cd';
-            badge.style.color = '#856404';
-            badge.style.borderColor = '#ffeeba';
-            if (qLen > 0) {
-                badge.innerText = '?? Offline Mode (' + qLen + ' pending sync)';
-            } else {
-                badge.innerText = '?? Offline Mode (Local Storage)';
-            }
-        }
-        if (modalText) {
-            modalText.innerText = 'Offline Mode ? All changes saved locally and will auto-sync when reconnected.' + (qLen > 0 ? ' (' + qLen + ' pending)' : '');
-            modalText.style.color = '#856404';
-        }
-    }
-}
-
-async function checkSyncStatus(force = false) {
-    if (isSyncInProgress) return;
-    try {
-        const res = await fetch('/api/sync/status', {
-            cache: 'no-store',
-            headers: { 'Bypass-Tunnel-Reminder': 'true' }
-        });
-        if (!res.ok) {
-            updateLiveSyncBadge(false);
-            return;
-        }
-        const status = await res.json();
-        if (status.status === 'OFFLINE_STANDALONE') {
-            updateLiveSyncBadge(false, status);
-            return;
-        }
-        updateLiveSyncBadge(true, status);
-
-        // If there are pending offline records, sync them now that server is reachable!
-        if (typeof window.processOfflineSyncQueue === 'function') {
-            window.processOfflineSyncQueue();
-        }
-
-        if (!force && lastSyncVersion === null) {
-            lastSyncVersion = status.version;
-            lastSyncChittaCount = status.chittaCount;
-            lastSyncPaidCount = status.paidCount;
-            lastSyncAccountCount = status.accountCount;
-            return;
-        }
-
-        const changed = force ||
-                        (status.version !== lastSyncVersion) ||
-                        (status.chittaCount !== lastSyncChittaCount) ||
-                        (status.paidCount !== lastSyncPaidCount) ||
-                        (status.accountCount !== lastSyncAccountCount);
-
-        if (changed) {
-            isSyncInProgress = true;
-            lastSyncVersion = status.version;
-            lastSyncChittaCount = status.chittaCount;
-            lastSyncPaidCount = status.paidCount;
-            lastSyncAccountCount = status.accountCount;
-
-            // Silently reload data arrays without touching active edit screen
-            if (typeof fetchChittas === 'function') await fetchChittas(false);
-            if (typeof fetchAccounts === 'function') await fetchAccounts(false);
-            if (typeof fetchCashVouchers === 'function') await fetchCashVouchers(false);
-            if (typeof fetchReceiptVouchers === 'function') await fetchReceiptVouchers(false);
-
-            // Refresh open registers without interrupting current editing
-            refreshOpenRegistersSilently();
-
-            if (!force) {
-                showLiveSyncToast('🟢 Data synchronized: Update from another device applied');
-            }
-            isSyncInProgress = false;
-        }
-    } catch(err) {
-        updateLiveSyncBadge(false);
-    }
-}
-
-function refreshOpenRegistersSilently() {
-    try {
-        const chittaReg = document.getElementById('chittaRegister');
-        if (chittaReg && chittaReg.style.display !== 'none' && typeof loadChittaRegister === 'function') {
-            loadChittaRegister();
-        }
-        const chittaPendingReg = document.getElementById('chittaPendingRegister');
-        if (chittaPendingReg && chittaPendingReg.style.display !== 'none' && typeof loadChittaPendingRegister === 'function') {
-            loadChittaPendingRegister();
-        }
-        const chittaPayReg = document.getElementById('chittaPaymentRegister');
-        if (chittaPayReg && chittaPayReg.style.display !== 'none' && typeof loadChittaPaymentRegister === 'function') {
-            loadChittaPaymentRegister();
-        }
-        const cpModal = document.getElementById('chittaPayment');
-        if (cpModal && cpModal.style.display !== 'none' && typeof loadAllPendingChittasForPayment === 'function') {
-            loadAllPendingChittasForPayment();
-        }
-        const cpReg = document.getElementById('cashPaymentRegister');
-        if (cpReg && cpReg.style.display !== 'none' && typeof loadCashPaymentRegister === 'function') {
-            loadCashPaymentRegister();
-        }
-        const rcReg = document.getElementById('receiptRegister');
-        if (rcReg && rcReg.style.display !== 'none' && typeof loadReceiptRegister === 'function') {
-            loadReceiptRegister();
-        }
-        const billReg = document.getElementById('billRegister');
-        if (billReg && billReg.style.display !== 'none' && typeof loadBillRegister === 'function') {
-            loadBillRegister();
-        }
-        const dcModal = document.getElementById('dailyCash');
-        if (dcModal && dcModal.style.display !== 'none' && typeof refreshDailyCashReport === 'function') {
-            refreshDailyCashReport();
-        }
-        // Preserve active #openingChitta view/entry without jumping on sync
-    } catch(e) {
-        console.warn('Error during silent register refresh:', e);
-    }
-}
-
-// Start live sync poller: runs every 2.5 seconds
-setInterval(() => checkSyncStatus(), 2500);
-setTimeout(() => checkSyncStatus(true), 1200);
-
-// --- VOUCHER & REGISTER PRINTING & EXCEL UTILITIES ---
 
 // --- KANI DRUMSTICK AGENCIES PRE-PRINTED BILL & CHITTA PRINTING SYSTEM ---
 
@@ -6507,7 +4604,7 @@ function applyPeriodDateDefaults(forceReset) {
         'cpPayDate', 'cpPayPaidOn', 'dcoDate',
         'cpDate', 'rvDate', 'amDate', 'dobDate',
         'obRegDate', 'daybookDate', 'daybookFromDate', 'daybookToDate',
-        'chittaPendRegDate', 'chittaPendingRegDate'
+        'chittaPendRegDate', 'chittaPendingRegDate', 'purchaseDate', 'ppDate', 'pobDate', 'prFromDate', 'prToDate', 'pprFromDate', 'pprToDate'
     ];
 
     singleDateInputs.forEach(id => {
@@ -11582,6 +9679,1097 @@ function loadDailyOpeningBalance() {
             showToast("Daily Opening Balance Loaded");
         })
         .catch(err => console.error('Error fetching daily opening balance:', err));
+}
+
+
+
+// =========================================================================
+// PURCHASE & TRADER TRANSACTION & REPORT LOGIC
+// =========================================================================
+let purchases = [];
+let currentPurchaseIndex = -1;
+let purchasePayments = [];
+let currentPpIndex = -1;
+let currentPurchaseTrader = null;
+
+function initPurchaseWindow() {
+    initPurchaseGrid();
+    loadPurchases().then(() => {
+        if (purchases.length > 0) {
+            displayPurchase(purchases.length - 1);
+        } else {
+            newPurchase();
+        }
+    });
+}
+
+function initPurchaseGrid() {
+    const tbody = document.getElementById('purchaseGridBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+        addPurchaseGridRow(i);
+    }
+}
+
+function addPurchaseGridRow(rowIdx) {
+    const tbody = document.getElementById('purchaseGridBody');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.id = 'pGridRow' + rowIdx;
+    tr.innerHTML = `
+        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${rowIdx + 1}</td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
+            <input type="text" id="pGridItem${rowIdx}" class="p-field" list="itemMasterList" style="border:none; width:100%; outline:none; background:transparent;" onchange="onPurchaseItemSelect(${rowIdx})">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
+            <input type="number" step="1" id="pGridBags${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent;" oninput="calcPurchaseTotals()">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
+            <input type="number" step="0.01" id="pGridRate${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent;" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
+            <input type="number" step="0.01" id="pGridWeight${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent;" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
+        </td>
+        <td style="border-bottom:1px solid #ccc; text-align:right; padding-right:4px;">
+            <input type="text" id="pGridAmt${rowIdx}" readonly style="border:none; width:100%; text-align:right; font-weight:bold; background:transparent;" value="0.00">
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function calcPurchaseRowAmount(rowIdx) {
+    const rate = parseFloat(document.getElementById('pGridRate' + rowIdx)?.value) || 0;
+    const weight = parseFloat(document.getElementById('pGridWeight' + rowIdx)?.value) || 0;
+    const bags = parseFloat(document.getElementById('pGridBags' + rowIdx)?.value) || 0;
+    const qty = weight > 0 ? weight : bags;
+    const amt = rate * qty;
+    const amtEl = document.getElementById('pGridAmt' + rowIdx);
+    if (amtEl) amtEl.value = amt > 0 ? amt.toFixed(2) : '0.00';
+}
+
+function calcPurchaseTotals() {
+    let totBags = 0;
+    let totWeight = 0;
+    let gross = 0;
+
+    for (let i = 0; i < 20; i++) {
+        const bagsEl = document.getElementById('pGridBags' + i);
+        const weightEl = document.getElementById('pGridWeight' + i);
+        const amtEl = document.getElementById('pGridAmt' + i);
+        if (!bagsEl && !weightEl) break;
+
+        const b = parseFloat(bagsEl?.value) || 0;
+        const w = parseFloat(weightEl?.value) || 0;
+        const a = parseFloat(amtEl?.value) || 0;
+
+        totBags += b;
+        totWeight += w;
+        gross += a;
+    }
+
+    const freight = parseFloat(document.getElementById('purchaseFreight')?.value) || 0;
+    const packing = parseFloat(document.getElementById('purchasePacking')?.value) || 0;
+    const other = parseFloat(document.getElementById('purchaseOther')?.value) || 0;
+    const discount = parseFloat(document.getElementById('purchaseDiscount')?.value) || 0;
+
+    const net = gross + freight + packing + other - discount;
+
+    const elTotBags = document.getElementById('purchaseTotalBags');
+    const elTotWeight = document.getElementById('purchaseTotalWeight');
+    const elGross = document.getElementById('purchaseGrossAmount');
+    const elNet = document.getElementById('purchaseNetPayable');
+
+    if (elTotBags) elTotBags.value = totBags;
+    if (elTotWeight) elTotWeight.value = totWeight.toFixed(2);
+    if (elGross) elGross.value = gross.toFixed(2);
+    if (elNet) elNet.value = (net > 0 ? net : 0).toFixed(2);
+}
+
+function onPurchaseItemSelect(rowIdx) {
+    // If last row has input, append next row
+    const tbody = document.getElementById('purchaseGridBody');
+    if (tbody && rowIdx === tbody.children.length - 1) {
+        addPurchaseGridRow(rowIdx + 1);
+    }
+}
+
+async function loadPurchases() {
+    try {
+        const res = await fetch('/api/purchases');
+        if (res.ok) {
+            purchases = await res.json();
+            if (!Array.isArray(purchases)) purchases = [];
+        }
+    } catch(e) {
+        console.error('loadPurchases error:', e);
+    }
+}
+
+function displayPurchase(idx) {
+    if (!purchases || idx < 0 || idx >= purchases.length) return;
+    currentPurchaseIndex = idx;
+    const p = purchases[idx];
+
+    document.getElementById('purchaseModalTitle').innerText = 'Purchase - Viewing #' + (p.purchaseNo || p.id);
+    document.getElementById('purchaseDate').value = (p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : getTodayDateStr());
+    document.getElementById('purchaseNo').value = p.purchaseNo || '';
+
+    let traderCode = '';
+    let traderName = '';
+    if (p.traderAccount) {
+        traderCode = p.traderAccount.partyId || p.traderAccount.id || '';
+        traderName = p.traderAccount.accountName || '';
+        currentPurchaseTrader = p.traderAccount;
+    }
+    document.getElementById('purchaseAccountId').value = traderCode;
+    document.getElementById('purchaseAccountName').value = traderName;
+
+    // Items
+    initPurchaseGrid();
+    if (p.items && p.items.length > 0) {
+        const tbody = document.getElementById('purchaseGridBody');
+        tbody.innerHTML = '';
+        p.items.forEach((item, r) => {
+            addPurchaseGridRow(r);
+            const descEl = document.getElementById('pGridItem' + r);
+            const bagsEl = document.getElementById('pGridBags' + r);
+            const rateEl = document.getElementById('pGridRate' + r);
+            const wtEl = document.getElementById('pGridWeight' + r);
+            const amtEl = document.getElementById('pGridAmt' + r);
+
+            if (descEl) descEl.value = item.itemDescription || (item.item ? item.item.itemName : '');
+            if (bagsEl) bagsEl.value = item.bags || '';
+            if (rateEl) rateEl.value = item.rate != null ? item.rate : '';
+            if (wtEl) wtEl.value = item.quantity != null ? item.quantity : '';
+            if (amtEl) amtEl.value = item.amount != null ? parseFloat(item.amount).toFixed(2) : '0.00';
+        });
+        // Add 2 extra empty rows for editing
+        const len = p.items.length;
+        addPurchaseGridRow(len);
+        addPurchaseGridRow(len + 1);
+    }
+
+    document.getElementById('purchaseFreight').value = p.freightCharges || '';
+    document.getElementById('purchasePacking').value = p.packingCharges || '';
+    document.getElementById('purchaseOther').value = p.otherCharges || '';
+    document.getElementById('purchaseDiscount').value = p.discount || '';
+
+    calcPurchaseTotals();
+    lookupPurchaseTraderBalance(traderCode);
+}
+
+function newPurchase() {
+    currentPurchaseIndex = -1;
+    currentPurchaseTrader = null;
+    document.getElementById('purchaseModalTitle').innerText = 'Purchase - New';
+    document.getElementById('purchaseDate').value = getTodayDateStr();
+    document.getElementById('purchaseAccountId').value = '';
+    document.getElementById('purchaseAccountName').value = '';
+    document.getElementById('purchaseBalance').value = '0.00';
+
+    document.getElementById('purchaseFreight').value = '';
+    document.getElementById('purchasePacking').value = '';
+    document.getElementById('purchaseOther').value = '';
+    document.getElementById('purchaseDiscount').value = '';
+    initPurchaseGrid();
+    calcPurchaseTotals();
+
+    fetch('/api/purchases/next-no')
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.nextNo) {
+                document.getElementById('purchaseNo').value = data.nextNo;
+            }
+        })
+        .catch(() => {
+            let maxNo = 0;
+            (purchases || []).forEach(p => {
+                const n = parseInt(p.purchaseNo, 10);
+                if (!isNaN(n) && n > maxNo) maxNo = n;
+            });
+            document.getElementById('purchaseNo').value = maxNo + 1;
+        });
+
+    document.getElementById('purchaseAccountId').focus();
+}
+
+function topPurchase() {
+    if (purchases && purchases.length > 0) displayPurchase(0);
+}
+function prevPurchase() {
+    if (purchases && purchases.length > 0 && currentPurchaseIndex > 0) {
+        displayPurchase(currentPurchaseIndex - 1);
+    }
+}
+function nextPurchase() {
+    if (purchases && purchases.length > 0 && currentPurchaseIndex < purchases.length - 1) {
+        displayPurchase(currentPurchaseIndex + 1);
+    }
+}
+function bottomPurchase() {
+    if (purchases && purchases.length > 0) displayPurchase(purchases.length - 1);
+}
+
+function onPurchaseTraderCodeChange() {
+    const code = document.getElementById('purchaseAccountId').value.trim();
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.id) === code
+    );
+    if (acc) {
+        currentPurchaseTrader = acc;
+        document.getElementById('purchaseAccountName').value = acc.accountName || '';
+        lookupPurchaseTraderBalance(acc.id);
+    } else {
+        showToast('Trader code not found');
+    }
+}
+
+function onPurchaseTraderNameChange() {
+    const name = document.getElementById('purchaseAccountName').value.trim();
+    if (!name) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (a.accountName || '').toUpperCase() === name.toUpperCase()
+    );
+    if (acc) {
+        currentPurchaseTrader = acc;
+        document.getElementById('purchaseAccountId').value = acc.partyId || acc.id || '';
+        lookupPurchaseTraderBalance(acc.id);
+    }
+}
+
+function lookupPurchaseTraderBalance(accId) {
+    if (!accId) return;
+    fetch('/api/reports/ledger?accountId=' + accId)
+        .then(res => res.json())
+        .then(data => {
+            const bal = (data && data.closingBalance != null) ? parseFloat(data.closingBalance) : 0;
+            document.getElementById('purchaseBalance').value = bal.toFixed(2);
+        })
+        .catch(() => {});
+}
+
+async function savePurchase() {
+    const purNo = document.getElementById('purchaseNo')?.value.trim();
+    const purDate = document.getElementById('purchaseDate')?.value;
+    const traderName = document.getElementById('purchaseAccountName')?.value.trim();
+
+    if (!purNo) {
+        alert('Please enter Purchase No');
+        return;
+    }
+    if (!traderName) {
+        alert('Please select Trader Name');
+        return;
+    }
+
+    // Resolve trader account
+    let traderAcc = currentPurchaseTrader;
+    if (!traderAcc) {
+        traderAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+        );
+    }
+
+    if (!traderAcc) {
+        alert('Trader Account must be an existing account in Account Master');
+        return;
+    }
+
+    // Build items
+    const items = [];
+    const tbody = document.getElementById('purchaseGridBody');
+    const rowCount = tbody ? tbody.children.length : 0;
+
+    for (let i = 0; i < rowCount; i++) {
+        const desc = document.getElementById('pGridItem' + i)?.value.trim();
+        const bags = parseFloat(document.getElementById('pGridBags' + i)?.value) || 0;
+        const rate = parseFloat(document.getElementById('pGridRate' + i)?.value) || 0;
+        const wt = parseFloat(document.getElementById('pGridWeight' + i)?.value) || 0;
+        const amt = parseFloat(document.getElementById('pGridAmt' + i)?.value) || 0;
+
+        if (desc || amt > 0 || wt > 0) {
+            items.push({
+                itemDescription: desc || 'Drumstick',
+                bags: bags,
+                rate: rate,
+                quantity: wt,
+                amount: amt > 0 ? amt : (rate * (wt > 0 ? wt : bags))
+            });
+        }
+    }
+
+    if (items.length === 0) {
+        alert('Please add at least one item line');
+        return;
+    }
+
+    calcPurchaseTotals();
+
+    const gross = parseFloat(document.getElementById('purchaseGrossAmount')?.value) || 0;
+    const freight = parseFloat(document.getElementById('purchaseFreight')?.value) || 0;
+    const packing = parseFloat(document.getElementById('purchasePacking')?.value) || 0;
+    const other = parseFloat(document.getElementById('purchaseOther')?.value) || 0;
+    const discount = parseFloat(document.getElementById('purchaseDiscount')?.value) || 0;
+    const net = parseFloat(document.getElementById('purchaseNetPayable')?.value) || gross;
+
+    const payload = {
+        purchaseNo: purNo,
+        purchaseDate: purDate,
+        traderAccount: { id: traderAcc.id, partyId: traderAcc.partyId, accountName: traderAcc.accountName },
+        grossAmount: gross,
+        freightCharges: freight,
+        packingCharges: packing,
+        otherCharges: other,
+        discount: discount,
+        netPayable: net,
+        items: items
+    };
+
+    try {
+        let isEdit = currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex]?.id;
+        let url = isEdit ? '/api/purchases/' + purchases[currentPurchaseIndex].id : '/api/purchases';
+        let method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const saved = await res.json();
+            showToast('Purchase Saved Successfully!');
+            await loadPurchases();
+            const idx = purchases.findIndex(p => p.id === saved.id || p.purchaseNo === saved.purchaseNo);
+            displayPurchase(idx >= 0 ? idx : purchases.length - 1);
+        } else {
+            const err = await res.json().catch(() => ({}));
+            alert('Error saving purchase: ' + (err.message || res.statusText));
+        }
+    } catch(err) {
+        console.error('Save purchase error:', err);
+        alert('Network error saving purchase: ' + err.message);
+    }
+}
+
+async function deletePurchase() {
+    if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
+        alert('No purchase selected to delete');
+        return;
+    }
+    const p = purchases[currentPurchaseIndex];
+    if (!confirm('Are you sure you want to delete Purchase #' + (p.purchaseNo || p.id) + '?')) return;
+
+    try {
+        const res = await fetch('/api/purchases/' + p.id, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Purchase Deleted');
+            await loadPurchases();
+            if (purchases.length > 0) {
+                displayPurchase(Math.max(0, currentPurchaseIndex - 1));
+            } else {
+                newPurchase();
+            }
+        } else {
+            alert('Failed to delete purchase');
+        }
+    } catch(e) {
+        console.error('Delete purchase error:', e);
+    }
+}
+
+function editPurchase() {
+    document.getElementById('purchaseAccountId').focus();
+    showToast('Editing purchase...');
+}
+
+function printPurchaseInvoice() {
+    if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
+        alert('Please select a purchase to print');
+        return;
+    }
+    const p = purchases[currentPurchaseIndex];
+    const traderName = p.traderAccount ? p.traderAccount.accountName : 'Trader';
+    let rowsHtml = '';
+    (p.items || []).forEach((it, idx) => {
+        rowsHtml += `
+            <tr>
+                <td style="text-align:center; padding:4px; border:1px solid #777;">${idx + 1}</td>
+                <td style="padding:4px; border:1px solid #777;">${it.itemDescription || ''}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777;">${it.bags || 0}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.quantity || 0).toFixed(2)}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.rate || 0).toFixed(2)}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777; font-weight:bold;">${parseFloat(it.amount || 0).toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    const htmlContent = `
+        <div style="font-family:Tahoma, Arial, sans-serif; padding:15px; color:#000;">
+            <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
+                <h2 style="margin:0;">KANI DRUMSTICK AGENCIES</h2>
+                <div style="font-size:12px;">PURCHASE INVOICE</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:10px;">
+                <div><strong>Trader:</strong> ${traderName}</div>
+                <div><strong>Invoice No:</strong> ${p.purchaseNo || p.id} &nbsp;|&nbsp; <strong>Date:</strong> ${p.purchaseDate || ''}</div>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:10px;">
+                <thead>
+                    <tr style="background:#eee;">
+                        <th style="border:1px solid #777; padding:4px; width:40px;">Sno</th>
+                        <th style="border:1px solid #777; padding:4px;">Item</th>
+                        <th style="border:1px solid #777; padding:4px; width:60px; text-align:right;">Bags</th>
+                        <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Weight</th>
+                        <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Rate</th>
+                        <th style="border:1px solid #777; padding:4px; width:100px; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+            <div style="display:flex; justify-content:flex-end; font-size:12px;">
+                <table style="width:280px; border-collapse:collapse;">
+                    <tr><td style="padding:2px 4px;">Gross:</td><td style="text-align:right; font-weight:bold;">${parseFloat(p.grossAmount || 0).toFixed(2)}</td></tr>
+                    <tr><td style="padding:2px 4px;">Freight:</td><td style="text-align:right;">${parseFloat(p.freightCharges || 0).toFixed(2)}</td></tr>
+                    <tr><td style="padding:2px 4px;">Packing:</td><td style="text-align:right;">${parseFloat(p.packingCharges || 0).toFixed(2)}</td></tr>
+                    <tr><td style="padding:2px 4px;">Discount:</td><td style="text-align:right;">${parseFloat(p.discount || 0).toFixed(2)}</td></tr>
+                    <tr style="font-size:14px; font-weight:bold; border-top:1px solid #000;"><td style="padding:4px;">Net Payable:</td><td style="text-align:right; color:#0055aa; padding:4px;">${parseFloat(p.netPayable || 0).toFixed(2)}</td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+    openVfpReportPreview('Purchase Invoice #' + (p.purchaseNo || p.id), htmlContent, true);
+}
+
+function findPurchaseTrader() {
+    const code = prompt('Enter Trader Code or Name:');
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() ||
+        String(a.accountName).toUpperCase().includes(code.toUpperCase())
+    );
+    if (acc) {
+        currentPurchaseTrader = acc;
+        document.getElementById('purchaseAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('purchaseAccountName').value = acc.accountName || '';
+        lookupPurchaseTraderBalance(acc.id);
+    } else {
+        alert('Trader not found');
+    }
+}
+
+function findPurchaseBill() {
+    findPurchaseDialog();
+}
+
+function findPurchaseDialog() {
+    const num = prompt('Enter Purchase No to find:');
+    if (!num) return;
+    const idx = (purchases || []).findIndex(p => String(p.purchaseNo) === num.trim() || String(p.id) === num.trim());
+    if (idx >= 0) {
+        displayPurchase(idx);
+    } else {
+        alert('Purchase No #' + num + ' not found');
+    }
+}
+
+// -------------------------------------------------------------------------
+// PURCHASE PAYMENT
+// -------------------------------------------------------------------------
+let currentPpTrader = null;
+
+function initPurchasePaymentWindow() {
+    loadPurchasePayments().then(() => {
+        newPurchasePayment();
+    });
+}
+
+async function loadPurchasePayments() {
+    try {
+        const res = await fetch('/api/purchase-payments');
+        if (res.ok) {
+            purchasePayments = await res.json();
+            if (!Array.isArray(purchasePayments)) purchasePayments = [];
+        }
+    } catch(e) {
+        console.error('loadPurchasePayments error:', e);
+    }
+}
+
+function newPurchasePayment() {
+    currentPpIndex = -1;
+    currentPpTrader = null;
+    document.getElementById('ppModalTitle').innerText = 'Purchase Payment - New';
+    document.getElementById('ppDate').value = getTodayDateStr();
+    document.getElementById('ppAccountId').value = '';
+    document.getElementById('ppAccountName').value = '';
+    document.getElementById('ppBalance').value = '0.00';
+    document.getElementById('ppAmount').value = '';
+    document.getElementById('ppDiscount').value = '';
+    document.getElementById('ppPaidTo').value = '';
+    document.getElementById('ppNarration').value = '';
+
+    let maxNo = 0;
+    (purchasePayments || []).forEach(pp => {
+        const n = parseInt(pp.paymentNo, 10);
+        if (!isNaN(n) && n > maxNo) maxNo = n;
+    });
+    document.getElementById('ppNo').value = maxNo + 1;
+
+    const tbody = document.getElementById('ppPendingBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">Select a trader to view pending bills</td></tr>';
+
+    document.getElementById('ppAccountId').focus();
+}
+
+function displayPurchasePayment(idx) {
+    if (!purchasePayments || idx < 0 || idx >= purchasePayments.length) return;
+    currentPpIndex = idx;
+    const pp = purchasePayments[idx];
+
+    document.getElementById('ppModalTitle').innerText = 'Purchase Payment - Viewing #' + (pp.paymentNo || pp.id);
+    document.getElementById('ppDate').value = (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : getTodayDateStr());
+    document.getElementById('ppNo').value = pp.paymentNo || '';
+
+    let traderCode = '';
+    let traderName = '';
+    if (pp.traderAccount) {
+        traderCode = pp.traderAccount.partyId || pp.traderAccount.id || '';
+        traderName = pp.traderAccount.accountName || '';
+        currentPpTrader = pp.traderAccount;
+    }
+    document.getElementById('ppAccountId').value = traderCode;
+    document.getElementById('ppAccountName').value = traderName;
+    document.getElementById('ppAmount').value = pp.amount != null ? parseFloat(pp.amount).toFixed(2) : '';
+    document.getElementById('ppDiscount').value = pp.discount != null ? parseFloat(pp.discount).toFixed(2) : '';
+    document.getElementById('ppMethod').value = pp.paymentMethod || 'CASH';
+    document.getElementById('ppPaidTo').value = pp.paidTo || '';
+    document.getElementById('ppNarration').value = pp.narration || '';
+
+    lookupPpTraderBalance(traderCode);
+}
+
+function topPp() { if (purchasePayments.length > 0) displayPurchasePayment(0); }
+function prevPp() { if (purchasePayments.length > 0 && currentPpIndex > 0) displayPurchasePayment(currentPpIndex - 1); }
+function nextPp() { if (purchasePayments.length > 0 && currentPpIndex < purchasePayments.length - 1) displayPurchasePayment(currentPpIndex + 1); }
+function bottomPp() { if (purchasePayments.length > 0) displayPurchasePayment(purchasePayments.length - 1); }
+
+function onPpTraderCodeChange() {
+    const code = document.getElementById('ppAccountId').value.trim();
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.id) === code
+    );
+    if (acc) {
+        currentPpTrader = acc;
+        document.getElementById('ppAccountName').value = acc.accountName || '';
+        lookupPpTraderBalance(acc.id);
+        loadPendingPurchasesForTrader(acc.id);
+    } else {
+        showToast('Trader code not found');
+    }
+}
+
+function onPpTraderNameChange() {
+    const name = document.getElementById('ppAccountName').value.trim();
+    if (!name) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (a.accountName || '').toUpperCase() === name.toUpperCase()
+    );
+    if (acc) {
+        currentPpTrader = acc;
+        document.getElementById('ppAccountId').value = acc.partyId || acc.id || '';
+        lookupPpTraderBalance(acc.id);
+        loadPendingPurchasesForTrader(acc.id);
+    }
+}
+
+function findPpTrader() {
+    const code = prompt('Enter Trader Code or Name:');
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() ||
+        String(a.accountName).toUpperCase().includes(code.toUpperCase())
+    );
+    if (acc) {
+        currentPpTrader = acc;
+        document.getElementById('ppAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('ppAccountName').value = acc.accountName || '';
+        lookupPpTraderBalance(acc.id);
+        loadPendingPurchasesForTrader(acc.id);
+    }
+}
+
+function lookupPpTraderBalance(accId) {
+    if (!accId) return;
+    fetch('/api/reports/ledger?accountId=' + accId)
+        .then(res => res.json())
+        .then(data => {
+            const bal = (data && data.closingBalance != null) ? parseFloat(data.closingBalance) : 0;
+            document.getElementById('ppBalance').value = bal.toFixed(2);
+        })
+        .catch(() => {});
+}
+
+async function loadPendingPurchasesForTrader(accId) {
+    const tbody = document.getElementById('ppPendingBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px;">Loading pending bills...</td></tr>';
+    try {
+        const res = await fetch('/api/purchases/pending?accountId=' + accId);
+        const data = await res.json();
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#287733; font-weight:bold;">No pending bills for this trader</td></tr>';
+            return;
+        }
+
+        let htmlRows = '';
+        data.forEach(p => {
+            const net = parseFloat(p.netPayable) || 0;
+            const paid = parseFloat(p.paidAmount) || 0;
+            const bal = net - paid;
+            htmlRows += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
+                        <input type="checkbox" class="pp-bill-chk" data-id="${p.id}" data-bal="${bal}" onchange="onPpBillSelectChange()">
+                    </td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.purchaseNo || p.id}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${(p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '')}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">${net.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">${paid.toFixed(2)}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px; font-weight:bold; color:#0055aa;">${bal.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = htmlRows;
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#c00;">Error loading pending bills</td></tr>';
+    }
+}
+
+function onPpBillSelectChange() {
+    let tot = 0;
+    document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
+        tot += parseFloat(chk.getAttribute('data-bal')) || 0;
+    });
+    if (tot > 0) {
+        document.getElementById('ppAmount').value = tot.toFixed(2);
+    }
+}
+
+async function savePurchasePayment() {
+    const payNo = document.getElementById('ppNo')?.value.trim();
+    const payDate = document.getElementById('ppDate')?.value;
+    const amount = parseFloat(document.getElementById('ppAmount')?.value) || 0;
+    const discount = parseFloat(document.getElementById('ppDiscount')?.value) || 0;
+    const method = document.getElementById('ppMethod')?.value || 'CASH';
+    const paidTo = document.getElementById('ppPaidTo')?.value.trim();
+    const narration = document.getElementById('ppNarration')?.value.trim();
+
+    if (!currentPpTrader) {
+        alert('Please select Trader');
+        return;
+    }
+    if (amount <= 0) {
+        alert('Please enter valid Payment Amount');
+        return;
+    }
+
+    // Get selected purchase bill IDs
+    const purchaseIds = [];
+    document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
+        const pid = parseInt(chk.getAttribute('data-id'), 10);
+        if (pid) purchaseIds.push(pid);
+    });
+
+    const payload = {
+        paymentNo: payNo,
+        paymentDate: payDate,
+        traderAccount: { id: currentPpTrader.id, partyId: currentPpTrader.partyId, accountName: currentPpTrader.accountName },
+        amount: amount,
+        discount: discount,
+        paymentMethod: method,
+        paidTo: paidTo,
+        narration: narration,
+        purchaseId: purchaseIds.length > 0 ? purchaseIds[0] : null
+    };
+
+    try {
+        const res = await fetch('/api/purchase-payments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Purchase Payment Saved Successfully!');
+            await loadPurchasePayments();
+            newPurchasePayment();
+        } else {
+            alert('Failed to save payment');
+        }
+    } catch(err) {
+        console.error('Save PP error:', err);
+        alert('Network error saving payment');
+    }
+}
+
+async function deletePurchasePayment() {
+    if (currentPpIndex < 0 || !purchasePayments[currentPpIndex]) {
+        alert('No payment selected to delete');
+        return;
+    }
+    const pp = purchasePayments[currentPpIndex];
+    if (!confirm('Are you sure you want to delete Payment #' + (pp.paymentNo || pp.id) + '?')) return;
+
+    try {
+        const res = await fetch('/api/purchase-payments/' + pp.id, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Payment Deleted');
+            await loadPurchasePayments();
+            newPurchasePayment();
+        }
+    } catch(e) {
+        console.error('Delete PP error:', e);
+    }
+}
+
+// -------------------------------------------------------------------------
+// PURCHASE OPENING BALANCE
+// -------------------------------------------------------------------------
+let currentPobTrader = null;
+
+function initPurchaseOpeningBalanceWindow() {
+    document.getElementById('pobDate').value = getTodayDateStr();
+    document.getElementById('pobAccountId').value = '';
+    document.getElementById('pobAccountName').value = '';
+    document.getElementById('pobAmount').value = '';
+    document.getElementById('pobNarration').value = '';
+    document.getElementById('pobAccountId').focus();
+}
+
+function onPobTraderCodeChange() {
+    const code = document.getElementById('pobAccountId').value.trim();
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.id) === code
+    );
+    if (acc) {
+        currentPobTrader = acc;
+        document.getElementById('pobAccountName').value = acc.accountName || '';
+    }
+}
+
+function onPobTraderNameChange() {
+    const name = document.getElementById('pobAccountName').value.trim();
+    if (!name) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (a.accountName || '').toUpperCase() === name.toUpperCase()
+    );
+    if (acc) {
+        currentPobTrader = acc;
+        document.getElementById('pobAccountId').value = acc.partyId || acc.id || '';
+    }
+}
+
+function findPobTrader() {
+    const code = prompt('Enter Trader Code or Name:');
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() ||
+        String(a.accountName).toUpperCase().includes(code.toUpperCase())
+    );
+    if (acc) {
+        currentPobTrader = acc;
+        document.getElementById('pobAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('pobAccountName').value = acc.accountName || '';
+    }
+}
+
+async function savePurchaseOpeningBalance() {
+    const pobDate = document.getElementById('pobDate')?.value;
+    const amt = parseFloat(document.getElementById('pobAmount')?.value) || 0;
+    const type = document.getElementById('pobType')?.value || 'CREDIT';
+    const narration = document.getElementById('pobNarration')?.value.trim();
+
+    if (!currentPobTrader) {
+        alert('Please select Trader Account');
+        return;
+    }
+    if (amt <= 0) {
+        alert('Please enter valid Opening Balance Amount');
+        return;
+    }
+
+    const payload = {
+        balanceDate: pobDate,
+        traderAccount: { id: currentPobTrader.id, partyId: currentPobTrader.partyId, accountName: currentPobTrader.accountName },
+        amount: amt,
+        balanceType: type,
+        narration: narration
+    };
+
+    try {
+        const res = await fetch('/api/purchase-opening-balances', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast('Purchase Opening Balance Saved');
+            closeWin('purchaseOpeningBalance');
+        } else {
+            alert('Failed to save opening balance');
+        }
+    } catch(e) {
+        alert('Network error saving opening balance');
+    }
+}
+
+// -------------------------------------------------------------------------
+// PURCHASE REGISTERS & REPORTS
+// -------------------------------------------------------------------------
+function initPurchaseRegisterWindow() {
+    const curDate = getTodayDateStr();
+    if (!document.getElementById('prFromDate').value) document.getElementById('prFromDate').value = curDate;
+    if (!document.getElementById('prToDate').value) document.getElementById('prToDate').value = curDate;
+    loadPurchaseRegister();
+}
+
+async function loadPurchaseRegister() {
+    const tbody = document.getElementById('purchaseRegisterBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#555;">Loading Purchase records...</td></tr>';
+
+    try {
+        let url = '/api/reports/purchase-register?';
+        const fromDate = document.getElementById('prFromDate')?.value;
+        const toDate = document.getElementById('prToDate')?.value;
+        const traderName = document.getElementById('prAccountName')?.value.trim();
+
+        if (fromDate) url += 'startDate=' + fromDate + '&';
+        if (toDate) url += 'endDate=' + toDate + '&';
+
+        if (traderName) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+            );
+            if (acc) url += 'accountId=' + acc.id;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No purchase records found</td></tr>';
+            resetPrTotals();
+            return;
+        }
+
+        let totBags = 0, totWeight = 0, totGross = 0, totFreight = 0, totPack = 0, totDisc = 0, totNet = 0;
+        let rowsHtml = '';
+
+        data.forEach((p, idx) => {
+            const b = parseFloat(p.bags) || 0;
+            const w = parseFloat(p.weight) || 0;
+            const g = parseFloat(p.grossAmount) || 0;
+            const f = parseFloat(p.freight) || 0;
+            const pk = (parseFloat(p.packing) || 0) + (parseFloat(p.other) || 0);
+            const d = parseFloat(p.discount) || 0;
+            const n = parseFloat(p.netPayable) || 0;
+
+            totBags += b;
+            totWeight += w;
+            totGross += g;
+            totFreight += f;
+            totPack += pk;
+            totDisc += d;
+            totNet += n;
+
+            const dtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${p.purchaseNo || p.id}</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.traderName || '—'}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${b}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${w.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${g.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${f.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${pk.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${d.toFixed(2)}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; font-weight:bold; color:#0055aa;">${n.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('prTotBags').innerText = totBags;
+        document.getElementById('prTotWeight').innerText = totWeight.toFixed(2);
+        document.getElementById('prTotGross').innerText = totGross.toFixed(2);
+        document.getElementById('prTotFreight').innerText = totFreight.toFixed(2);
+        document.getElementById('prTotPack').innerText = totPack.toFixed(2);
+        document.getElementById('prTotDisc').innerText = totDisc.toFixed(2);
+        document.getElementById('prTotNet').innerText = totNet.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#c00;">Error loading purchase register</td></tr>';
+    }
+}
+
+function resetPrTotals() {
+    ['prTotBags', 'prTotWeight', 'prTotGross', 'prTotFreight', 'prTotPack', 'prTotDisc', 'prTotNet'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '0.00';
+    });
+}
+
+function initPurchasePaymentRegisterWindow() {
+    const curDate = getTodayDateStr();
+    if (!document.getElementById('pprFromDate').value) document.getElementById('pprFromDate').value = curDate;
+    if (!document.getElementById('pprToDate').value) document.getElementById('pprToDate').value = curDate;
+    loadPurchasePaymentRegister();
+}
+
+async function loadPurchasePaymentRegister() {
+    const tbody = document.getElementById('purchasePaymentRegisterBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#555;">Loading Payment records...</td></tr>';
+
+    try {
+        let url = '/api/reports/purchase-payment-register?';
+        const fromDate = document.getElementById('pprFromDate')?.value;
+        const toDate = document.getElementById('pprToDate')?.value;
+        const traderName = document.getElementById('pprAccountName')?.value.trim();
+
+        if (fromDate) url += 'startDate=' + fromDate + '&';
+        if (toDate) url += 'endDate=' + toDate + '&';
+
+        if (traderName) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+            );
+            if (acc) url += 'accountId=' + acc.id;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#888;">No purchase payment records found</td></tr>';
+            document.getElementById('pprTotAmount').innerText = '0.00';
+            document.getElementById('pprTotDiscount').innerText = '0.00';
+            return;
+        }
+
+        let totAmt = 0, totDisc = 0;
+        let rowsHtml = '';
+
+        data.forEach((pp, idx) => {
+            const amt = parseFloat(pp.amount) || 0;
+            const disc = parseFloat(pp.discount) || 0;
+            totAmt += amt;
+            totDisc += disc;
+
+            const dtStr = pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${pp.paymentNo || pp.id}</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${pp.traderName || '—'}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${pp.paymentMethod || 'CASH'}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold;">${amt.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${disc.toFixed(2)}</td>
+                    <td style="border-bottom:1px solid #ccc;">${pp.narration || ''}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('pprTotAmount').innerText = totAmt.toFixed(2);
+        document.getElementById('pprTotDiscount').innerText = totDisc.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#c00;">Error loading payment register</td></tr>';
+    }
+}
+
+function initPurchasePendingRegisterWindow() {
+    loadPurchasePendingRegister();
+}
+
+function onPpndTraderChange() {
+    loadPurchasePendingRegister();
+}
+
+async function loadPurchasePendingRegister() {
+    const tbody = document.getElementById('purchasePendingRegisterBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:#555;">Loading pending purchases...</td></tr>';
+
+    try {
+        let url = '/api/reports/purchase-pending-register?';
+        const traderName = document.getElementById('ppndAccountName')?.value.trim();
+
+        if (traderName) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+            );
+            if (acc) url += 'accountId=' + acc.id;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:#287733; font-weight:bold;">No pending purchase bills</td></tr>';
+            document.getElementById('ppndTotNet').innerText = '0.00';
+            document.getElementById('ppndTotPaid').innerText = '0.00';
+            document.getElementById('ppndTotBal').innerText = '0.00';
+            return;
+        }
+
+        let totNet = 0, totPaid = 0, totBal = 0;
+        let rowsHtml = '';
+
+        data.forEach((p, idx) => {
+            const net = parseFloat(p.netPayable) || 0;
+            const paid = parseFloat(p.paidAmount) || 0;
+            const bal = parseFloat(p.balance) || (net - paid);
+
+            totNet += net;
+            totPaid += paid;
+            totBal += bal;
+
+            const dtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${p.purchaseNo || p.id}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.traderName || '—'}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${net.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${paid.toFixed(2)}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; font-weight:bold; color:#c00;">${bal.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('ppndTotNet').innerText = totNet.toFixed(2);
+        document.getElementById('ppndTotPaid').innerText = totPaid.toFixed(2);
+        document.getElementById('ppndTotBal').innerText = totBal.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#c00;">Error loading pending register</td></tr>';
+    }
 }
 
 </script>

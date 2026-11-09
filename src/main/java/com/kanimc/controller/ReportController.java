@@ -36,6 +36,9 @@ public class ReportController {
     @Autowired private com.kanimc.repository.CashVoucherRepository cashVoucherRepository;
     @Autowired private com.kanimc.repository.ReceiptVoucherRepository receiptVoucherRepository;
     @Autowired private com.kanimc.repository.OpeningBalanceRepository openingBalanceRepository;
+    @Autowired private com.kanimc.repository.PurchaseRepository purchaseRepository;
+    @Autowired private com.kanimc.repository.PurchasePaymentRepository purchasePaymentRepository;
+    @Autowired private com.kanimc.repository.PurchaseOpeningBalanceRepository purchaseOpeningBalanceRepository;
 
     @GetMapping("/cash-payment-register")
     public List<com.kanimc.entity.CashVoucher> getCashPaymentRegister(
@@ -861,11 +864,82 @@ public class ReportController {
             .contentType(org.springframework.http.MediaType.parseMediaType("text/csv; charset=UTF-8"))
             .body(bytes);
     }
+
+    @GetMapping("/purchase-register")
+    public List<Map<String, Object>> getPurchaseRegister(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long accountId) {
+        List<com.kanimc.entity.Purchase> list = purchaseRepository.findFiltered(startDate, endDate, accountId);
+        return list.stream().map(p -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", p.getId());
+            map.put("purchaseNo", p.getPurchaseNo());
+            map.put("purchaseDate", p.getPurchaseDate());
+            map.put("traderName", p.getTraderAccount() != null ? p.getTraderAccount().getAccountName() : "Unknown");
+            map.put("traderAccount", p.getTraderAccount());
+            map.put("grossAmount", p.getGrossAmount() != null ? p.getGrossAmount() : BigDecimal.ZERO);
+            map.put("freight", p.getFreightCharges() != null ? p.getFreightCharges() : BigDecimal.ZERO);
+            map.put("packing", p.getPackingCharges() != null ? p.getPackingCharges() : BigDecimal.ZERO);
+            map.put("other", p.getOtherCharges() != null ? p.getOtherCharges() : BigDecimal.ZERO);
+            map.put("discount", p.getDiscount() != null ? p.getDiscount() : BigDecimal.ZERO);
+            map.put("netPayable", p.getNetPayable() != null ? p.getNetPayable() : BigDecimal.ZERO);
+            map.put("paid", Boolean.TRUE.equals(p.getPaid()));
+            
+            BigDecimal weight = BigDecimal.ZERO;
+            BigDecimal bags = BigDecimal.ZERO;
+            if (p.getItems() != null) {
+                for (var item : p.getItems()) {
+                    if (item.getQuantity() != null) weight = weight.add(item.getQuantity());
+                    if (item.getBags() != null) bags = bags.add(item.getBags());
+                }
+            }
+            map.put("weight", weight);
+            map.put("bags", bags);
+            map.put("items", p.getItems() != null ? p.getItems() : Collections.emptyList());
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    @GetMapping("/purchase-payment-register")
+    public List<Map<String, Object>> getPurchasePaymentRegister(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long accountId) {
+        List<com.kanimc.entity.PurchasePayment> list = purchasePaymentRepository.findFiltered(startDate, endDate, accountId);
+        return list.stream().map(pp -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", pp.getId());
+            map.put("paymentNo", pp.getPaymentNo());
+            map.put("paymentDate", pp.getPaymentDate());
+            map.put("traderName", pp.getTraderAccount() != null ? pp.getTraderAccount().getAccountName() : "Unknown");
+            map.put("amount", pp.getAmount() != null ? pp.getAmount() : BigDecimal.ZERO);
+            map.put("discount", pp.getDiscount() != null ? pp.getDiscount() : BigDecimal.ZERO);
+            map.put("paymentMethod", pp.getPaymentMethod());
+            map.put("narration", pp.getNarration());
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    @GetMapping("/purchase-pending-register")
+    public List<Map<String, Object>> getPurchasePendingRegister(
+            @RequestParam(required = false) Long accountId) {
+        List<com.kanimc.entity.Purchase> list = purchaseRepository.findPending(accountId);
+        return list.stream().map(p -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", p.getId());
+            map.put("purchaseNo", p.getPurchaseNo());
+            map.put("purchaseDate", p.getPurchaseDate());
+            map.put("traderName", p.getTraderAccount() != null ? p.getTraderAccount().getAccountName() : "Unknown");
+            map.put("traderAccount", p.getTraderAccount());
+            BigDecimal net = p.getNetPayable() != null ? p.getNetPayable() : BigDecimal.ZERO;
+            BigDecimal paidAmt = p.getPaidAmount() != null ? p.getPaidAmount() : BigDecimal.ZERO;
+            BigDecimal balance = net.subtract(paidAmt);
+            map.put("netPayable", net);
+            map.put("paidAmount", paidAmt);
+            map.put("balance", balance.compareTo(BigDecimal.ZERO) > 0 ? balance : net);
+            return map;
+        }).collect(Collectors.toList());
+    }
+
 }
-
-
-
-
-
-
-
