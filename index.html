@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_4"></script>
+<script src="gh_pages_adapter.js?v=20261109_5"></script>
 <script>
 if ('serviceWorker' in navigator) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -4708,6 +4708,10 @@ async function checkSyncStatus(force = false) {
             return;
         }
         const status = await res.json();
+        if (status.status === 'OFFLINE_STANDALONE') {
+            updateLiveSyncBadge(false, status);
+            return;
+        }
         updateLiveSyncBadge(true, status);
 
         // If there are pending offline records, sync them now that server is reachable!

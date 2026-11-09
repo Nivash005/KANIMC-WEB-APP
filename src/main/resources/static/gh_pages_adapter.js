@@ -115,11 +115,16 @@
             return window.location.origin;
         }
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
+        // Clear dead / expired Cloudflare tunnel domains from localStorage
+        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats'))) {
+            cs = 'https://consultancy-feb-grams-manager.trycloudflare.com';
+            try { localStorage.setItem('KANIMC_SERVER_URL', cs); } catch(e) {}
+        }
         if (!cs) {
             if (!window.location.hostname.includes('github.io') && window.location.port !== '') {
                 cs = window.location.origin;
             } else {
-                cs = 'https://lake-divine-independent-emacs.trycloudflare.com';
+                cs = 'https://consultancy-feb-grams-manager.trycloudflare.com';
             }
         }
         return cs;
@@ -133,6 +138,11 @@
         if (!queue || queue.length === 0) return;
 
         if (navigator.onLine === false) return;
+
+        // Circuit breaker: do not spam network if server is marked down and still cooling down
+        if (!isCentralServerAlive && Date.now() - lastServerProbeTime < SERVER_DOWN_COOLDOWN_MS) {
+            return;
+        }
 
         const centralServer = getCentralServerUrl();
         if (!centralServer) return;
@@ -203,11 +213,16 @@
                     break;
                 }
             } catch(netErr) {
-                console.warn('[KANIMC Sync] Network interrupted during sync:', netErr);
+                console.warn('[KANIMC Sync] Server not reachable during sync, will retry later:', netErr.message || netErr);
                 remainingQueue.push(item);
                 remainingQueue.push(...queue.slice(i + 1));
                 isCentralServerAlive = false;
                 lastServerProbeTime = Date.now();
+                SERVER_DOWN_COOLDOWN_MS = 30000;
+                // If dead tunnel in localStorage, purge it
+                if (centralServer && centralServer.includes('trycloudflare.com')) {
+                    try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
+                }
                 break;
             }
         }
