@@ -357,20 +357,113 @@ public class ReportController {
 
     @GetMapping("/daybook")
     public List<Map<String, Object>> getDaybook(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        LocalDate queryDate = date != null ? date : LocalDate.now();
-        List<com.kanimc.entity.AccountTransaction> txns = txnRepository.findByTransactionDate(queryDate);
-        return txns.stream().map(t -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("date", t.getTransactionDate());
-            map.put("docNo", t.getDocNo());
-            map.put("docCode", t.getDocCode());
-            map.put("accountName", t.getAccount() != null ? t.getAccount().getAccountName() : "Unknown");
-            map.put("narration", t.getNarration());
-            map.put("credit", t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO);
-            map.put("debit", t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO);
-            return map;
-        }).collect(Collectors.toList());
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+        LocalDate sDate = startDate != null ? startDate : (date != null ? date : LocalDate.now());
+        LocalDate eDate = endDate != null ? endDate : (date != null ? date : sDate);
+
+        Account cashAccount = accountRepository.findAll().stream()
+                .filter(a -> a.getAccountName() != null && "CASH".equalsIgnoreCase(a.getAccountName().trim()))
+                .findFirst().orElse(null);
+        if (cashAccount == null) {
+            cashAccount = accountRepository.findById(360L).orElse(null);
+        }
+
+        BigDecimal opening = BigDecimal.ZERO;
+        if (cashAccount != null && cashAccount.getOpeningBalance() != null) {
+            opening = cashAccount.getOpeningBalance();
+        }
+
+        List<com.kanimc.entity.ReceiptVoucher> allReceipts = receiptVoucherRepository.findAll();
+        for (var r : allReceipts) {
+            if (r.getVoucherDate() != null && r.getVoucherDate().isBefore(sDate) && r.getAmount() != null) {
+                opening = opening.add(r.getAmount());
+            }
+        }
+
+        List<com.kanimc.entity.CashVoucher> allCashVouchers = cashVoucherRepository.findAll();
+        for (var v : allCashVouchers) {
+            if (v.getVoucherDate() != null && v.getVoucherDate().isBefore(sDate) && v.getAmount() != null) {
+                opening = opening.subtract(v.getAmount());
+            }
+        }
+
+        List<Chitta> allChittas = chittaRepository.findAll();
+        for (var c : allChittas) {
+            LocalDate cDate = c.getPayDate() != null ? c.getPayDate() : c.getChittaDate();
+            if (cDate != null && cDate.isBefore(sDate)) {
+                if (Boolean.TRUE.equals(c.getPaid()) || (c.getPaymentMethod() != null && "CASH".equalsIgnoreCase(c.getPaymentMethod()))) {
+                    BigDecimal amt = c.getNetPayable() != null ? c.getNetPayable() : (c.getGrossAmount() != null ? c.getGrossAmount() : BigDecimal.ZERO);
+                    opening = opening.subtract(amt);
+                }
+            }
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        Map<String, Object> opRow = new LinkedHashMap<>();
+        opRow.put("date", "");
+        opRow.put("name", "OPENING BALANCE");
+        opRow.put("accountName", "OPENING BALANCE");
+        opRow.put("credit", opening);
+        opRow.put("debit", BigDecimal.ZERO);
+        opRow.put("isOpening", true);
+        result.add(opRow);
+
+        Map<LocalDate, BigDecimal> chittaPayByDate = new TreeMap<>();
+        for (var c : allChittas) {
+            LocalDate cDate = c.getPayDate() != null ? c.getPayDate() : c.getChittaDate();
+            if (cDate != null && !cDate.isBefore(sDate) && !cDate.isAfter(eDate)) {
+                if (Boolean.TRUE.equals(c.getPaid()) || (c.getPaymentMethod() != null && "CASH".equalsIgnoreCase(c.getPaymentMethod()))) {
+                    BigDecimal amt = c.getNetPayable() != null ? c.getNetPayable() : (c.getGrossAmount() != null ? c.getGrossAmount() : BigDecimal.ZERO);
+                    chittaPayByDate.put(cDate, chittaPayByDate.getOrDefault(cDate, BigDecimal.ZERO).add(amt));
+                }
+            }
+        }
+
+        for (Map.Entry<LocalDate, BigDecimal> entry : chittaPayByDate.entrySet()) {
+            if (entry.getValue().compareTo(BigDecimal.ZERO) > 0) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("date", entry.getKey().toString());
+                row.put("name", "CHITTA PAYMENT");
+                row.put("accountName", "CHITTA PAYMENT");
+                row.put("credit", BigDecimal.ZERO);
+                row.put("debit", entry.getValue());
+                result.add(row);
+            }
+        }
+
+        for (var v : allCashVouchers) {
+            if (v.getVoucherDate() != null && !v.getVoucherDate().isBefore(sDate) && !v.getVoucherDate().isAfter(eDate)) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("date", v.getVoucherDate().toString());
+                String pName = v.getAccount() != null && v.getAccount().getAccountName() != null ? v.getAccount().getAccountName() : "CASH PAYMENT";
+                row.put("name", pName);
+                row.put("accountName", pName);
+                row.put("credit", BigDecimal.ZERO);
+                row.put("debit", v.getAmount() != null ? v.getAmount() : BigDecimal.ZERO);
+                row.put("narration", v.getNarration());
+                result.add(row);
+            }
+        }
+
+        for (var r : allReceipts) {
+            if (r.getVoucherDate() != null && !r.getVoucherDate().isBefore(sDate) && !r.getVoucherDate().isAfter(eDate)) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("date", r.getVoucherDate().toString());
+                String pName = r.getAccount() != null && r.getAccount().getAccountName() != null ? r.getAccount().getAccountName() : "RECEIPT";
+                row.put("name", pName);
+                row.put("accountName", pName);
+                row.put("credit", r.getAmount() != null ? r.getAmount() : BigDecimal.ZERO);
+                row.put("debit", BigDecimal.ZERO);
+                row.put("narration", r.getNarration());
+                result.add(row);
+            }
+        }
+
+        return result;
     }
 
     @GetMapping("/item-register")
