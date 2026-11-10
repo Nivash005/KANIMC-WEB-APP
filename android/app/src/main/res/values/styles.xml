@@ -1,0 +1,14 @@
+<resources>
+    <style name="Theme.KANIMC" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">#0055aa</item>
+        <item name="colorPrimaryDark">#003366</item>
+        <item name="colorAccent">#316ac5</item>
+    </style>
+
+    <style name="Theme.KANIMC.Fullscreen" parent="Theme.KANIMC">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+</resources>
