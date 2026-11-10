@@ -34,7 +34,18 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_1"></script>
+<script src="gh_pages_adapter.js?v=20261110_1"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) {
+        navigator.serviceWorker.getRegistrations().then(regs => { for (let r of regs) r.unregister(); });
+        if ('caches' in window) { caches.keys().then(keys => keys.forEach(k => caches.delete(k))); }
+    } else {
+        window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    }
+}
+</script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}
@@ -177,6 +188,11 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="dropdown-item" onclick="openWin('receipt');event.stopPropagation()">Receipt</div>
 <div class="dropdown-item" onclick="openWin('cashPayment');event.stopPropagation()">Cash Payment</div>
 <div class="dropdown-item" onclick="openWin('dailyCashOpening');event.stopPropagation()">Daily Cash Opening</div>
+<div class="dropdown-item has-submenu" onclick="toggleSubmenu(event, this)">Purchase ▶<div class="submenu">
+<div class="dropdown-item" onclick="openWin('purchase');event.stopPropagation()">1. Purchase</div>
+<div class="dropdown-item" onclick="openWin('purchasePayment');event.stopPropagation()">2. Purchase Payment</div>
+<div class="dropdown-item" onclick="openWin('purchaseOpeningBalance');event.stopPropagation()">3. Purchase Opening Balance</div>
+</div></div>
 </div>
 </div>
 
@@ -509,7 +525,7 @@ Commission % <input id="commRatePct" value="10.00%">
             <label>Farmer Name</label> 
             <div style="display:flex; grid-column: span 3; gap:5px;">
                 <div style="flex:1; position:relative; display:flex;">
-                    <input id="farmerName" class="chitta-field" style="width:100%;" autocomplete="off" tabindex="5" oninput="onFarmerNameInput()" onkeydown="handleFarmerNameKey(event)">
+                    <input id="farmerName" class="chitta-field" style="width:100%;" autocomplete="off" tabindex="5" oninput="onFarmerNameInput()" onkeydown="handleFarmerNameKey(event)" onchange="onFarmerNameChange()" onblur="onFarmerNameBlur()">
                     <div id="farmerNameSuggestBox" style="display:none; position:absolute; left:0; top:100%; width:100%; min-width:380px; background:#fff; border:2px solid #0055aa; max-height:220px; overflow-y:auto; z-index:35000; box-shadow:0 6px 16px rgba(0,0,0,0.4); font-size:12px;"></div>
                 </div>
                 <button type="button" class="chitta-field" style="white-space:nowrap; padding:2px 10px; color:#555;" onclick="openWin('account')">Account Master</button>
@@ -603,7 +619,7 @@ Commission % <input id="commRatePct" value="10.00%">
                         <th style="border-bottom:1px solid #ccc; padding:2px;">Amount</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="chittaHistoryBody">
                     <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
                     <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
                     <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
@@ -613,7 +629,7 @@ Commission % <input id="commRatePct" value="10.00%">
             </table>
         </div>
         <div style="text-align:right;">
-            <input type="text" style="width:100px; text-align:right;" readonly>
+            <input type="text" id="chittaHistoryTotal" style="width:100px; text-align:right; font-weight:bold;" readonly>
         </div>
     </div>
 </div>
@@ -1726,45 +1742,57 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 34. DAYBOOK ================= -->
 <div class="modal-overlay" id="daybookReport">
-<div class="modal" style="width:1000px; background:#ffffe1;">
-<div class="modal-title">Daybook<span onclick="closeAll()">✖</span></div>
+<div class="modal" style="width:1000px; background:#f4f4f4; border:2px solid #555; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+<div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to right, #0055aa, #4a90e2); color:#fff; font-weight:bold; padding:4px 8px;">
+    <span>Daybook</span>
+    <span onclick="closeAll()" style="cursor:pointer; font-size:14px;">✖</span>
+</div>
 <div style="padding:10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="daybookDate" style="width:130px; background:#ccffff;"></div>
-        <div style="display:flex; gap:5px;">
-            <button style="padding:2px 10px;" onclick="loadDaybook()"><u>O</u>k</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('daybookReport', 'Day Book Report', true)">Print</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('daybookReport', 'Day Book Report', false)">View</button>
-            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('daybookReport', 'Day Book Report')">Excel</button>
-            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label style="font-weight:bold;">From</label> 
+            <input type="date" id="daybookFromDate" style="width:125px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px;">
+            <label style="font-weight:bold;">To</label> 
+            <input type="date" id="daybookToDate" style="width:125px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px;">
+            <input type="hidden" id="daybookDate">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:3px 12px; font-size:12px;" onclick="loadDaybook()"><u>O</u>k</button>
+            <button style="padding:3px 12px; font-size:12px;" onclick="printRegisterTable('daybookReport', 'Daybook', true)">Print</button>
+            <button style="padding:3px 12px; font-size:12px;" onclick="printRegisterTable('daybookReport', 'Daybook', false)">View</button>
+            <button style="padding:3px 12px; font-size:12px;" onclick="exportRegisterToExcel('daybookReport', 'Daybook')">Excel</button>
+            <button onclick="closeAll()" style="padding:3px 12px; font-size:12px;"><u>C</u>lose</button>
         </div>
     </div>
     
-    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
-        <table style="width:100%; border-collapse:collapse;">
+    <div style="border:1px solid #777; background:#fff; height:420px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
             <thead>
-                <tr style="font-weight:bold;">
-                    <th style="width:100px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Date</th>
-                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Name</th>
-                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Credit</th>
-                    <th style="width:120px; border-bottom:1px solid #ccc; text-align:center;">Debit</th>
+                <tr style="font-weight:bold; background:#e2e2e2; position:sticky; top:0; z-index:2; border-bottom:1px solid #888;">
+                    <th style="width:90px; border-right:1px solid #aaa; text-align:center; padding:5px 4px;">Date</th>
+                    <th style="border-right:1px solid #aaa; text-align:left; padding:5px 8px;">Name</th>
+                    <th style="width:130px; border-right:1px solid #aaa; text-align:right; padding:5px 8px;">Credit</th>
+                    <th style="width:130px; text-align:right; padding:5px 8px;">Debit</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr style="background:#99ffff;"><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-                <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tbody id="daybookBody">
+                <tr style="background:#00e5e5; font-weight:bold;">
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:3px 4px;">&nbsp;</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 8px;">OPENING BALANCE</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">0.00</td>
+                    <td style="border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">&nbsp;</td>
+                </tr>
             </tbody>
         </table>
     </div>
     
-    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; margin-top:5px; padding-right:20px;">
-        <div style="display:flex; gap:5px;">
-            <input type="text" style="width:100px; text-align:right;" readonly>
-            <input type="text" style="width:100px; text-align:right;" readonly>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px; margin-top:8px; padding-right:15px;">
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="daybookSumCredit" style="width:130px; text-align:right; font-weight:bold; font-size:13px; background:#fff; border:1px solid #777; padding:2px 6px;" readonly value="0.00">
+            <input type="text" id="daybookSumDebit" style="width:130px; text-align:right; font-weight:bold; font-size:13px; background:#fff; border:1px solid #777; padding:2px 6px;" readonly value="0.00">
         </div>
-        <div style="display:flex; justify-content:flex-start; width:205px;">
-            <input type="text" style="width:100px; text-align:right;" readonly>
+        <div style="display:flex; justify-content:flex-start; width:268px;">
+            <input type="text" id="daybookClosingBalance" style="width:130px; text-align:right; font-weight:bold; font-size:13px; background:#fff; border:1px solid #777; padding:2px 6px;" readonly value="0.00">
         </div>
     </div>
 </div>
@@ -2098,8 +2126,8 @@ Commission % <input id="commRatePct" value="10.00%">
             <thead>
                 <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
                     <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">S.No</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Code</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Account Name</th>
                     <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Amount</th>
                     <th style="border-bottom:1px solid #ccc; padding:4px;">Narration</th>
@@ -2140,8 +2168,8 @@ Commission % <input id="commRatePct" value="10.00%">
             <thead>
                 <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
                     <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">S.No</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Code</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Account Name</th>
                     <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Amount</th>
                     <th style="border-bottom:1px solid #ccc; padding:4px;">Narration</th>
@@ -2303,6 +2331,427 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 
+
+<!-- ================= 38. PURCHASE ================= -->
+<div class="modal-overlay" id="purchase">
+<div class="modal" style="width:1120px; max-width:98vw; padding:4px; background:#c0c0c0; border:2px solid #666; box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+<div class="modal-title" id="purchaseModalTitle" style="border:1px solid #777; font-weight:bold; background:linear-gradient(to right, #0055aa, #4a90e2); color:#fff; display:flex; justify-content:space-between; align-items:center; padding:3px 6px;">
+    <span>Purchase</span>
+    <span onclick="closeAll()" style="cursor:pointer; font-size:14px;">✖</span>
+</div>
+
+<div style="display:flex; gap:6px; margin-top:4px;">
+    <!-- LEFT MAIN SECTION -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+        <!-- Header Info (3 Rows) -->
+        <div style="border:1px solid #fff; padding:6px; background:#d4d0c8; display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <!-- Row 1: Date, Code, Supplier Name, Account Master button -->
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="width:45px;">Date</label>
+                <input type="date" id="purchaseDate" class="p-field" data-next="purchaseAccountId" style="width:125px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px;">
+                
+                <label style="margin-left:10px; width:40px;">Code</label>
+                <div style="display:flex;">
+                    <input id="purchaseAccountId" onchange="onPurchaseTraderCodeChange()" class="p-field" data-next="purchaseAccountName" style="width:80px; padding:2px 4px; border:1px solid #777; font-size:12px;">
+                    <button style="width:20px; padding:0; cursor:pointer;" onclick="findPurchaseTrader()" title="Lookup Supplier">▼</button>
+                </div>
+
+                <label style="margin-left:10px;">Supplier Name</label>
+                <input id="purchaseAccountName" list="accountNamesList" onchange="onPurchaseTraderNameChange()" style="flex:1; min-width:200px; padding:2px 4px; border:1px solid #777; font-size:12px;" class="p-field" data-next="purchasePhone">
+                
+                <button onclick="openWin('account')" style="padding:2px 8px; font-size:11px; white-space:nowrap; cursor:pointer;">Account Master</button>
+            </div>
+
+            <!-- Row 2: No, Phone -->
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="width:45px;">No</label>
+                <div style="display:flex;">
+                    <input id="purchaseNo" class="p-field" data-next="purchasePhone" style="width:105px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px; font-weight:bold;">
+                    <button style="width:20px; padding:0; cursor:pointer;" onclick="findPurchaseBill()" title="Find Bill">▼</button>
+                </div>
+
+                <label style="margin-left:30px; width:45px;">Phone</label>
+                <input id="purchasePhone" style="width:180px; padding:2px 4px; border:1px solid #777; font-size:12px;">
+            </div>
+
+            <!-- Row 3: Paid on, Paid to -->
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="width:45px;">Paid on</label>
+                <input type="date" id="purchasePayDate" style="width:125px; padding:2px 4px; border:1px solid #777; font-size:12px;">
+
+                <label style="margin-left:10px; width:45px;">Paid to</label>
+                <input id="purchasePaidTo" style="width:180px; padding:2px 4px; border:1px solid #777; font-size:12px;" placeholder="Recipient / Note">
+                
+                <input type="hidden" id="purchaseBalance" value="0.00">
+                <input type="hidden" id="purchaseFreight" value="0.00">
+                <input type="hidden" id="purchasePacking" value="0.00">
+                <input type="hidden" id="purchaseOther" value="0.00">
+                <input type="hidden" id="purchaseDiscount" value="0.00">
+            </div>
+        </div>
+
+        <!-- Main Items Grid -->
+        <div style="border:1px solid #777; background:#fff; height:220px; overflow-y:auto;">
+            <table id="purchaseGrid" style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
+                <thead>
+                    <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #999;">
+                        <th style="width:40px; border-right:1px solid #aaa; padding:4px 2px; text-align:center;">Sno</th>
+                        <th style="border-right:1px solid #aaa; padding:4px 6px; text-align:left;">Item description</th>
+                        <th style="width:140px; border-right:1px solid #aaa; padding:4px 6px; text-align:left;">Particulars</th>
+                        <th style="width:85px; border-right:1px solid #aaa; padding:4px 6px; text-align:right;">Rate</th>
+                        <th style="width:85px; border-right:1px solid #aaa; padding:4px 6px; text-align:right;">Weight</th>
+                        <th style="width:110px; padding:4px 6px; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="purchaseGridBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bottom Totals & Big Red Display -->
+        <div style="border:1px solid #fff; padding:6px; background:#d4d0c8; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px; font-size:12px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Total</label>
+                    <input id="purchaseGrossAmount" readonly style="width:120px; background:#fff; border:1px solid #777; text-align:right; font-weight:bold; padding:3px 6px; font-size:13px;" value="0.00">
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Advance</label>
+                    <input id="purchaseAdvance" type="number" step="0.01" oninput="calcPurchaseTotals()" style="width:110px; background:#fff; border:1px solid #777; text-align:right; padding:3px 6px; font-size:13px;" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- Big Red Display -->
+            <div style="display:flex; align-items:center;">
+                <input type="hidden" id="purchaseNetPayable" value="0.00">
+                <input type="hidden" id="purchaseTotalBags" value="0">
+                <input type="hidden" id="purchaseTotalWeight" value="0.00">
+                <div id="purchaseNetBigDisplay" style="min-width:180px; height:46px; background:#fff; border:2px inset #999; display:flex; align-items:center; justify-content:flex-end; padding:0 12px; font-size:28px; font-weight:bold; color:#cc0000; font-family:'Courier New', monospace, sans-serif; letter-spacing:1px; box-shadow:inset 1px 1px 3px rgba(0,0,0,0.2);">
+                    0.00
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Line -->
+        <div id="purchaseAuditLine" style="font-size:11px; color:#333; font-family:monospace; padding:2px 4px;">
+            Created by :ADMIN*10/11/2026*00:00:00*WEB # BAL
+        </div>
+
+        <!-- Bottom Toolbar Buttons -->
+        <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; align-items:center; background:#c0c0c0;">
+            <div style="display:flex; gap:3px;">
+                <button onclick="newPurchase()" id="btnPurchaseNew" style="padding:3px 12px; font-size:12px; font-weight:bold; border:2px solid #0055aa; cursor:pointer;"><span style="color:#c00; text-decoration:underline;">N</span>ew</button>
+                <button onclick="findPurchaseDialog()" id="btnPurchaseFind" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>F</u>ind</button>
+                <button onclick="editPurchase()" id="btnPurchaseChange" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>C</u>hange</button>
+                <button onclick="deletePurchase()" id="btnPurchaseDelete" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>D</u>elete</button>
+                <button onclick="closeAll()" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>C</u>lose</button>
+                <button onclick="printPurchaseInvoice()" id="btnPurchasePrint" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>P</u>rint</button>
+                <button onclick="viewPurchaseInvoice()" id="btnPurchaseView" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>V</u>iew</button>
+                <button onclick="openPurchasePaymentFromPurchase()" id="btnPurchasePayment" style="padding:3px 12px; font-size:12px; font-weight:bold; color:#0055aa; cursor:pointer;">Payment</button>
+            </div>
+            <div style="display:flex; gap:2px;">
+                <button onclick="topPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>T</u>op</button>
+                <button onclick="prevPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>P</u>rev</button>
+                <button onclick="nextPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>N</u>ext</button>
+                <button onclick="bottomPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>B</u>ottom</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT SECTION: PENDING / RECENT BILLS TABLE -->
+    <div style="width:260px; border:1px solid #777; background:#d4d0c8; padding:3px; display:flex; flex-direction:column; gap:3px;">
+        <div style="border:1px solid #999; background:#fff; height:340px; overflow-y:auto;">
+            <table id="purchaseRightPendingTable" style="width:100%; border-collapse:collapse; font-size:11px; font-family:Tahoma, Arial, sans-serif;">
+                <thead>
+                    <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #aaa;">
+                        <th style="width:30px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">Sno</th>
+                        <th style="width:65px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">Date</th>
+                        <th style="width:45px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">No</th>
+                        <th style="padding:3px 4px; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="purchaseRightPendingBody">
+                    <tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">Select supplier to view pending bills</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div style="display:flex; justify-content:flex-end; padding-top:2px;">
+            <input id="purchaseRightPendingTotal" readonly style="width:120px; background:#fff; border:1px inset #999; text-align:right; font-weight:bold; font-size:12px; padding:2px 4px;" value="0.00">
+        </div>
+    </div>
+</div>
+</div>
+</div>
+<!-- ================= 39. PURCHASE PAYMENT ================= -->
+<div class="modal-overlay" id="purchasePayment">
+<div class="modal" style="width:800px; padding:5px; background:#c0c0c0;">
+<div class="modal-title" id="ppModalTitle" style="border:1px solid #999;">Purchase Payment - New<span onclick="closeAll()">✖</span></div>
+<div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+    <!-- Trader Info -->
+    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:100px 140px 100px 220px 80px 110px; gap:6px; align-items:center; font-size:12px;">
+        <label>Date</label> <input type="date" id="ppDate">
+        <label>Trader Code</label>
+        <div style="display:flex;">
+            <input id="ppAccountId" onchange="onPpTraderCodeChange()" style="width:80px;">
+            <button style="width:20px;padding:0;" onclick="findPpTrader()">▼</button>
+        </div>
+        <label style="text-align:right;">Balance</label>
+        <input id="ppBalance" readonly style="background:#eef; text-align:right; font-weight:bold; color:#0055aa; width:100px;">
+        
+        <label>Payment No</label> <input id="ppNo" style="background:#ccffff;" readonly>
+        <label>Trader Name</label>
+        <input id="ppAccountName" list="accountNamesList" onchange="onPpTraderNameChange()" style="grid-column:span 3; width:100%;">
+    </div>
+
+    <!-- Pending Bills Grid -->
+    <div style="border:1px solid #fff; background:#fff; height:180px; overflow-y:auto;">
+        <table id="ppPendingGrid" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="background:#eee; font-weight:bold; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Pay</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Pur No</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Date</th>
+                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Net Payable</th>
+                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Paid</th>
+                    <th style="border-bottom:1px solid #ccc; text-align:right;">Pending Balance</th>
+                </tr>
+            </thead>
+            <tbody id="ppPendingBody">
+                <tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">Select a trader to view pending bills</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Payment Inputs -->
+    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:100px 140px 100px 140px 100px 140px; gap:6px; align-items:center; font-size:12px;">
+        <label style="font-weight:bold;">Amount</label>
+        <input type="number" step="0.01" id="ppAmount" style="font-weight:bold; font-size:13px; background:#ccffff;">
+        
+        <label>Discount</label>
+        <input type="number" step="0.01" id="ppDiscount">
+
+        <label>Method</label>
+        <select id="ppMethod">
+            <option value="CASH">CASH</option>
+            <option value="BANK">BANK</option>
+        </select>
+
+        <label>Paid To</label>
+        <input id="ppPaidTo" placeholder="Recipient / Representative">
+
+        <label>Narration</label>
+        <input id="ppNarration" style="grid-column:span 3;" placeholder="Remarks...">
+    </div>
+
+    <!-- Toolbar -->
+    <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; background:#c0c0c0;">
+        <div style="display:flex; gap:2px;">
+            <button onclick="topPp()" style="padding:2px 8px;">Top</button>
+            <button onclick="prevPp()" style="padding:2px 8px;">Prev</button>
+            <button onclick="nextPp()" style="padding:2px 8px;">Next</button>
+            <button onclick="bottomPp()" style="padding:2px 8px;">Bottom</button>
+        </div>
+        <div style="display:flex; gap:3px;">
+            <button onclick="newPurchasePayment()" style="padding:2px 10px;"><u>N</u>ew</button>
+            <button onclick="savePurchasePayment()" style="padding:2px 10px; font-weight:bold;"><u>S</u>ave</button>
+            <button onclick="deletePurchasePayment()" style="padding:2px 10px;"><u>D</u>elete</button>
+            <button onclick="closeAll()" style="padding:2px 10px;">Close</button>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 40. PURCHASE OPENING BALANCE ================= -->
+<div class="modal-overlay" id="purchaseOpeningBalance">
+<div class="modal" style="width:550px; padding:5px; background:#c0c0c0;">
+<div class="modal-title" style="border:1px solid #999;">Purchase Opening Balance<span onclick="closeAll()">✖</span></div>
+<div style="border:1px solid #fff; padding:20px; margin-top:4px; display:grid; grid-template-columns:120px 1fr; gap:10px; align-items:center; font-size:12px;">
+    <label>Date</label>
+    <input type="date" id="pobDate" style="width:130px;">
+
+    <label>Trader Code</label>
+    <div style="display:flex; gap:4px;">
+        <input id="pobAccountId" onchange="onPobTraderCodeChange()" style="width:80px;">
+        <button style="width:24px;padding:0;" onclick="findPobTrader()">▼</button>
+    </div>
+
+    <label>Trader Name</label>
+    <input id="pobAccountName" list="accountNamesList" onchange="onPobTraderNameChange()" style="width:100%;">
+
+    <label>Amount</label>
+    <input type="number" step="0.01" id="pobAmount" style="width:140px; font-weight:bold; font-size:13px; background:#ccffff;">
+
+    <label>Balance Type</label>
+    <select id="pobType" style="width:140px;">
+        <option value="CREDIT">CREDIT (Payable to Trader)</option>
+        <option value="DEBIT">DEBIT (Advance to Trader)</option>
+    </select>
+
+    <label>Narration</label>
+    <input id="pobNarration" style="width:100%;" placeholder="Opening balance note...">
+</div>
+<div style="border:1px solid #fff; padding:4px; display:flex; justify-content:flex-end; gap:5px; background:#c0c0c0; margin-top:4px;">
+    <button onclick="savePurchaseOpeningBalance()" style="padding:3px 14px; font-weight:bold;"><u>S</u>ave</button>
+    <button onclick="closeAll()" style="padding:3px 14px;"><u>C</u>lose</button>
+</div>
+</div>
+</div>
+
+<!-- ================= 41. PURCHASE REGISTER ================= -->
+<div class="modal-overlay" id="purchaseRegister">
+<div class="modal" style="width:1000px; background:#ffffe1; border:2px solid #555;">
+<div class="modal-title">Purchase Register<span onclick="closeAll()">✖</span></div>
+<div style="padding:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label>From</label> <input type="date" id="prFromDate" style="width:120px;">
+            <label>To</label> <input type="date" id="prToDate" style="width:120px;">
+            <label>Trader</label>
+            <input id="prAccountName" list="accountNamesList" placeholder="All Traders" style="width:180px;">
+            <input type="hidden" id="prAccountId">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', true)">Print</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', false)">View</button>
+            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchaseRegister', 'Purchase Register')">Excel</button>
+            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        </div>
+    </div>
+    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pur No</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
+                    <th style="width:60px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Bags</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Weight</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Gross</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Freight</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Pack/Oth</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Discount</th>
+                    <th style="width:100px; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Net Payable</th>
+                </tr>
+            </thead>
+            <tbody id="purchaseRegisterBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
+                    <td colspan="4" style="text-align:right; padding:4px; border-top:2px solid #555;">Totals:</td>
+                    <td id="prTotBags" style="text-align:right; padding:4px; border-top:2px solid #555;">0</td>
+                    <td id="prTotWeight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotGross" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotFreight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotPack" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotDisc" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="prTotNet" style="text-align:right; padding:4px; border-top:2px solid #555; color:#0055aa;">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 42. PURCHASE PAYMENT REGISTER ================= -->
+<div class="modal-overlay" id="purchasePaymentRegister">
+<div class="modal" style="width:960px; background:#ffffe1; border:2px solid #555;">
+<div class="modal-title">Purchase Payment Register<span onclick="closeAll()">✖</span></div>
+<div style="padding:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label>From</label> <input type="date" id="pprFromDate" style="width:120px;">
+            <label>To</label> <input type="date" id="pprToDate" style="width:120px;">
+            <label>Trader</label>
+            <input id="pprAccountName" list="accountNamesList" placeholder="All Traders" style="width:180px;">
+            <input type="hidden" id="pprAccountId">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px;" onclick="loadPurchasePaymentRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePaymentRegister', 'Purchase Payment Register', true)">Print</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePaymentRegister', 'Purchase Payment Register', false)">View</button>
+            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchasePaymentRegister', 'Purchase Payment Register')">Excel</button>
+            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        </div>
+    </div>
+    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
+                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pay No</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:4px;">Method</th>
+                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Amount</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Discount</th>
+                    <th style="border-bottom:1px solid #ccc; padding:4px;">Narration</th>
+                </tr>
+            </thead>
+            <tbody id="purchasePaymentRegisterBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
+                    <td colspan="5" style="text-align:right; padding:4px; border-top:2px solid #555;">Total:</td>
+                    <td id="pprTotAmount" style="text-align:right; padding:4px; border-top:2px solid #555; color:#0055aa;">0.00</td>
+                    <td id="pprTotDiscount" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td style="border-top:2px solid #555;"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ================= 43. PURCHASE PENDING REGISTER ================= -->
+<div class="modal-overlay" id="purchasePendingRegister">
+<div class="modal" style="width:960px; background:#ffffe1; border:2px solid #555;">
+<div class="modal-title">Purchase Pending Register<span onclick="closeAll()">✖</span></div>
+<div style="padding:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label>Trader</label>
+            <input id="ppndAccountName" list="accountNamesList" placeholder="All Traders" style="width:240px;" onchange="onPpndTraderChange()">
+            <input type="hidden" id="ppndAccountId">
+        </div>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px;" onclick="loadPurchasePendingRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePendingRegister', 'Purchase Pending Register', true)">Print</button>
+            <button style="padding:2px 10px;" onclick="printRegisterTable('purchasePendingRegister', 'Purchase Pending Register', false)">View</button>
+            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchasePendingRegister', 'Purchase Pending Register')">Excel</button>
+            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        </div>
+    </div>
+    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pur No</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
+                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Net Payable</th>
+                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Paid Amount</th>
+                    <th style="width:130px; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Pending Balance</th>
+                </tr>
+            </thead>
+            <tbody id="purchasePendingRegisterBody"></tbody>
+            <tfoot>
+                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
+                    <td colspan="4" style="text-align:right; padding:4px; border-top:2px solid #555;">Total Pending:</td>
+                    <td id="ppndTotNet" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="ppndTotPaid" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
+                    <td id="ppndTotBal" style="text-align:right; padding:4px; border-top:2px solid #555; color:#c00;">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+
 <!-- ================= VISUAL FOXPRO IN-APP REPORT PREVIEW MODAL ================= -->
 <div class="modal-overlay" id="vfpReportPreviewModal" style="z-index:30000; display:none; background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
     <div class="modal" style="width:960px; max-width:96vw; height:92vh; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(0,0,0,0.7); border:2px solid #333; background:#808080; padding:3px; font-family:Tahoma, Arial, sans-serif;">
@@ -2311,12 +2760,23 @@ Commission % <input id="commRatePct" value="10.00%">
             <span onclick="closeVfpReportPreview()" style="cursor:pointer; font-weight:bold; font-size:14px; padding:0 4px;">✖</span>
         </div>
         <div style="background:#d4d0c8; border:1px solid #fff; padding:4px 8px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; margin-top:2px;">
-            <div style="display:flex; gap:6px; align-items:center;">
-                <button onclick="printVfpPreviewContent()" style="padding:4px 14px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px; background:#fff; border:1px solid #777;">
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <button onclick="printVfpPreviewContent()" style="padding:4px 14px; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px; background:#287733; color:#fff; border:1px solid #1b5e20;">
                     <span>🖨️</span> <span>Print</span>
                 </button>
-                <button onclick="toggleVfpPreviewZoom()" style="padding:4px 12px; cursor:pointer; background:#fff; border:1px solid #777;" id="vfpPreviewZoomBtn">
-                    <span>🔍 Fit Width</span>
+                <div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; background:#fff; padding:2px 8px; border:1px solid #777; border-radius:3px;">
+                    <label style="font-weight:bold; color:#185a23;">Paper:</label>
+                    <select id="vfpPaperModeSelect" onchange="changeVfpPaperMode(this.value)" style="font-size:12px; padding:2px 4px; font-weight:bold; border:1px solid #aaa;">
+                        <option value="preprinted">🖨️ Pre-Printed Paper (Data Only)</option>
+                        <option value="template">📄 Full Bill (Pre-Printed Template)</option>
+                    </select>
+                </div>
+                <div id="vfpOffsetControls" style="display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#f0f0f0; padding:2px 6px; border:1px solid #ccc; border-radius:3px;">
+                    <span>Top:</span><input id="vfpPrintOffsetTop" type="number" value="0" style="width:38px; padding:1px; font-size:11px;" onchange="saveVfpPrintOffsets()"><span>mm</span>
+                    <span>Left:</span><input id="vfpPrintOffsetLeft" type="number" value="0" style="width:38px; padding:1px; font-size:11px;" onchange="saveVfpPrintOffsets()"><span>mm</span>
+                </div>
+                <button onclick="toggleVfpPreviewZoom()" style="padding:4px 10px; cursor:pointer; background:#fff; border:1px solid #777; font-size:11px;" id="vfpPreviewZoomBtn">
+                    <span>🔍 Zoom</span>
                 </button>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
@@ -2478,10 +2938,11 @@ let isPreviewZoomed = false;
 function openVfpReportPreview(title, htmlContent, autoPrint = false) {
     const modal = document.getElementById('vfpReportPreviewModal');
     if (!modal) return;
-    document.getElementById('vfpPreviewTitle').innerText = 'Report Preview - ' + title;
+    document.getElementById('vfpPreviewTitle').innerText = title;
     const paper = document.getElementById('vfpPreviewPaper');
     paper.innerHTML = htmlContent;
     modal.style.display = 'flex';
+    loadVfpPrintOffsets();
 
     if (autoPrint) {
         setTimeout(() => {
@@ -2495,24 +2956,75 @@ function printVfpPreviewContent() {
     if (!paper) return;
     const iframe = document.getElementById('vfpPrintIframe');
     if (!iframe) return;
+
+    const mode = document.getElementById('vfpPaperModeSelect')?.value || localStorage.getItem('kanimc_paper_mode') || 'preprinted';
+    const offsetTop = parseFloat(document.getElementById('vfpPrintOffsetTop')?.value || localStorage.getItem('kanimc_print_offset_top')) || 0;
+    const offsetLeft = parseFloat(document.getElementById('vfpPrintOffsetLeft')?.value || localStorage.getItem('kanimc_print_offset_left')) || 0;
+
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Print</title>
+            <meta charset="utf-8">
+            <title>KANI DRUMSTICK AGENCIES - Print</title>
             <style>
-                body { font-family: monospace, Arial, sans-serif; font-size: 12px; margin: 20px; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { padding: 4px; }
+                * { box-sizing: border-box; }
+                body {
+                    margin: 0;
+                    padding: 0;
+                    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+                    background: #fff;
+                    color: #000;
+                }
+                .kani-bill-sheet {
+                    margin-top: ${offsetTop}mm !important;
+                    margin-left: ${offsetLeft}mm !important;
+                }
+                table { border-collapse: collapse; }
+
+                ${mode === 'preprinted' ? `
+                /* PRE-PRINTED STATIONERY ALIGNMENT: HIDE ALL ARTWORK */
+                .preprinted-artwork {
+                    visibility: hidden !important;
+                    border-color: transparent !important;
+                    background: transparent !important;
+                    box-shadow: none !important;
+                }
+                .grid-table thead, .grid-table thead tr, .grid-table thead th {
+                    visibility: hidden !important;
+                    border-color: transparent !important;
+                }
+                .grid-table td {
+                    border-color: transparent !important;
+                }
+                .table-box {
+                    border-color: transparent !important;
+                }
+                .party-date-row {
+                    border-color: transparent !important;
+                }
+                ` : `
+                /* TEMPLATE MODE: FULL BILL */
+                `}
+
                 @media print {
-                    @page { margin: 12mm; }
-                    .no-print { display: none; }
+                    @page {
+                        size: 140mm 205mm;
+                        margin: 0;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .no-print { display: none !important; }
                 }
             </style>
         </head>
-        <body>
+        <body class="${mode === 'preprinted' ? 'mode-preprinted' : 'mode-template'}">
             ${paper.innerHTML}
         </body>
         </html>
@@ -2525,7 +3037,317 @@ function printVfpPreviewContent() {
         } catch(e) {
             console.error('Print iframe error:', e);
         }
-    }, 200);
+    }, 250);
+}
+
+// --- KANI DRUMSTICK AGENCIES PRE-PRINTED BILL & CHITTA PRINTING SYSTEM ---
+
+let currentPreviewBillOptions = null;
+
+function changeVfpPaperMode(mode) {
+    localStorage.setItem('kanimc_paper_mode', mode);
+    const paper = document.getElementById('vfpPreviewPaper');
+    if (!paper) return;
+    if (mode === 'preprinted') {
+        paper.classList.add('mode-preprinted');
+    } else {
+        paper.classList.remove('mode-preprinted');
+    }
+}
+
+function saveVfpPrintOffsets() {
+    const top = document.getElementById('vfpPrintOffsetTop')?.value || '0';
+    const left = document.getElementById('vfpPrintOffsetLeft')?.value || '0';
+    localStorage.setItem('kanimc_print_offset_top', top);
+    localStorage.setItem('kanimc_print_offset_left', left);
+}
+
+function loadVfpPrintOffsets() {
+    const top = localStorage.getItem('kanimc_print_offset_top') || '0';
+    const left = localStorage.getItem('kanimc_print_offset_left') || '0';
+    const mode = localStorage.getItem('kanimc_paper_mode') || 'preprinted';
+    
+    const topEl = document.getElementById('vfpPrintOffsetTop');
+    if (topEl) topEl.value = top;
+    const leftEl = document.getElementById('vfpPrintOffsetLeft');
+    if (leftEl) leftEl.value = left;
+    const modeEl = document.getElementById('vfpPaperModeSelect');
+    if (modeEl) modeEl.value = mode;
+
+    const paper = document.getElementById('vfpPreviewPaper');
+    if (paper) {
+        if (mode === 'preprinted') paper.classList.add('mode-preprinted');
+        else paper.classList.remove('mode-preprinted');
+    }
+}
+
+function renderKaniPreprintedBill(opts) {
+    currentPreviewBillOptions = opts;
+    const {
+        type = 'CHITTA',
+        docNo = '',
+        docDate = '',
+        partyName = '',
+        items = [],
+        totalWeight = 0,
+        grossAmount = 0,
+        charges = [],
+        netAmount = 0,
+        isPaid = false,
+        paidDate = '',
+        paidTo = ''
+    } = opts;
+
+    let rowsHtml = '';
+    const maxRows = 10;
+    const itemCount = items.length;
+
+    for (let i = 0; i < Math.max(maxRows, itemCount); i++) {
+        if (i < itemCount) {
+            const it = items[i];
+            const q = parseFloat(it.quantity) || 0;
+            const r = parseFloat(it.rate) || 0;
+            const a = parseFloat(it.amount != null ? it.amount : (q * r)) || 0;
+            rowsHtml += `
+                <tr style="height:21px;">
+                    <td style="text-align:center; padding:3px 2px;">${it.noteNo || (i + 1)}</td>
+                    <td style="padding:3px 6px;">${it.description || 'முருங்கை'}</td>
+                    <td style="text-align:right; font-weight:bold; padding:3px 4px;">${q > 0 ? q.toFixed(2) : ''}</td>
+                    <td style="text-align:right; padding:3px 4px;">${r > 0 ? r.toFixed(2) : ''}</td>
+                    <td style="text-align:right; font-weight:bold; padding:3px 6px;">${a > 0 ? a.toFixed(2) : ''}</td>
+                </tr>
+            `;
+        } else {
+            rowsHtml += `
+                <tr style="height:21px;">
+                    <td style="text-align:center;">&nbsp;</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            `;
+        }
+    }
+
+    let chargesHtml = '';
+    (charges || []).forEach(ch => {
+        const amt = parseFloat(ch.amount) || 0;
+        if (amt !== 0) {
+            chargesHtml += `
+                <div style="display:flex; justify-content:space-between; padding:1px 0;">
+                    <span class="preprinted-artwork" style="color:#555;">${ch.label}:</span>
+                    <span>${amt < 0 ? amt.toFixed(2) : '-' + amt.toFixed(2)}</span>
+                </div>
+            `;
+        }
+    });
+
+    let paymentBadge = '';
+    if (isPaid || paidDate || paidTo) {
+        paymentBadge = `
+            <div style="margin-top:4px; font-size:11px; color:#006600; font-weight:bold;">
+                <div>STATUS: PAID (CASH)</div>
+                <div>PAID TO: ${paidTo || partyName} ${paidDate ? 'ON: ' + paidDate : ''}</div>
+            </div>
+        `;
+    }
+
+    return `
+    <div class="kani-bill-sheet" style="width:140mm; min-height:198mm; max-height:205mm; background:#fff; margin:0 auto; padding:4mm 5mm; box-sizing:border-box; position:relative; font-family:'Segoe UI', Tahoma, Arial, sans-serif; color:#000;">
+        <!-- TOP YELLOW HEADER BANNER (PRE-PRINTED ARTWORK) -->
+        <div class="preprinted-artwork" style="background:#fff470; border:2px solid #287733; border-radius:12px; padding:5px 8px 4px 8px; margin-bottom:2mm; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
+            <div style="display:flex; justify-content:space-between; font-size:9.5px; font-weight:bold; color:#111;">
+                <div>Cell : 9791836555, 9789125900</div>
+                <div>Ph : 04639 - 261781</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                <div style="flex:1;">
+                    <div style="font-size:16px; font-weight:900; color:#185a23; line-height:1.2; letter-spacing:0.3px;">கனி முருங்கைக்காய் கமிஷன் கடை</div>
+                    <div style="font-size:12.5px; font-weight:800; color:#226f2f; letter-spacing:0.8px; margin-top:1px;">KANI DRUMSTICK AGENCIES</div>
+                    <div style="font-size:9px; font-weight:bold; color:#333; margin-top:1px;">காமராஜ் நகர், சாத்தான்குளம் தாலுகா / Kamaraj Nagar, Sathankulam Tk</div>
+                    <div style="font-size:10px; font-weight:bold; color:#b00; margin-top:1px;">Prop : A. BALAMURUGAN B.A.,</div>
+                </div>
+                <div style="width:44px; height:44px; border-radius:50%; background:#287733; color:#ffeb3b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:10px; border:2px solid #ffd700; flex-shrink:0;">
+                    <span>🦚</span>
+                    <span style="font-size:9px;">M.A.M</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PARTY & DATE DOTTED LINE ROW -->
+        <div class="party-date-row" style="display:flex; justify-content:space-between; align-items:baseline; font-size:12px; font-weight:bold; padding:2px 2px; margin-bottom:2mm; border-bottom:1px dashed #aaa;">
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <span class="preprinted-artwork" style="color:#287733; font-weight:bold;">திரு. </span>
+                <span style="font-size:13px; color:#002288; font-weight:bold; text-transform:uppercase;">${partyName || '—'}</span>
+            </div>
+            <div style="text-align:right; flex-shrink:0; margin-left:8px;">
+                <span class="preprinted-artwork" style="color:#287733; font-weight:bold;">தேதி : </span>
+                <span style="font-size:12px; font-weight:bold;">${docDate}</span>
+                <span style="margin-left:6px; font-size:11px; color:#555;">[${type} #${docNo}]</span>
+            </div>
+        </div>
+
+        <!-- PRE-PRINTED TABLE GRID -->
+        <div class="table-box" style="border:2px solid #287733; border-radius:8px; overflow:hidden; background:#fff;">
+            <table class="grid-table" style="width:100%; border-collapse:collapse; font-size:11.5px;">
+                <thead>
+                    <tr class="preprinted-artwork" style="background:#eaf5e9; color:#185a23; font-weight:bold; border-bottom:2px solid #287733;">
+                        <th style="width:12%; padding:4px 2px; text-align:center; border-right:1px solid #7cb382;">நோட்.</th>
+                        <th style="width:48%; padding:4px 6px; text-align:left; border-right:1px solid #7cb382;">விபரம்</th>
+                        <th style="width:14%; padding:4px 4px; text-align:right; border-right:1px solid #7cb382;">எடை</th>
+                        <th style="width:13%; padding:4px 4px; text-align:right; border-right:1px solid #7cb382;">ரூ.</th>
+                        <th style="width:13%; padding:4px 6px; text-align:right;">பை.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TOTALS & SUMMARY FOOTER -->
+        <div style="margin-top:3mm; display:flex; justify-content:space-between; font-size:11.5px; font-weight:bold;">
+            <div style="max-width:50%;">
+                ${paymentBadge}
+            </div>
+            <div style="text-align:right; min-width:170px;">
+                <div style="display:flex; justify-content:space-between; padding:1px 0;">
+                    <span class="preprinted-artwork" style="color:#555;">மொத்த எடை (Weight):</span>
+                    <span style="font-weight:bold;">${(parseFloat(totalWeight) || 0).toFixed(2)} kg</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:1px 0;">
+                    <span class="preprinted-artwork" style="color:#555;">மொத்த தொகை (Gross):</span>
+                    <span>${(parseFloat(grossAmount) || 0).toFixed(2)}</span>
+                </div>
+                ${chargesHtml}
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-top:2px solid #287733; font-size:13.5px; color:#a00; margin-top:2px;">
+                    <span class="preprinted-artwork" style="color:#287733;">நிகர தொகை (Net):</span>
+                    <span style="font-size:14.5px; font-weight:900; color:#b00;">₹${(parseFloat(netAmount) || 0).toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+function printChitta(autoPrint = true, targetChitta = null) {
+    let c = targetChitta;
+    if (!c) {
+        const cpModal = document.getElementById('chittaPayment');
+        if (cpModal && cpModal.style.display !== 'none' && typeof selectedCpChitta !== 'undefined' && selectedCpChitta && selectedCpChitta.id) {
+            c = selectedCpChitta;
+        } else if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && typeof chittas !== 'undefined' && chittas[currentChittaIndex]) {
+            c = chittas[currentChittaIndex];
+        }
+    }
+    if (!c) {
+        showToast("Please select a Chitta to " + (autoPrint ? "print" : "view") + ".");
+        return;
+    }
+    const farmerName = (c.farmerAccount && c.farmerAccount.accountName) ? c.farmerAccount.accountName : (c.farmerName || '');
+    const dateFormatted = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toLocaleDateString('en-GB')) : '';
+    const payDateFormatted = c.payDate ? (typeof c.payDate === 'string' ? c.payDate.substring(0, 10) : new Date(c.payDate).toLocaleDateString('en-GB')) : '';
+
+    let totalWeight = 0;
+    const items = [];
+    if (c.items && Array.isArray(c.items)) {
+        c.items.forEach((it, idx) => {
+            const q = parseFloat(it.quantity) || 0;
+            const r = parseFloat(it.rate) || 0;
+            const a = parseFloat(it.amount != null ? it.amount : (q * r)) || 0;
+            totalWeight += q;
+            items.push({
+                noteNo: idx + 1,
+                description: it.itemDescription || (it.item ? it.item.des : 'முருங்கை'),
+                quantity: q,
+                rate: r,
+                amount: a
+            });
+        });
+    }
+
+    const gross = parseFloat(c.grossAmount) || 0;
+    const comm = parseFloat(c.commissionDeduction != null ? c.commissionDeduction : c.commission) || 0;
+    const adv = parseFloat(c.advanceAmount != null ? c.advanceAmount : c.advance) || 0;
+    const freight = parseFloat(c.freightAmount != null ? c.freightAmount : c.freight) || 0;
+    const net = parseFloat(c.netPayable) || 0;
+
+    const charges = [];
+    if (comm > 0) charges.push({ label: 'கம்மிஷன் (Commission)', amount: comm });
+    if (adv > 0) charges.push({ label: 'முன்பணம் (Advance)', amount: adv });
+    if (freight > 0) charges.push({ label: 'வாடகை (Freight)', amount: freight });
+
+    const billHtml = renderKaniPreprintedBill({
+        type: 'CHITTA',
+        docNo: c.chittaNo || '',
+        docDate: dateFormatted,
+        partyName: farmerName,
+        items: items,
+        totalWeight: totalWeight,
+        grossAmount: gross,
+        charges: charges,
+        netAmount: net,
+        isPaid: Boolean(c.paid || c.payDate),
+        paidDate: payDateFormatted || dateFormatted,
+        paidTo: c.paidTo || farmerName
+    });
+
+    openVfpReportPreview('Chitta Bill - #' + (c.chittaNo || ''), billHtml, autoPrint);
+}
+
+function printBill(autoPrint = true) {
+    const b = (currentBillIndex >= 0 && bills[currentBillIndex]) ? bills[currentBillIndex] : null;
+    if (!b) {
+        showToast("Please select a Bill to " + (autoPrint ? "print" : "view") + ".");
+        return;
+    }
+    const buyerName = (b.buyerAccount && b.buyerAccount.accountName) ? b.buyerAccount.accountName : (b.buyerName || '');
+    const dateFormatted = b.billDate ? (typeof b.billDate === 'string' ? b.billDate.substring(0, 10) : new Date(b.billDate).toLocaleDateString('en-GB')) : '';
+
+    let totalWeight = 0;
+    const items = [];
+    if (b.items && Array.isArray(b.items)) {
+        b.items.forEach((it, idx) => {
+            const q = parseFloat(it.quantity) || 0;
+            const r = parseFloat(it.rate) || 0;
+            const a = parseFloat(it.amount != null ? it.amount : (q * r)) || 0;
+            totalWeight += q;
+            items.push({
+                noteNo: idx + 1,
+                description: it.item ? it.item.des : (it.itemDescription || 'முருங்கை'),
+                quantity: q,
+                rate: r,
+                amount: a
+            });
+        });
+    }
+
+    const gross = parseFloat(b.grossAmount) || 0;
+    const freight = parseFloat(b.freightCharges) || 0;
+    const packing = parseFloat(b.packingCharges) || 0;
+    const discount = parseFloat(b.discount) || 0;
+    const net = parseFloat(b.netAmount != null ? b.netAmount : b.netReceivable) || 0;
+
+    const charges = [];
+    if (freight > 0) charges.push({ label: 'வாடகை (Freight)', amount: freight });
+    if (packing > 0) charges.push({ label: 'பேக்கிங் (Packing)', amount: packing });
+    if (discount > 0) charges.push({ label: 'தள்ளுபடி (Discount)', amount: discount });
+
+    const billHtml = renderKaniPreprintedBill({
+        type: 'BILL',
+        docNo: b.billNo || '',
+        docDate: dateFormatted,
+        partyName: buyerName,
+        items: items,
+        totalWeight: totalWeight,
+        grossAmount: gross,
+        charges: charges,
+        netAmount: net,
+        isPaid: false
+    });
+
+    openVfpReportPreview('Sales Bill - #' + (b.billNo || ''), billHtml, autoPrint);
 }
 
 function toggleVfpPreviewZoom() {
@@ -2960,6 +3782,7 @@ function handleFarmerNameKey(e) {
     if (!box || box.style.display === 'none') {
         if (e.key === 'Enter') {
             e.preventDefault();
+            onFarmerNameChange();
             const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
             if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
                 firstItem.focus();
@@ -3006,22 +3829,208 @@ function handleFarmerNameKey(e) {
 }
 
 
+function onFarmerNameChange() {
+    const fInput = document.getElementById('farmerName');
+    if (!fInput) return;
+    const nameVal = (fInput.value || '').trim();
+    if (!nameVal) {
+        loadFarmerChittaHistory(null);
+        return;
+    }
+    let matchedAcc = null;
+    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+        const lower = nameVal.toLowerCase();
+        matchedAcc = accounts.find(a => (a.accountName || '').trim().toLowerCase() === lower);
+        if (!matchedAcc) {
+            matchedAcc = accounts.find(a => (a.accountName || '').trim().toLowerCase().startsWith(lower));
+        }
+    }
+    if (matchedAcc) {
+        const idInput = document.getElementById('farmerAccountId');
+        const phoneInput = document.getElementById('farmerPhone');
+        if (idInput && !idInput.value) idInput.value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(matchedAcc) : (matchedAcc.partyId || matchedAcc.id || '');
+        if (phoneInput && !phoneInput.value) phoneInput.value = matchedAcc.phone1 || matchedAcc.mobile || matchedAcc.phone || '';
+        loadFarmerChittaHistory(matchedAcc);
+    } else {
+        loadFarmerChittaHistory(nameVal);
+    }
+}
+
+function onFarmerNameBlur() {
+    setTimeout(() => {
+        const box = document.getElementById('farmerNameSuggestBox');
+        if (!box || box.style.display === 'none') {
+            onFarmerNameChange();
+        }
+    }, 200);
+}
+
+function loadFarmerChittaHistory(farmerAccOrName) {
+    const histBody = document.getElementById('chittaHistoryBody');
+    const histTotalEl = document.getElementById('chittaHistoryTotal');
+    if (!histBody) return;
+
+    const renderEmptyRows = () => {
+        histBody.innerHTML = `
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+        `;
+        if (histTotalEl) histTotalEl.value = '';
+    };
+
+    if (!farmerAccOrName) {
+        renderEmptyRows();
+        return;
+    }
+
+    let targetId = null;
+    let targetPartyId = null;
+    let targetName = null;
+
+    if (typeof farmerAccOrName === 'object' && farmerAccOrName !== null) {
+        targetId = farmerAccOrName.id ? String(farmerAccOrName.id) : null;
+        targetPartyId = farmerAccOrName.partyId ? String(farmerAccOrName.partyId) : null;
+        targetName = farmerAccOrName.accountName ? farmerAccOrName.accountName.trim().toLowerCase() : null;
+    } else if (typeof farmerAccOrName === 'string' || typeof farmerAccOrName === 'number') {
+        const str = String(farmerAccOrName).trim();
+        if (!str) {
+            renderEmptyRows();
+            return;
+        }
+        if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+            const lower = str.toLowerCase();
+            const found = accounts.find(a => 
+                (a.accountName && a.accountName.trim().toLowerCase() === lower) ||
+                (a.partyId && String(a.partyId).trim().toLowerCase() === lower) ||
+                (a.id && String(a.id).trim().toLowerCase() === lower) ||
+                (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === lower)
+            );
+            if (found) {
+                targetId = found.id ? String(found.id) : null;
+                targetPartyId = found.partyId ? String(found.partyId) : null;
+                targetName = found.accountName ? found.accountName.trim().toLowerCase() : null;
+            } else {
+                targetName = lower;
+            }
+        } else {
+            targetName = str.toLowerCase();
+        }
+    }
+
+    // Pool of chittas
+    let pool = [];
+    if (typeof chittas !== 'undefined' && Array.isArray(chittas) && chittas.length > 0) {
+        pool = pool.concat(chittas);
+    }
+    if (typeof window !== 'undefined' && Array.isArray(window.allPendingChittas) && window.allPendingChittas.length > 0) {
+        window.allPendingChittas.forEach(pc => {
+            if (!pool.some(c => (c.id && pc.id && c.id === pc.id) || (c.chittaNo && pc.chittaNo && String(c.chittaNo).trim() === String(pc.chittaNo).trim()))) {
+                pool.push(pc);
+            }
+        });
+    }
+
+    // If pool is empty, fetch chittas asynchronously and re-populate
+    if (pool.length === 0 && typeof fetchChittas === 'function') {
+        fetchChittas().then(() => {
+            if (chittas && chittas.length > 0) {
+                loadFarmerChittaHistory(farmerAccOrName);
+            }
+        });
+    }
+
+    const unpaid = pool.filter(c => {
+        const isPaid = Boolean(c.paid) || Boolean(c.payDate);
+        if (isPaid) return false;
+
+        if (targetId && c.farmerAccount && String(c.farmerAccount.id) === targetId) return true;
+        if (targetPartyId && c.farmerAccount && String(c.farmerAccount.partyId) === targetPartyId) return true;
+        if (targetName && c.farmerAccount && c.farmerAccount.accountName && c.farmerAccount.accountName.trim().toLowerCase() === targetName) return true;
+        if (targetName && c.farmerName && c.farmerName.trim().toLowerCase() === targetName) return true;
+        if (targetId && c.farmerAccountId && String(c.farmerAccountId) === targetId) return true;
+        if (targetPartyId && c.farmerAccountId && String(c.farmerAccountId) === targetPartyId) return true;
+        return false;
+    });
+
+    unpaid.sort((a, b) => {
+        const da = String(a.chittaDate || '').substring(0, 10);
+        const db = String(b.chittaDate || '').substring(0, 10);
+        if (da !== db) return da.localeCompare(db);
+        return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+    });
+
+    histBody.innerHTML = '';
+    let histTotal = 0;
+
+    if (unpaid.length === 0) {
+        renderEmptyRows();
+    } else {
+        unpaid.forEach((c, idx) => {
+            const amt = parseFloat(c.netPayable !== undefined && c.netPayable !== null ? c.netPayable : (parseFloat(c.grossAmount || 0) - parseFloat(c.commissionDeduction || 0) - parseFloat(c.advanceAmount || 0) - parseFloat(c.freightAmount || 0))) || 0;
+            histTotal += amt;
+            const dt = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toISOString().substring(0, 10)) : '';
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.title = `Click to view Chitta #${c.chittaNo}`;
+            tr.onmouseenter = () => { if (tr.dataset.selected !== 'true') tr.style.background = '#eef6ff'; };
+            tr.onmouseleave = () => { if (tr.dataset.selected !== 'true') { tr.style.background = ''; tr.style.color = ''; } };
+            tr.onclick = () => {
+                const rows = histBody.querySelectorAll('tr');
+                rows.forEach(r => { r.style.background = ''; r.style.color = ''; r.dataset.selected = 'false'; });
+                tr.style.background = '#0a246a';
+                tr.style.color = '#fff';
+                tr.dataset.selected = 'true';
+                if (typeof chittas !== 'undefined' && chittas.length > 0) {
+                    const foundIdx = chittas.findIndex(x => (c.id && x.id === c.id) || (String(x.chittaNo).trim() === String(c.chittaNo).trim()));
+                    if (foundIdx !== -1) {
+                        displayChitta(foundIdx);
+                    }
+                }
+            };
+            tr.innerHTML = `
+                <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-size:11px;">${dt}</td>
+                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa; text-align:center;">${c.chittaNo || ''}</td>
+                <td style="border-bottom:1px solid #ccc; padding:2px; text-align:right; font-weight:bold;">${amt.toFixed(2)}</td>
+            `;
+            histBody.appendChild(tr);
+        });
+        for (let i = unpaid.length; i < 5; i++) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; height:20px;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td>';
+            histBody.appendChild(tr);
+        }
+    }
+
+    if (histTotalEl) {
+        histTotalEl.value = histTotal > 0 ? histTotal.toFixed(2) : '';
+    }
+}
+
 function onFarmerCodeChange() {
     let code = (document.getElementById('farmerAccountId')?.value || '').trim();
-    if (!code) return;
+    if (!code) {
+        loadFarmerChittaHistory(null);
+        return;
+    }
     if (code.length > 4) {
         code = code.substring(0, 4);
         document.getElementById('farmerAccountId').value = code;
     }
     const q = code.toLowerCase();
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        (getDisplayFarmerCode(a).toLowerCase() === q) ||
+        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
         (a.partyId && String(a.partyId).toLowerCase() === q) ||
         (String(a.id).toLowerCase() === q) ||
         (String(a.id).padStart(4, '0') === q)
     );
     if (acc) {
         selectFarmerFromSuggest(acc);
+    } else {
+        loadFarmerChittaHistory(code);
     }
 }
 
@@ -3054,6 +4063,8 @@ function selectFarmerFromSuggest(acc) {
     }
     currentFarmerSuggestMatches = [];
     currentFarmerSuggestIndex = 0;
+
+    loadFarmerChittaHistory(acc);
 
     // Move focus to next field (Item description in first row of grid)
     setTimeout(() => {
@@ -3655,8 +4666,8 @@ function applyPeriodDateDefaults(forceReset) {
         'chittaDate', 'chittaPaidOn', 'billDate',
         'cpPayDate', 'cpPayPaidOn', 'dcoDate',
         'cpDate', 'rvDate', 'amDate', 'dobDate',
-        'obRegDate', 'daybookDate',
-        'chittaPendRegDate', 'chittaPendingRegDate'
+        'obRegDate', 'daybookDate', 'daybookFromDate', 'daybookToDate',
+        'chittaPendRegDate', 'chittaPendingRegDate', 'purchaseDate', 'ppDate', 'pobDate', 'prFromDate', 'prToDate', 'pprFromDate', 'pprToDate'
     ];
 
     singleDateInputs.forEach(id => {
@@ -3672,6 +4683,7 @@ function applyPeriodDateDefaults(forceReset) {
         { from: 'chittaRegFromDate', to: 'chittaRegToDate' },
         { from: 'chittaPayRegFromDate', to: 'chittaPayRegToDate' },
         { from: 'billRegFromDate', to: 'billRegToDate' },
+        { from: 'daybookFromDate', to: 'daybookToDate' },
         { from: 'cashRegFromDate', to: 'cashRegToDate' },
         { from: 'receiptRegFromDate', to: 'receiptRegToDate' },
         { from: 'ledgerRegFromDate', to: 'ledgerRegToDate' },
@@ -4289,7 +5301,7 @@ function setChittaMode(mode) {
     const btnNew = document.getElementById('btnChittaNew');
     if (btnNew) btnNew.disabled = false;
     const btnSave = document.getElementById('btnChittaSave');
-    if (btnSave) btnSave.disabled = false;
+    if (btnSave) btnSave.disabled = (mode === 'VIEW');
 
     const btnChange = document.getElementById('btnChittaChange');
     if (btnChange) btnChange.disabled = (mode === 'EDIT');
@@ -4360,6 +5372,11 @@ async function chittaActionNew() {
 function chittaActionChange() {
     if(currentChittaIndex >= 0) {
         setChittaMode('EDIT');
+        showToast("Chitta is now in edit mode.");
+        const firstGridItem = document.querySelector('#chittaGrid .grid-item');
+        if (firstGridItem && !firstGridItem.disabled && !firstGridItem.readOnly) {
+            firstGridItem.focus();
+        }
     } else {
         alert("Select a record to change.");
     }
@@ -4503,6 +5520,10 @@ async function checkSyncStatus(force = false) {
             return;
         }
         const status = await res.json();
+        if (status.status === 'OFFLINE_STANDALONE') {
+            updateLiveSyncBadge(false, status);
+            return;
+        }
         updateLiveSyncBadge(true, status);
 
         // If there are pending offline records, sync them now that server is reachable!
@@ -4900,24 +5921,38 @@ function clearChittaPaymentForm() {
 }
 
 function onCpFarmerCodeChange() {
-    const code = document.getElementById('cpPayFarmerCode')?.value.trim();
+    const code = (document.getElementById('cpPayFarmerCode')?.value || '').trim();
     if(!code) return;
-    const acc = accounts.find(a => a.id && a.id.toString() === code);
+    const q = code.toLowerCase();
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
+        (a.partyId && String(a.partyId).toLowerCase() === q) ||
+        (String(a.id).toLowerCase() === q) ||
+        (String(a.id).padStart(4, '0') === q)
+    );
     if(acc) {
         if(document.getElementById('cpPayFarmerName')) document.getElementById('cpPayFarmerName').value = acc.accountName || '';
-        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.mobile || acc.phone || '';
+        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.phone1 || acc.mobile || acc.phone || '';
         loadFarmerChittasForPayment(acc);
+    } else {
+        loadFarmerChittasForPayment(code);
     }
 }
 
 function onCpFarmerNameChange() {
-    const name = document.getElementById('cpPayFarmerName')?.value.trim();
+    const name = (document.getElementById('cpPayFarmerName')?.value || '').trim();
     if(!name) return;
-    const acc = accounts.find(a => a.accountName && a.accountName.toLowerCase() === name.toLowerCase());
+    const q = name.toLowerCase();
+    let acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase() === q);
+    if (!acc) {
+        acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
+    }
     if(acc) {
         if(document.getElementById('cpPayFarmerCode')) document.getElementById('cpPayFarmerCode').value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(acc) : (acc.partyId || acc.id || '');
-        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.mobile || acc.phone || '';
+        if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = acc.phone1 || acc.mobile || acc.phone || '';
         loadFarmerChittasForPayment(acc);
+    } else {
+        loadFarmerChittasForPayment(name);
     }
 }
 
@@ -4987,8 +6022,31 @@ async function onCpChittaNoChange() {
 
 function loadFarmerChittasForPayment(acc, skipPopulateForm) {
     if(!acc) return;
+    let targetId = (typeof acc === 'object' && acc !== null) ? (acc.id ? String(acc.id) : null) : null;
+    let targetPartyId = (typeof acc === 'object' && acc !== null) ? (acc.partyId ? String(acc.partyId) : null) : null;
+    let targetName = (typeof acc === 'object' && acc !== null) ? (acc.accountName ? acc.accountName.trim().toLowerCase() : null) : String(acc).trim().toLowerCase();
+    
+    if (!targetId && targetName && typeof accounts !== 'undefined' && accounts) {
+        const found = accounts.find(a => (a.accountName && a.accountName.trim().toLowerCase() === targetName) || (a.partyId && String(a.partyId) === targetName) || (String(a.id) === targetName));
+        if (found) {
+            targetId = String(found.id);
+            targetPartyId = String(found.partyId);
+            targetName = found.accountName.trim().toLowerCase();
+        }
+    }
+
     const pool = (window.allPendingChittas && window.allPendingChittas.length > 0) ? window.allPendingChittas : (typeof chittas !== 'undefined' ? chittas : []);
-    const unpaid = pool.filter(c => !c.paid && c.farmerAccount && (c.farmerAccount.id === acc.id || String(c.farmerAccount.partyId) === String(acc.partyId) || String(c.farmerAccount.accountName).toLowerCase() === String(acc.accountName).toLowerCase()));
+    const unpaid = pool.filter(c => {
+        const isPaid = Boolean(c.paid) || Boolean(c.payDate);
+        if (isPaid) return false;
+        if (targetId && c.farmerAccount && String(c.farmerAccount.id) === targetId) return true;
+        if (targetPartyId && c.farmerAccount && String(c.farmerAccount.partyId) === targetPartyId) return true;
+        if (targetName && c.farmerAccount && c.farmerAccount.accountName && c.farmerAccount.accountName.trim().toLowerCase() === targetName) return true;
+        if (targetName && c.farmerName && c.farmerName.trim().toLowerCase() === targetName) return true;
+        if (targetId && c.farmerAccountId && String(c.farmerAccountId) === targetId) return true;
+        if (targetPartyId && c.farmerAccountId && String(c.farmerAccountId) === targetPartyId) return true;
+        return false;
+    });
     const histBody = document.getElementById('cpPayHistoryBody');
     if(!histBody) return;
     histBody.innerHTML = '';
@@ -5289,6 +6347,12 @@ function displayChitta(index) {
     if (c.farmerAccount) {
         document.getElementById('farmerAccountId').value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(c.farmerAccount) : (c.farmerAccount.partyId || c.farmerAccount.id || '');
         document.getElementById('farmerName').value = c.farmerAccount.accountName || '';
+        loadFarmerChittaHistory(c.farmerAccount);
+    } else if (c.farmerName) {
+        document.getElementById('farmerName').value = c.farmerName || '';
+        loadFarmerChittaHistory(c.farmerName);
+    } else {
+        loadFarmerChittaHistory(null);
     }
     
     const items = c.items || [];
@@ -5323,6 +6387,7 @@ function loadLastChitta() { displayChitta(chittas.length - 1); }
 
 function clearChitta() {
     currentChittaIndex = -1;
+    loadFarmerChittaHistory(null);
     const noEl = document.getElementById('chittaNo');
     if (noEl) noEl.value = '';
     const chittaDateEl = document.getElementById('chittaDate');
@@ -5375,6 +6440,10 @@ async function fetchChittas(loadLast = false) {
 }
 
 async function saveChitta() {
+    if (chittaMode === 'VIEW') {
+        showToast("Chitta is in read mode. Click 'Change' to edit.");
+        return;
+    }
     chittaMode = 'EDIT';
     const dateVal = document.getElementById('chittaDate')?.value || getTodayDateStr();
 
@@ -5510,7 +6579,23 @@ async function saveChitta() {
             const savedNo = (savedChitta && savedChitta.chittaNo) ? savedChitta.chittaNo : chittaNoStr;
             showToast("✅ Chitta #" + savedNo + " Saved Successfully!");
             await fetchChittas(false);
-            await chittaActionNew();
+
+            // Stay on saved chitta in read-only / view mode until Change button is clicked
+            let targetIdx = -1;
+            if (savedChitta && savedChitta.id) {
+                targetIdx = chittas.findIndex(c => c.id == savedChitta.id);
+            }
+            if (targetIdx === -1 && savedNo) {
+                targetIdx = chittas.findIndex(c => String(c.chittaNo).trim() === String(savedNo).trim() && String(c.chittaDate).substring(0, 10) === dateVal);
+            }
+            if (targetIdx === -1 && chittas.length > 0) {
+                targetIdx = chittas.length - 1;
+            }
+            if (targetIdx >= 0) {
+                displayChitta(targetIdx);
+            } else {
+                setChittaMode('VIEW');
+            }
         } else if (res.status === 400) {
             let errMsg = "This Chitta Number already exists on this date! Please choose a different number.";
             try {
@@ -6158,7 +7243,12 @@ async function saveCashPayment() {
         amount: amountVal,
         narration: narration,
         paymentMethod: 'CASH',
-        account: { id: targetAcc.id }
+        account: {
+            id: targetAcc.id,
+            partyId: targetAcc.partyId,
+            accountName: targetAcc.accountName
+        },
+        accountName: targetAcc.accountName
     };
     
     const isEdit = (currentCashVoucherIndex >= 0 && cashVouchers[currentCashVoucherIndex]);
@@ -6528,7 +7618,12 @@ async function saveReceipt() {
         amount: amountVal,
         narration: narration,
         paymentMethod: 'CASH',
-        account: { id: targetAcc.id }
+        account: {
+            id: targetAcc.id,
+            partyId: targetAcc.partyId,
+            accountName: targetAcc.accountName
+        },
+        accountName: targetAcc.accountName
     };
     
     const isEdit = (currentReceiptVoucherIndex >= 0 && receiptVouchers[currentReceiptVoucherIndex]);
@@ -7353,14 +8448,42 @@ async function loadCashPaymentRegister() {
                 const v = data[idx];
                 const amt = parseFloat(v.amount) || 0;
                 total += amt;
-                const accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
-                const dtStr = v.voucherDate ? String(v.voucherDate).substring(0, 10) : '';
+                let accName = '';
+                let accCode = '';
+                if (v.account) {
+                    accName = v.account.accountName || v.account.name || '';
+                    accCode = v.account.partyId || v.account.id || '';
+                }
+                if (!accCode && v.accountCode) accCode = v.accountCode;
+                if (!accCode && v.accountId) accCode = v.accountId;
+                if (!accName && v.accountName) accName = v.accountName;
+                if ((!accName || accName === 'undefined') && (accCode || (v.account && v.account.id))) {
+                    const targetCode = accCode || v.account.id;
+                    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                        const found = accounts.find(a => String(a.id) === String(targetCode) || String(a.partyId) === String(targetCode));
+                        if (found) {
+                            accName = found.accountName;
+                            if (!accCode) accCode = found.partyId || found.id;
+                        }
+                    }
+                }
+                if (!accName || accName === 'undefined') accName = '—';
+                
+                let dtStr = '';
+                if (v.voucherDate) {
+                    const parts = String(v.voucherDate).substring(0, 10).split('-');
+                    if (parts.length === 3) {
+                        dtStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+                    } else {
+                        dtStr = v.voucherDate;
+                    }
+                }
 
                 rowsHtml.push(
                     '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
                     'onclick="openCashPaymentByRecord(cashVouchers[' + idx + '], ' + idx + ')">' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (v.voucherNo || '') + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + accCode + '</td>' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + dtStr + '</td>' +
                     '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + accName + '</td>' +
                     '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold; color:#a00;">' + amt.toFixed(2) + '</td>' +
@@ -7369,8 +8492,10 @@ async function loadCashPaymentRegister() {
                 );
             }
             tbody.innerHTML = rowsHtml.join('');
-            const sumEl = document.getElementById('cashRegSumTotal');
-            if (sumEl) sumEl.value = total > 0 ? total.toFixed(2) : '';
+            const sumEl = document.getElementById('cashRegTotalAmount');
+            if (sumEl) sumEl.innerText = total > 0 ? total.toFixed(2) : '0.00';
+            const cntEl = document.getElementById('cashRegTotalCount');
+            if (cntEl) cntEl.innerText = data.length;
             showToast('Cash Payment Register: ' + data.length + ' records loaded');
         }).catch(err => {
             console.error(err);
@@ -7404,14 +8529,42 @@ function loadReceiptRegister() {
                 const v = data[idx];
                 const amt = parseFloat(v.amount) || 0;
                 total += amt;
-                const accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
-                const dtStr = v.voucherDate ? String(v.voucherDate).substring(0, 10) : '';
+                let accName = '';
+                let accCode = '';
+                if (v.account) {
+                    accName = v.account.accountName || v.account.name || '';
+                    accCode = v.account.partyId || v.account.id || '';
+                }
+                if (!accCode && v.accountCode) accCode = v.accountCode;
+                if (!accCode && v.accountId) accCode = v.accountId;
+                if (!accName && v.accountName) accName = v.accountName;
+                if ((!accName || accName === 'undefined') && (accCode || (v.account && v.account.id))) {
+                    const targetCode = accCode || v.account.id;
+                    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                        const found = accounts.find(a => String(a.id) === String(targetCode) || String(a.partyId) === String(targetCode));
+                        if (found) {
+                            accName = found.accountName;
+                            if (!accCode) accCode = found.partyId || found.id;
+                        }
+                    }
+                }
+                if (!accName || accName === 'undefined') accName = '—';
+                
+                let dtStr = '';
+                if (v.voucherDate) {
+                    const parts = String(v.voucherDate).substring(0, 10).split('-');
+                    if (parts.length === 3) {
+                        dtStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+                    } else {
+                        dtStr = v.voucherDate;
+                    }
+                }
 
                 rowsHtml.push(
                     '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
                     'onclick="openReceiptByRecord(receiptVouchers[' + idx + '], ' + idx + ')">' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (v.voucherNo || '') + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + accCode + '</td>' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + dtStr + '</td>' +
                     '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + accName + '</td>' +
                     '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold; color:#008800;">' + amt.toFixed(2) + '</td>' +
@@ -7420,8 +8573,10 @@ function loadReceiptRegister() {
                 );
             }
             tbody.innerHTML = rowsHtml.join('');
-            const sumEl = document.getElementById('receiptRegSumTotal');
-            if (sumEl) sumEl.value = total > 0 ? total.toFixed(2) : '';
+            const sumEl = document.getElementById('receiptRegTotalAmount');
+            if (sumEl) sumEl.innerText = total > 0 ? total.toFixed(2) : '0.00';
+            const cntEl = document.getElementById('receiptRegTotalCount');
+            if (cntEl) cntEl.innerText = data.length;
             showToast('Receipt Register: ' + data.length + ' records loaded');
         }).catch(err => {
             console.error(err);
@@ -7429,459 +8584,6 @@ function loadReceiptRegister() {
         });
     } catch(e) { console.error(e); }
 }
-
-async function loadLedger() {
-    try {
-        const accId = document.getElementById('ledgerAccountId')?.value || document.getElementById('advAccountId')?.value;
-        if (!accId) {
-            showToast("Please enter an Account ID");
-            return;
-        }
-
-        let url = `/api/reports/ledger?accountId=${accId}`;
-        const fromDate = document.getElementById('advFromDate')?.value || document.getElementById('ledgerRegFromDate')?.value;
-        const toDate = document.getElementById('advToDate')?.value || document.getElementById('ledgerRegToDate')?.value;
-        
-        if (fromDate) url += `&startDate=${fromDate}`;
-        if (toDate) url += `&endDate=${toDate}`;
-        
-        const res = await fetch(url);
-        if(res.ok) {
-            const data = await res.json();
-            const tbody = document.getElementById('ledgerReportTbody') || document.querySelector('#ledgerReport table tbody');
-            if (tbody) {
-                tbody.innerHTML = '';
-                let totalDebit = 0, totalCredit = 0;
-                const rows = Array.isArray(data) ? data : (data.transactions || []);
-                rows.forEach((row, idx) => {
-                    const d = parseFloat(row.debit) || 0;
-                    const c = parseFloat(row.credit) || 0;
-                    totalDebit += d;
-                    totalCredit += c;
-                    const tr = document.createElement('tr');
-                    tr.style.cursor = 'pointer';
-                    tr.title = 'Click to open voucher';
-                    tr.onmouseover = () => tr.style.backgroundColor = '#e8f4e5';
-                    tr.onmouseout = () => tr.style.backgroundColor = '';
-                    tr.onclick = () => openLedgerVoucher(row);
-
-                    tr.innerHTML = `
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${idx + 1}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${row.date || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; cursor:pointer;" onclick="openLedgerVoucher(row); event.stopPropagation();">${row.particulars || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${d > 0 ? d.toFixed(2) : ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${c > 0 ? c.toFixed(2) : ''}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right;">${row.balance || ''}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-            showToast("Ledger Loaded");
-        }
-    } catch(e) { console.error(e); }
-}
-
-async function loadChittaRegister() {
-    const tbody = document.getElementById('chittaRegisterBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading Chitta records...</td></tr>';
-    try {
-        let url = '/api/reports/chitta-register?';
-        const fromDate = document.getElementById('advFromDate')?.value || document.getElementById('chittaRegFromDate')?.value;
-        const toDate = document.getElementById('advToDate')?.value || document.getElementById('chittaRegToDate')?.value;
-        const accId = document.getElementById('advAccountId')?.value;
-        
-        if (fromDate) url += 'startDate=' + fromDate + '&';
-        if (toDate) url += 'endDate=' + toDate + '&';
-        if (accId) url += 'accountId=' + accId;
-        
-        const res = await fetch(url);
-        if(res.ok) {
-            const data = await res.json();
-            if(!tbody) return;
-            if(!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No Chitta records found</td></tr>';
-                return;
-            }
-            data.sort((a, b) => {
-                const da = String(a.chittaDate || '').substring(0, 10);
-                const db = String(b.chittaDate || '').substring(0, 10);
-                if (da !== db) return da.localeCompare(db);
-                return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
-            });
-            let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
-            const rowsHtml = [];
-            for (let idx = 0; idx < data.length; idx++) {
-                const c = data[idx];
-                const gross = parseFloat(c.grossAmount) || 0;
-                const comm = parseFloat(c.commissionDeduction || c.commission) || 0;
-                const adv = parseFloat(c.advanceAmount || c.advance) || 0;
-                const frt = parseFloat(c.freightAmount || c.freight) || 0;
-                const net = parseFloat(c.netPayable) || 0;
-
-                sumTotal = Math.round((sumTotal + gross) * 100) / 100;
-                sumComm = Math.round((sumComm + comm) * 100) / 100;
-                sumAdv = Math.round((sumAdv + adv) * 100) / 100;
-                sumFreight = Math.round((sumFreight + frt) * 100) / 100;
-                sumNet = Math.round((sumNet + net) * 100) / 100;
-                
-                let chittaWeight = parseFloat(c.weight) || 0;
-                if (!chittaWeight && c.items) {
-                    c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
-                }
-                sumWeight = Math.round((sumWeight + chittaWeight) * 100) / 100;
-
-                const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
-                const chittaDateStr = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
-                const payDateStr = c.payDate ? String(c.payDate).substring(0, 10) : (c.paid ? 'PAID' : '');
-            const safeNo = (c.chittaNo || '').replace(/'/g, "\\'");
-                const safeId = (c.id || '');
-
-                rowsHtml.push(
-                    '<tr style="cursor:pointer;" title="Click to open Chitta #' + safeNo + '" ' +
-                    'onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
-                    'onclick="openChittaByRecordId(\'' + safeId + '\', \'' + safeNo + '\')">' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">' + chittaDateStr + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (c.chittaNo || '') + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;" title="Open Chitta for ' + farmerName + '">' + farmerName + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (chittaWeight > 0 ? chittaWeight.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (gross > 0 ? gross.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (comm > 0 ? comm.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (adv > 0 ? adv.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (frt > 0 ? frt.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold;">' + (net !== 0 ? net.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:center; border-bottom:1px solid #ccc;">' + payDateStr + '</td>' +
-                    '</tr>'
-                );
-            }
-            tbody.innerHTML = rowsHtml.join('');
-
-            const sumWeightEl = document.getElementById('chittaRegSumWeight');
-            if (sumWeightEl) sumWeightEl.value = sumWeight > 0 ? sumWeight.toFixed(2) : '';
-            const sumTotalEl = document.getElementById('chittaRegSumTotal');
-            if (sumTotalEl) sumTotalEl.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
-            const sumCommEl = document.getElementById('chittaRegSumComm');
-            if (sumCommEl) sumCommEl.value = sumComm > 0 ? sumComm.toFixed(2) : '';
-            const sumAdvEl = document.getElementById('chittaRegSumAdv');
-            if (sumAdvEl) sumAdvEl.value = sumAdv > 0 ? sumAdv.toFixed(2) : '';
-            const sumNetEl = document.getElementById('chittaRegSumNet');
-            if (sumNetEl) sumNetEl.value = sumNet !== 0 ? sumNet.toFixed(2) : '';
-            
-            showToast('Chitta Register: ' + data.length + ' records loaded');
-        }
-    } catch(e) {
-        console.error(e);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#c00;">Error loading register: ' + e.message + '</td></tr>';
-    }
-}
-
-// Fetch on load
-fetchAccounts();
-fetchChittas();
-fetchBills();
-fetchCashPayments();
-fetchReceipts();
-if(typeof loadFinancialPeriods === "function") loadFinancialPeriods();
-
-function openAdvancedOptions() {
-    const adv = document.getElementById('advancedOption');
-    if (!adv) return;
-    
-    let curFrom = '';
-    let curTo = '';
-    
-    if (document.getElementById('chittaRegister') && document.getElementById('chittaRegister').style.display !== 'none') {
-        curFrom = document.getElementById('chittaRegFromDate')?.value || '';
-        curTo = document.getElementById('chittaRegToDate')?.value || '';
-    } else if (document.getElementById('chittaPendingRegister') && document.getElementById('chittaPendingRegister').style.display !== 'none') {
-        curTo = document.getElementById('chittaPendingRegDate')?.value || '';
-    } else if (document.getElementById('chittaPaymentRegister') && document.getElementById('chittaPaymentRegister').style.display !== 'none') {
-        curFrom = document.getElementById('chittaPaymentRegFromDate')?.value || '';
-        curTo = document.getElementById('chittaPaymentRegToDate')?.value || '';
-    } else if (document.getElementById('billRegister') && document.getElementById('billRegister').style.display !== 'none') {
-        curFrom = document.getElementById('billRegFromDate')?.value || '';
-        curTo = document.getElementById('billRegToDate')?.value || '';
-    } else if (document.getElementById('cashPaymentRegister') && document.getElementById('cashPaymentRegister').style.display !== 'none') {
-        curFrom = document.getElementById('cashRegFromDate')?.value || '';
-        curTo = document.getElementById('cashRegToDate')?.value || '';
-    } else if (document.getElementById('receiptRegister') && document.getElementById('receiptRegister').style.display !== 'none') {
-        curFrom = document.getElementById('receiptRegFromDate')?.value || '';
-        curTo = document.getElementById('receiptRegToDate')?.value || '';
-    }
-    
-    const fromInput = document.getElementById('advFromDate');
-    const toInput = document.getElementById('advToDate');
-    if (fromInput && curFrom) fromInput.value = curFrom;
-    if (toInput && curTo) toInput.value = curTo;
-    
-    adv.style.display = 'flex';
-}
-
-function clearAdvancedOptions() {
-    if (document.getElementById('advAccountId')) document.getElementById('advAccountId').value = '';
-    if (document.getElementById('advAccountName')) document.getElementById('advAccountName').value = '';
-    if (document.getElementById('advFromDate')) document.getElementById('advFromDate').value = '';
-    if (document.getElementById('advToDate')) document.getElementById('advToDate').value = '';
-}
-
-function applyAdvancedOptions() {
-    const adv = document.getElementById('advancedOption');
-    if (adv) adv.style.display = 'none';
-
-    const fromVal = document.getElementById('advFromDate')?.value || '';
-    const toVal = document.getElementById('advToDate')?.value || '';
-    const fCode = document.getElementById('advAccountId')?.value || '';
-    const fName = document.getElementById('advAccountName')?.value || '';
-    
-    if (fName && !fCode && typeof accounts !== 'undefined') {
-        const found = accounts.find(a => (a.accountName || '').toLowerCase() === fName.toLowerCase());
-        if (found) {
-            document.getElementById('advAccountId').value = found.partyId || found.id;
-        }
-    }
-
-    if (document.getElementById('chittaRegister') && document.getElementById('chittaRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('chittaRegFromDate')) document.getElementById('chittaRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('chittaRegToDate')) document.getElementById('chittaRegToDate').value = toVal;
-        loadChittaRegister();
-    } else if (document.getElementById('chittaPendingRegister') && document.getElementById('chittaPendingRegister').style.display !== 'none') {
-        if (toVal && document.getElementById('chittaPendingRegDate')) document.getElementById('chittaPendingRegDate').value = toVal;
-        loadChittaPendingRegister();
-    } else if (document.getElementById('chittaPaymentRegister') && document.getElementById('chittaPaymentRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('chittaPaymentRegFromDate')) document.getElementById('chittaPaymentRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('chittaPaymentRegToDate')) document.getElementById('chittaPaymentRegToDate').value = toVal;
-        loadChittaPaymentRegister();
-    } else if (document.getElementById('billRegister') && document.getElementById('billRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('billRegFromDate')) document.getElementById('billRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('billRegToDate')) document.getElementById('billRegToDate').value = toVal;
-        loadBillRegister();
-    } else if (document.getElementById('cashPaymentRegister') && document.getElementById('cashPaymentRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('cashRegFromDate')) document.getElementById('cashRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('cashRegToDate')) document.getElementById('cashRegToDate').value = toVal;
-        loadCashPaymentRegister();
-    } else if (document.getElementById('receiptRegister') && document.getElementById('receiptRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('receiptRegFromDate')) document.getElementById('receiptRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('receiptRegToDate')) document.getElementById('receiptRegToDate').value = toVal;
-        loadReceiptRegister();
-    } else if (document.getElementById('ledger') && document.getElementById('ledger').style.display !== 'none') {
-        loadLedger();
-    }
-}
-
-    function loadOutstandingReport() {
-        const fromDate = document.getElementById('outstandingFrom').value;
-        const toDate = document.getElementById('outstandingTo').value;
-        
-        let url = '/api/reports/outstanding';
-        const params = new URLSearchParams();
-        if (fromDate) params.append('startDate', fromDate);
-        if (toDate) params.append('endDate', toDate);
-        
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                const tbody = document.getElementById('outstandingReportTbody');
-                tbody.innerHTML = '';
-                
-                let totalDebit = 0;
-                let totalCredit = 0;
-                let sno = 1;
-
-                data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    
-                    let debitStr = '';
-                    let creditStr = '';
-                    
-                    let deb = parseFloat(item.debit) || 0;
-                    let crd = parseFloat(item.credit) || 0;
-                    if (deb === 0 && crd === 0) {
-                        if (item.closingBalance > 0) {
-                            deb = parseFloat(item.closingBalance);
-                        } else if (item.closingBalance < 0) {
-                            crd = Math.abs(parseFloat(item.closingBalance));
-                        }
-                    }
-                    totalDebit = Math.round((totalDebit + deb) * 100) / 100;
-                    totalCredit = Math.round((totalCredit + crd) * 100) / 100;
-                    debitStr = deb > 0 ? deb.toFixed(2) : '';
-                    creditStr = crd > 0 ? crd.toFixed(2) : '';
-                    
-                    tr.innerHTML = `
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${sno++}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${item.accountName || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${debitStr}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right;">${creditStr}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-                
-                document.getElementById('outstandingTotalDebit').innerText = totalDebit.toFixed(2);
-                document.getElementById('outstandingTotalCredit').innerText = totalCredit.toFixed(2);
-            })
-            .catch(err => console.error('Error fetching outstanding report:', err));
-    }
-
-    async function loadChittaPendingRegister() {
-    const tbody = document.getElementById('chittaPendingRegisterBody') || document.querySelector('#chittaPendingRegister table tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading pending records...</td></tr>';
-    try {
-        let url = '/api/reports/chitta-pending-register?';
-        const asOfDate = document.getElementById('advToDate')?.value || document.getElementById('chittaPendingRegDate')?.value;
-        const accId = document.getElementById('advAccountId')?.value;
-        if (asOfDate) url += 'asOfDate=' + asOfDate + '&';
-        if (accId) url += 'accountId=' + accId;
-
-        fetch(url).then(res => res.json()).then(data => {
-            if (!tbody) return;
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No pending chittas found</td></tr>';
-                return;
-            }
-            let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
-            const rowsHtml = [];
-            for (let idx = 0; idx < data.length; idx++) {
-                const c = data[idx];
-                const gross = parseFloat(c.grossAmount) || 0;
-                const comm = parseFloat(c.commissionDeduction || c.commission) || 0;
-                const adv = parseFloat(c.advanceAmount || c.advance) || 0;
-                const frt = parseFloat(c.freightAmount || c.freight) || 0;
-                const net = parseFloat(c.netPayable) || 0;
-
-                sumTotal += gross;
-                sumComm += comm;
-                sumAdv += adv;
-                sumFreight += frt;
-                sumNet += net;
-
-                let chittaWeight = parseFloat(c.weight) || 0;
-                if (!chittaWeight && c.items) {
-                    c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
-                }
-                sumWeight += chittaWeight;
-
-                const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
-                const chittaDateStr = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
-                const safeNo = (c.chittaNo || '').replace(/'/g, "\\'");
-                const safeId = (c.id || '');
-
-                rowsHtml.push(
-                    '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
-                    'onclick="openChittaByRecordId(\'' + safeId + '\', \'' + safeNo + '\')">' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (c.chittaNo || '') + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + farmerName + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (chittaWeight > 0 ? chittaWeight.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (gross > 0 ? gross.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (comm > 0 ? comm.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (adv > 0 ? adv.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (frt > 0 ? frt.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold;">' + (net !== 0 ? net.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + chittaDateStr + '</td>' +
-                    '<td style="text-align:center; border-bottom:1px solid #ccc; color:#c00; font-weight:bold;">PENDING</td>' +
-                    '</tr>'
-                );
-            }
-            tbody.innerHTML = rowsHtml.join('');
-            showToast('Pending Register: ' + data.length + ' records loaded');
-        }).catch(err => {
-            console.error(err);
-            if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#c00;">Error loading register</td></tr>';
-        });
-    } catch(e) { console.error(e); }
-}
-
-async function loadChittaPaymentRegister() {
-        try {
-            let url = '/api/reports/chitta-payment-register?';
-            const fromDate = document.getElementById('advFromDate')?.value || document.getElementById('chittaPaymentRegFromDate')?.value;
-            const toDate = document.getElementById('advToDate')?.value || document.getElementById('chittaPaymentRegToDate')?.value;
-            const accId = document.getElementById('advAccountId')?.value;
-            
-            if (fromDate) url += `startDate=${fromDate}&`;
-            if (toDate) url += `endDate=${toDate}&`;
-            if (accId) url += `accountId=${accId}`;
-
-            const res = await fetch(url);
-            if(res.ok) {
-                const data = await res.json();
-                const tbody = document.getElementById('chittaPaymentRegisterBody') || document.querySelector('#chittaPaymentRegister table tbody');
-                if(!tbody) return;
-                tbody.innerHTML = '';
-                
-                let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
-                
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:15px; color:#888;">No payment records found</td></tr>';
-                } else {
-                    data.forEach((c, idx) => {
-                        const gross = parseFloat(c.grossAmount) || parseFloat(c.amount) || 0;
-                        const comm = parseFloat(c.commission) || 0;
-                        const adv = parseFloat(c.advance) || 0;
-                        const frt = parseFloat(c.freight) || 0;
-                        const net = parseFloat(c.netPayable || c.total || c.amount) || 0;
-                        const wt = parseFloat(c.weight) || 0;
-
-                        sumTotal += gross;
-                        sumComm += comm;
-                        sumAdv += adv;
-                        sumFreight += frt;
-                        sumNet += net;
-                        sumWeight += wt;
-
-                        const payDateStr = c.payDate ? new Date(c.payDate).toLocaleDateString('en-GB') : (c.date ? new Date(c.date).toLocaleDateString('en-GB') : '');
-                        const chittaDateStr = c.chittaDate ? new Date(c.chittaDate).toLocaleDateString('en-GB') : '';
-                        const farmerName = c.farmerName || c.paidTo || (c.farmerAccount ? c.farmerAccount.accountName : '');
-
-                        const tr = document.createElement('tr');
-                        tr.style.cursor = 'pointer';
-                        tr.title = `Click to open Chitta #${c.chittaNo || ''}`;
-                        tr.onmouseover = () => tr.style.backgroundColor = '#e8f4e5';
-                        tr.onmouseout = () => tr.style.backgroundColor = '';
-                        tr.onclick = () => openChittaByRecord(c);
-
-                        tr.innerHTML = `
-                            <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${payDateStr}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${chittaDateStr}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; color:#0055aa; font-weight:bold; cursor:pointer;" onclick="openChittaByRecordId('${c.id || ''}', '${c.chittaNo || ''}'); event.stopPropagation();">${c.chittaNo || ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold; cursor:pointer;" onclick="openChittaByRecordId('${c.id || ''}', '${c.chittaNo || ''}'); event.stopPropagation();" title="Open Chitta for ${farmerName}">${farmerName}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${wt > 0 ? wt.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${gross > 0 ? gross.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${comm > 0 ? comm.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${adv > 0 ? adv.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${frt > 0 ? frt.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; font-weight:bold;">${net !== 0 ? net.toFixed(2) : ''}</td>
-                            <td style="border-bottom:1px solid #ccc;">${c.paidTo || ''}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                }
-
-                const elWt = document.getElementById('chittaPaySumWeight');
-                const elTot = document.getElementById('chittaPaySumTotal');
-                const elComm = document.getElementById('chittaPaySumComm');
-                const elAdv = document.getElementById('chittaPaySumAdv');
-                const elNet = document.getElementById('chittaPaySumNet');
-                if(elWt) elWt.value = sumWeight > 0 ? sumWeight.toFixed(2) : '';
-                if(elTot) elTot.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
-                if(elComm) elComm.value = sumComm > 0 ? sumComm.toFixed(2) : '';
-                if(elAdv) elAdv.value = sumAdv > 0 ? sumAdv.toFixed(2) : '';
-                if(elNet) elNet.value = sumNet !== 0 ? sumNet.toFixed(2) : '';
-
-                showToast("Chitta Payment Register Loaded");
-            }
-        } catch(err) {
-            console.error('Error fetching chitta payment register:', err);
-        }
-    }
-
-
-
 
 // --- SECONDARY REPORT LOADERS ---
 async function loadBillRegister() {
@@ -7962,43 +8664,100 @@ async function loadBillRegister() {
 }
 
 async function loadDaybook() {
+    const tbody = document.getElementById('daybookBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#555;">Loading Daybook...</td></tr>';
+    
     try {
-        const dateVal = document.getElementById('daybookDate')?.value || new Date().toISOString().substring(0, 10);
-        const url = `/api/reports/daybook?date=${dateVal}`;
-        const res = await fetch(url);
-        if(res.ok) {
-            const data = await res.json();
-            const tbody = document.getElementById('daybookBody');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            let sumCr = 0, sumDr = 0;
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#888;">No transactions for selected date</td></tr>';
-            } else {
-                data.forEach(t => {
-                    const cr = parseFloat(t.credit) || 0;
-                    const dr = parseFloat(t.debit) || 0;
-                    sumCr += cr;
-                    sumDr += dr;
-                    const dt = t.date ? (typeof t.date === 'string' ? t.date.substring(0, 10) : new Date(t.date).toLocaleDateString('en-GB')) : '';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dt}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${(t.accountName || '') + ' - ' + (t.narration || '')}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${cr > 0 ? cr.toFixed(2) : ''}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right;">${dr > 0 ? dr.toFixed(2) : ''}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-            const elCr = document.getElementById('daybookSumCredit');
-            const elDr = document.getElementById('daybookSumDebit');
-            if(elCr) elCr.value = sumCr > 0 ? sumCr.toFixed(2) : '';
-            if(elDr) elDr.value = sumDr > 0 ? sumDr.toFixed(2) : '';
-            showToast("Daybook Loaded");
+        let fromDate = document.getElementById('daybookFromDate')?.value || document.getElementById('daybookDate')?.value;
+        let toDate = document.getElementById('daybookToDate')?.value;
+        if (!fromDate) {
+            fromDate = '2026-11-09';
         }
-    } catch(e) { console.error(e); }
+        if (!toDate) toDate = fromDate;
+        
+        const fEl = document.getElementById('daybookFromDate');
+        if (fEl && !fEl.value) fEl.value = fromDate;
+        const tEl = document.getElementById('daybookToDate');
+        if (tEl && !tEl.value) tEl.value = toDate;
+        const dEl = document.getElementById('daybookDate');
+        if (dEl) dEl.value = fromDate;
+
+        const url = '/api/reports/daybook?startDate=' + encodeURIComponent(fromDate) + '&endDate=' + encodeURIComponent(toDate) + '&date=' + encodeURIComponent(fromDate);
+        const res = await fetch(url);
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#c00;">Failed to load daybook</td></tr>';
+            return;
+        }
+
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        let totalCredit = 0;
+        let totalDebit = 0;
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr style="background:#00ffff; font-weight:bold;">' +
+                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:3px 4px;">&nbsp;</td>' +
+                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 8px;">OPENING BALANCE</td>' +
+                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">0.00</td>' +
+                '<td style="border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">&nbsp;</td>' +
+                '</tr>';
+        } else {
+            const rowsHtml = [];
+            data.forEach(item => {
+                const isOp = item.isOpening || item.name === 'OPENING BALANCE' || item.accountName === 'OPENING BALANCE';
+                const cr = parseFloat(item.credit) || 0;
+                const dr = parseFloat(item.debit) || 0;
+                totalCredit += cr;
+                totalDebit += dr;
+
+                if (isOp) {
+                    rowsHtml.push(
+                        '<tr style="background:#00ffff; font-weight:bold;">' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:3px 4px;">&nbsp;</td>' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 8px;">OPENING BALANCE</td>' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">' + cr.toFixed(2) + '</td>' +
+                        '<td style="border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">&nbsp;</td>' +
+                        '</tr>'
+                    );
+                } else {
+                    let dtFormatted = '';
+                    if (item.date) {
+                        const parts = String(item.date).substring(0, 10).split('-');
+                        if (parts.length === 3) {
+                            dtFormatted = parts[2] + '/' + parts[1] + '/' + parts[0].slice(-2);
+                        } else {
+                            dtFormatted = item.date;
+                        }
+                    }
+                    const name = item.name || item.accountName || item.particulars || '—';
+                    rowsHtml.push(
+                        '<tr style="height:22px;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'">' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:3px 4px;">' + dtFormatted + '</td>' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 8px;">' + name + '</td>' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">' + (cr > 0 ? cr.toFixed(2) : '') + '</td>' +
+                        '<td style="border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">' + (dr > 0 ? dr.toFixed(2) : '') + '</td>' +
+                        '</tr>'
+                    );
+                }
+            });
+            tbody.innerHTML = rowsHtml.join('');
+        }
+
+        const elCr = document.getElementById('daybookSumCredit');
+        const elDr = document.getElementById('daybookSumDebit');
+        const elBal = document.getElementById('daybookClosingBalance');
+
+        if (elCr) elCr.value = totalCredit.toFixed(2);
+        if (elDr) elDr.value = totalDebit.toFixed(2);
+        if (elBal) elBal.value = (totalCredit - totalDebit).toFixed(2);
+
+        showToast("Daybook Loaded");
+    } catch(err) {
+        console.error("Daybook error:", err);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#c00;">Error loading daybook</td></tr>';
+    }
 }
 
 async function loadItemRegister() {
@@ -8562,6 +9321,1218 @@ function loadDailyOpeningBalance() {
             showToast("Daily Opening Balance Loaded");
         })
         .catch(err => console.error('Error fetching daily opening balance:', err));
+}
+
+
+
+// =========================================================================
+// PURCHASE & TRADER TRANSACTION & REPORT LOGIC
+// =========================================================================
+let purchases = [];
+let currentPurchaseIndex = -1;
+let purchasePayments = [];
+let currentPpIndex = -1;
+let currentPurchaseTrader = null;
+let currentActivePurchaseRow = 0;
+
+function initPurchaseWindow() {
+    initPurchaseGrid();
+    loadPurchases().then(() => {
+        if (purchases && purchases.length > 0) {
+            displayPurchase(purchases.length - 1);
+        } else {
+            newPurchase();
+        }
+    });
+}
+
+function initPurchaseGrid() {
+    const tbody = document.getElementById('purchaseGridBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+        addPurchaseGridRow(i);
+    }
+    highlightPurchaseRow(0);
+}
+
+function highlightPurchaseRow(rowIdx) {
+    currentActivePurchaseRow = rowIdx;
+    const tbody = document.getElementById('purchaseGridBody');
+    if (!tbody) return;
+    for (let i = 0; i < tbody.children.length; i++) {
+        const tr = tbody.children[i];
+        if (i === rowIdx) {
+            tr.style.backgroundColor = '#00ffff';
+        } else {
+            tr.style.backgroundColor = '';
+        }
+    }
+}
+
+function addPurchaseGridRow(rowIdx) {
+    const tbody = document.getElementById('purchaseGridBody');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.id = 'pGridRow' + rowIdx;
+    tr.style.cursor = 'pointer';
+    tr.onclick = function() { highlightPurchaseRow(rowIdx); };
+
+    tr.innerHTML = `
+        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${rowIdx + 1}</td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="text" id="pGridItem${rowIdx}" class="p-field" list="itemMasterList" style="border:none; width:100%; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})" onchange="onPurchaseItemSelect(${rowIdx})">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="text" id="pGridPart${rowIdx}" class="p-field" style="border:none; width:100%; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="number" step="0.01" id="pGridRate${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="number" step="0.01" id="pGridWeight${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
+        </td>
+        <td style="border-bottom:1px solid #ccc; text-align:right; padding:2px 6px;">
+            <input type="text" id="pGridAmt${rowIdx}" readonly style="border:none; width:100%; text-align:right; font-weight:bold; background:transparent; font-size:12px;" value="0.00">
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function calcPurchaseRowAmount(rowIdx) {
+    const rate = parseFloat(document.getElementById('pGridRate' + rowIdx)?.value) || 0;
+    const weight = parseFloat(document.getElementById('pGridWeight' + rowIdx)?.value) || 0;
+    const amt = rate * weight;
+    const amtEl = document.getElementById('pGridAmt' + rowIdx);
+    if (amtEl) amtEl.value = amt > 0 ? amt.toFixed(2) : '0.00';
+}
+
+function formatIndianNumber(num) {
+    const parts = num.toFixed(2).split('.');
+    let x = parts[0];
+    let lastThree = x.substring(x.length - 3);
+    let otherNumbers = x.substring(0, x.length - 3);
+    if (otherNumbers !== '') {
+        lastThree = ',' + lastThree;
+    }
+    const res = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree + '.' + parts[1];
+    return res;
+}
+
+function calcPurchaseTotals() {
+    let gross = 0;
+    let totWeight = 0;
+
+    for (let i = 0; i < 30; i++) {
+        const amtEl = document.getElementById('pGridAmt' + i);
+        const wtEl = document.getElementById('pGridWeight' + i);
+        if (!amtEl && !wtEl) break;
+
+        const a = parseFloat(amtEl?.value) || 0;
+        const w = parseFloat(wtEl?.value) || 0;
+        gross += a;
+        totWeight += w;
+    }
+
+    const advance = parseFloat(document.getElementById('purchaseAdvance')?.value) || 0;
+    const net = gross - advance;
+
+    const elGross = document.getElementById('purchaseGrossAmount');
+    const elNet = document.getElementById('purchaseNetPayable');
+    const elBig = document.getElementById('purchaseNetBigDisplay');
+
+    if (elGross) elGross.value = gross.toFixed(2);
+    if (elNet) elNet.value = (net > 0 ? net : gross).toFixed(2);
+    if (elBig) {
+        const displayVal = net > 0 ? net : (gross > 0 ? gross : 0);
+        elBig.innerText = formatIndianNumber(displayVal);
+    }
+}
+
+function onPurchaseItemSelect(rowIdx) {
+    const tbody = document.getElementById('purchaseGridBody');
+    if (tbody && rowIdx === tbody.children.length - 1) {
+        addPurchaseGridRow(rowIdx + 1);
+    }
+}
+
+async function loadPurchases() {
+    try {
+        const res = await fetch('/api/purchases');
+        if (res.ok) {
+            purchases = await res.json();
+            if (!Array.isArray(purchases)) purchases = [];
+        }
+    } catch(e) {
+        console.error('loadPurchases error:', e);
+    }
+}
+
+function displayPurchase(idx) {
+    if (!purchases || idx < 0 || idx >= purchases.length) return;
+    currentPurchaseIndex = idx;
+    const p = purchases[idx];
+
+    const titleEl = document.getElementById('purchaseModalTitle');
+    if (titleEl) titleEl.children[0].innerText = 'Purchase - #' + (p.purchaseNo || p.id);
+
+    const dt = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : getTodayDateStr();
+    document.getElementById('purchaseDate').value = dt;
+    document.getElementById('purchaseNo').value = p.purchaseNo || '';
+
+    let traderCode = '';
+    let traderName = '';
+    let traderPhone = p.phone || '';
+    if (p.traderAccount) {
+        traderCode = p.traderAccount.partyId || p.traderAccount.id || '';
+        traderName = p.traderAccount.accountName || '';
+        if (!traderPhone && (p.traderAccount.phone || p.traderAccount.mobileNumber)) {
+            traderPhone = p.traderAccount.phone || p.traderAccount.mobileNumber;
+        }
+        currentPurchaseTrader = p.traderAccount;
+    }
+    document.getElementById('purchaseAccountId').value = traderCode;
+    document.getElementById('purchaseAccountName').value = traderName;
+    document.getElementById('purchasePhone').value = traderPhone;
+    document.getElementById('purchasePayDate').value = p.payDate ? String(p.payDate).substring(0, 10) : '';
+    document.getElementById('purchasePaidTo').value = p.paidTo || '';
+    document.getElementById('purchaseAdvance').value = p.advance != null && parseFloat(p.advance) > 0 ? parseFloat(p.advance).toFixed(2) : '';
+
+    // Items
+    initPurchaseGrid();
+    if (p.items && p.items.length > 0) {
+        const tbody = document.getElementById('purchaseGridBody');
+        tbody.innerHTML = '';
+        p.items.forEach((item, r) => {
+            addPurchaseGridRow(r);
+            const descEl = document.getElementById('pGridItem' + r);
+            const partEl = document.getElementById('pGridPart' + r);
+            const rateEl = document.getElementById('pGridRate' + r);
+            const wtEl = document.getElementById('pGridWeight' + r);
+            const amtEl = document.getElementById('pGridAmt' + r);
+
+            if (descEl) descEl.value = item.itemDescription || (item.item ? item.item.itemName : '');
+            if (partEl) partEl.value = item.particulars || '';
+            if (rateEl) rateEl.value = item.rate != null ? parseFloat(item.rate).toFixed(2) : '';
+            if (wtEl) wtEl.value = item.quantity != null ? parseFloat(item.quantity).toFixed(1) : '';
+            if (amtEl) amtEl.value = item.amount != null ? parseFloat(item.amount).toFixed(2) : '0.00';
+        });
+        const len = p.items.length;
+        addPurchaseGridRow(len);
+        addPurchaseGridRow(len + 1);
+    }
+
+    highlightPurchaseRow(0);
+    calcPurchaseTotals();
+
+    // Audit Info
+    const dtParts = dt.split('-');
+    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : dt;
+    const auditEl = document.getElementById('purchaseAuditLine');
+    if (auditEl) {
+        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL');
+    }
+
+    loadRightPendingBills(traderCode, p.id);
+}
+
+function newPurchase() {
+    currentPurchaseIndex = -1;
+    currentPurchaseTrader = null;
+    const titleEl = document.getElementById('purchaseModalTitle');
+    if (titleEl) titleEl.children[0].innerText = 'Purchase';
+
+    const todayStr = getTodayDateStr();
+    document.getElementById('purchaseDate').value = todayStr;
+    document.getElementById('purchaseAccountId').value = '';
+    document.getElementById('purchaseAccountName').value = '';
+    document.getElementById('purchasePhone').value = '';
+    document.getElementById('purchasePayDate').value = todayStr;
+    document.getElementById('purchasePaidTo').value = 'O';
+    document.getElementById('purchaseAdvance').value = '';
+
+    initPurchaseGrid();
+    calcPurchaseTotals();
+
+    const dtParts = todayStr.split('-');
+    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : todayStr;
+    const auditEl = document.getElementById('purchaseAuditLine');
+    if (auditEl) auditEl.innerText = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
+
+    const rightBody = document.getElementById('purchaseRightPendingBody');
+    if (rightBody) rightBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">Select supplier to view pending bills</td></tr>';
+    const rightTot = document.getElementById('purchaseRightPendingTotal');
+    if (rightTot) rightTot.value = '0.00';
+
+    fetch('/api/purchases/next-no')
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.nextNo) {
+                document.getElementById('purchaseNo').value = data.nextNo;
+            }
+        })
+        .catch(() => {
+            let maxNo = 0;
+            (purchases || []).forEach(p => {
+                const n = parseInt(p.purchaseNo, 10);
+                if (!isNaN(n) && n > maxNo) maxNo = n;
+            });
+            document.getElementById('purchaseNo').value = maxNo + 1;
+        });
+
+    document.getElementById('purchaseAccountId').focus();
+}
+
+function topPurchase() { if (purchases && purchases.length > 0) displayPurchase(0); }
+function prevPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex > 0) displayPurchase(currentPurchaseIndex - 1); }
+function nextPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex < purchases.length - 1) displayPurchase(currentPurchaseIndex + 1); }
+function bottomPurchase() { if (purchases && purchases.length > 0) displayPurchase(purchases.length - 1); }
+
+function onPurchaseTraderCodeChange() {
+    const code = document.getElementById('purchaseAccountId').value.trim();
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.id) === code
+    );
+    if (acc) {
+        currentPurchaseTrader = acc;
+        document.getElementById('purchaseAccountName').value = acc.accountName || '';
+        document.getElementById('purchasePhone').value = acc.phone || acc.mobileNumber || '';
+        loadRightPendingBills(acc.partyId || acc.id);
+    } else {
+        showToast('Trader code not found');
+    }
+}
+
+function onPurchaseTraderNameChange() {
+    const name = document.getElementById('purchaseAccountName').value.trim();
+    if (!name) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (a.accountName || '').toUpperCase() === name.toUpperCase()
+    );
+    if (acc) {
+        currentPurchaseTrader = acc;
+        document.getElementById('purchaseAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('purchasePhone').value = acc.phone || acc.mobileNumber || '';
+        loadRightPendingBills(acc.partyId || acc.id);
+    }
+}
+
+async function loadRightPendingBills(accIdOrCode, currentPurId = null) {
+    const tbody = document.getElementById('purchaseRightPendingBody');
+    if (!tbody || !accIdOrCode) return;
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#555;">Loading...</td></tr>';
+
+    try {
+        let traderPurchases = (purchases || []).filter(p => {
+            if (!p.traderAccount) return false;
+            return String(p.traderAccount.id) === String(accIdOrCode) || 
+                   String(p.traderAccount.partyId) === String(accIdOrCode) ||
+                   (currentPurchaseTrader && p.traderAccount.id === currentPurchaseTrader.id);
+        });
+
+        if (traderPurchases.length === 0) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                String(a.partyId) === String(accIdOrCode) || String(a.id) === String(accIdOrCode)
+            );
+            const apiAccId = acc ? acc.id : accIdOrCode;
+            const res = await fetch('/api/purchases/pending?accountId=' + apiAccId);
+            if (res.ok) {
+                traderPurchases = await res.json();
+            }
+        }
+
+        if (!traderPurchases || traderPurchases.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:12px; color:#888;">No bills for this supplier</td></tr>';
+            document.getElementById('purchaseRightPendingTotal').value = '0.00';
+            return;
+        }
+
+        let totAmt = 0;
+        let rowsHtml = '';
+        traderPurchases.forEach((p, idx) => {
+            const amt = parseFloat(p.netPayable || p.grossAmount) || 0;
+            totAmt += amt;
+            const dt = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
+            const dtParts = dt.split('-');
+            const dtShort = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0].slice(-2) : dt;
+
+            const isSelected = currentPurId && (p.id === currentPurId || p.purchaseNo === currentPurId);
+            const rowBg = isSelected ? 'background-color:#99ffff;' : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer; ${rowBg}" onmouseover="if(!this.style.backgroundColor.includes('99ffff')) this.style.backgroundColor='#e8f4e5'" onmouseout="if(!this.style.backgroundColor.includes('99ffff')) this.style.backgroundColor=''" onclick="selectPurchaseFromRightTable('${p.purchaseNo || p.id}')">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${dtShort}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa;">${p.purchaseNo || p.id}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; padding:2px 4px; font-weight:bold;">${amt.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('purchaseRightPendingTotal').value = totAmt.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#c00;">Error</td></tr>';
+    }
+}
+
+function selectPurchaseFromRightTable(purNoOrId) {
+    const idx = (purchases || []).findIndex(p => String(p.purchaseNo) === String(purNoOrId) || String(p.id) === String(purNoOrId));
+    if (idx >= 0) {
+        displayPurchase(idx);
+    }
+}
+
+function openPurchasePaymentFromPurchase() {
+    if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
+        alert('Please save or select a purchase first');
+        return;
+    }
+    const p = purchases[currentPurchaseIndex];
+    openWin('purchasePayment');
+    setTimeout(() => {
+        if (p.traderAccount) {
+            document.getElementById('ppAccountId').value = p.traderAccount.partyId || p.traderAccount.id || '';
+            document.getElementById('ppAccountName').value = p.traderAccount.accountName || '';
+            onPpTraderCodeChange();
+        }
+        document.getElementById('ppAmount').value = parseFloat(p.netPayable || p.grossAmount || 0).toFixed(2);
+    }, 150);
+}
+
+async function savePurchase() {
+    const purNo = document.getElementById('purchaseNo')?.value.trim();
+    const purDate = document.getElementById('purchaseDate')?.value;
+    const traderName = document.getElementById('purchaseAccountName')?.value.trim();
+    const phone = document.getElementById('purchasePhone')?.value.trim();
+    const payDate = document.getElementById('purchasePayDate')?.value;
+    const paidTo = document.getElementById('purchasePaidTo')?.value.trim();
+    const advance = parseFloat(document.getElementById('purchaseAdvance')?.value) || 0;
+
+    if (!purNo) {
+        alert('Please enter Purchase No');
+        return;
+    }
+    if (!traderName) {
+        alert('Please enter Supplier Name');
+        return;
+    }
+
+    let traderAcc = currentPurchaseTrader;
+    if (!traderAcc) {
+        traderAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+        );
+    }
+
+    if (!traderAcc) {
+        alert('Supplier Account must be registered in Account Master');
+        return;
+    }
+
+    const items = [];
+    const tbody = document.getElementById('purchaseGridBody');
+    const rowCount = tbody ? tbody.children.length : 0;
+
+    for (let i = 0; i < rowCount; i++) {
+        const desc = document.getElementById('pGridItem' + i)?.value.trim();
+        const part = document.getElementById('pGridPart' + i)?.value.trim();
+        const rate = parseFloat(document.getElementById('pGridRate' + i)?.value) || 0;
+        const wt = parseFloat(document.getElementById('pGridWeight' + i)?.value) || 0;
+        const amt = parseFloat(document.getElementById('pGridAmt' + i)?.value) || 0;
+
+        if (desc || amt > 0 || wt > 0) {
+            items.push({
+                itemDescription: desc || 'SEDI',
+                particulars: part || '',
+                rate: rate,
+                quantity: wt,
+                amount: amt > 0 ? amt : (rate * wt)
+            });
+        }
+    }
+
+    if (items.length === 0) {
+        alert('Please enter at least one item line');
+        return;
+    }
+
+    calcPurchaseTotals();
+
+    const gross = parseFloat(document.getElementById('purchaseGrossAmount')?.value) || 0;
+    const net = gross - advance;
+    const dtParts = purDate ? purDate.split('-') : [];
+    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : purDate;
+    const auditStr = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
+
+    const payload = {
+        purchaseNo: purNo,
+        purchaseDate: purDate,
+        traderAccount: { id: traderAcc.id, partyId: traderAcc.partyId, accountName: traderAcc.accountName },
+        phone: phone,
+        payDate: payDate,
+        paidTo: paidTo,
+        advance: advance,
+        grossAmount: gross,
+        netPayable: net > 0 ? net : gross,
+        auditInfo: auditStr,
+        items: items
+    };
+
+    try {
+        let isEdit = currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex]?.id;
+        let url = isEdit ? '/api/purchases/' + purchases[currentPurchaseIndex].id : '/api/purchases';
+        let method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const saved = await res.json();
+            showToast('Purchase Saved Successfully!');
+            await loadPurchases();
+            const idx = purchases.findIndex(p => p.id === saved.id || p.purchaseNo === saved.purchaseNo);
+            displayPurchase(idx >= 0 ? idx : purchases.length - 1);
+        } else {
+            const err = await res.json().catch(() => ({}));
+            alert('Error saving purchase: ' + (err.message || res.statusText));
+        }
+    } catch(err) {
+        console.error('Save purchase error:', err);
+        alert('Network error saving purchase: ' + err.message);
+    }
+}
+
+async function deletePurchase() {
+    if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
+        alert('No purchase selected to delete');
+        return;
+    }
+    const p = purchases[currentPurchaseIndex];
+    if (!confirm('Are you sure you want to delete Purchase #' + (p.purchaseNo || p.id) + '?')) return;
+
+    try {
+        const res = await fetch('/api/purchases/' + p.id, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Purchase Deleted');
+            await loadPurchases();
+            if (purchases.length > 0) {
+                displayPurchase(Math.max(0, currentPurchaseIndex - 1));
+            } else {
+                newPurchase();
+            }
+        } else {
+            alert('Failed to delete purchase');
+        }
+    } catch(e) {
+        console.error('Delete purchase error:', e);
+    }
+}
+
+function editPurchase() {
+    document.getElementById('purchaseAccountId').focus();
+    showToast('Editing purchase...');
+}
+
+function viewPurchaseInvoice() {
+    printPurchaseInvoice(false);
+}
+
+function printPurchaseInvoice(autoPrint = true) {
+    if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
+        alert('Please select a purchase to print');
+        return;
+    }
+    const p = purchases[currentPurchaseIndex];
+    const traderName = p.traderAccount ? p.traderAccount.accountName : 'Supplier';
+    let rowsHtml = '';
+    (p.items || []).forEach((it, idx) => {
+        rowsHtml += `
+            <tr>
+                <td style="text-align:center; padding:4px; border:1px solid #777;">${idx + 1}</td>
+                <td style="padding:4px; border:1px solid #777;">${it.itemDescription || ''}</td>
+                <td style="padding:4px; border:1px solid #777;">${it.particulars || ''}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.rate || 0).toFixed(2)}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.quantity || 0).toFixed(1)}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777; font-weight:bold;">${parseFloat(it.amount || 0).toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    const htmlContent = `
+        <div style="font-family:Tahoma, Arial, sans-serif; padding:15px; color:#000;">
+            <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
+                <h2 style="margin:0;">KANI DRUMSTICK AGENCIES</h2>
+                <div style="font-size:12px; font-weight:bold; letter-spacing:1px;">PURCHASE INVOICE</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:10px;">
+                <div><strong>Supplier:</strong> ${traderName} &nbsp;|&nbsp; <strong>Phone:</strong> ${p.phone || '—'}</div>
+                <div><strong>No:</strong> ${p.purchaseNo || p.id} &nbsp;|&nbsp; <strong>Date:</strong> ${p.purchaseDate || ''}</div>
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:10px;">
+                <thead>
+                    <tr style="background:#eee;">
+                        <th style="border:1px solid #777; padding:4px; width:40px;">Sno</th>
+                        <th style="border:1px solid #777; padding:4px;">Item description</th>
+                        <th style="border:1px solid #777; padding:4px; width:140px;">Particulars</th>
+                        <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Rate</th>
+                        <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Weight</th>
+                        <th style="border:1px solid #777; padding:4px; width:100px; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+            <div style="display:flex; justify-content:flex-end; font-size:12px;">
+                <table style="width:260px; border-collapse:collapse;">
+                    <tr><td style="padding:2px 4px;">Total:</td><td style="text-align:right; font-weight:bold;">${parseFloat(p.grossAmount || 0).toFixed(2)}</td></tr>
+                    <tr><td style="padding:2px 4px;">Advance:</td><td style="text-align:right;">${parseFloat(p.advance || 0).toFixed(2)}</td></tr>
+                    <tr style="font-size:15px; font-weight:bold; border-top:2px solid #000;"><td style="padding:4px;">Net Payable:</td><td style="text-align:right; color:#c00; padding:4px;">${parseFloat(p.netPayable || p.grossAmount || 0).toFixed(2)}</td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+    openVfpReportPreview('Purchase #' + (p.purchaseNo || p.id), htmlContent, autoPrint);
+}
+
+function findPurchaseTrader() {
+    const code = prompt('Enter Supplier Code or Name:');
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() ||
+        String(a.accountName).toUpperCase().includes(code.toUpperCase())
+    );
+    if (acc) {
+        currentPurchaseTrader = acc;
+        document.getElementById('purchaseAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('purchaseAccountName').value = acc.accountName || '';
+        document.getElementById('purchasePhone').value = acc.phone || acc.mobileNumber || '';
+        loadRightPendingBills(acc.partyId || acc.id);
+    } else {
+        alert('Supplier not found');
+    }
+}
+
+function findPurchaseBill() {
+    findPurchaseDialog();
+}
+
+function findPurchaseDialog() {
+    const num = prompt('Enter Purchase No to find:');
+    if (!num) return;
+    const idx = (purchases || []).findIndex(p => String(p.purchaseNo) === num.trim() || String(p.id) === num.trim());
+    if (idx >= 0) {
+        displayPurchase(idx);
+    } else {
+        alert('Purchase No #' + num + ' not found');
+    }
+}
+
+// -------------------------------------------------------------------------
+// PURCHASE PAYMENT
+// -------------------------------------------------------------------------
+let currentPpTrader = null;
+
+function initPurchasePaymentWindow() {
+    loadPurchasePayments().then(() => {
+        newPurchasePayment();
+    });
+}
+
+async function loadPurchasePayments() {
+    try {
+        const res = await fetch('/api/purchase-payments');
+        if (res.ok) {
+            purchasePayments = await res.json();
+            if (!Array.isArray(purchasePayments)) purchasePayments = [];
+        }
+    } catch(e) {
+        console.error('loadPurchasePayments error:', e);
+    }
+}
+
+function newPurchasePayment() {
+    currentPpIndex = -1;
+    currentPpTrader = null;
+    document.getElementById('ppModalTitle').innerText = 'Purchase Payment - New';
+    document.getElementById('ppDate').value = getTodayDateStr();
+    document.getElementById('ppAccountId').value = '';
+    document.getElementById('ppAccountName').value = '';
+    document.getElementById('ppBalance').value = '0.00';
+    document.getElementById('ppAmount').value = '';
+    document.getElementById('ppDiscount').value = '';
+    document.getElementById('ppPaidTo').value = '';
+    document.getElementById('ppNarration').value = '';
+
+    let maxNo = 0;
+    (purchasePayments || []).forEach(pp => {
+        const n = parseInt(pp.paymentNo, 10);
+        if (!isNaN(n) && n > maxNo) maxNo = n;
+    });
+    document.getElementById('ppNo').value = maxNo + 1;
+
+    const tbody = document.getElementById('ppPendingBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">Select a trader to view pending bills</td></tr>';
+
+    document.getElementById('ppAccountId').focus();
+}
+
+function displayPurchasePayment(idx) {
+    if (!purchasePayments || idx < 0 || idx >= purchasePayments.length) return;
+    currentPpIndex = idx;
+    const pp = purchasePayments[idx];
+
+    document.getElementById('ppModalTitle').innerText = 'Purchase Payment - Viewing #' + (pp.paymentNo || pp.id);
+    document.getElementById('ppDate').value = (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : getTodayDateStr());
+    document.getElementById('ppNo').value = pp.paymentNo || '';
+
+    let traderCode = '';
+    let traderName = '';
+    if (pp.traderAccount) {
+        traderCode = pp.traderAccount.partyId || pp.traderAccount.id || '';
+        traderName = pp.traderAccount.accountName || '';
+        currentPpTrader = pp.traderAccount;
+    }
+    document.getElementById('ppAccountId').value = traderCode;
+    document.getElementById('ppAccountName').value = traderName;
+    document.getElementById('ppAmount').value = pp.amount != null ? parseFloat(pp.amount).toFixed(2) : '';
+    document.getElementById('ppDiscount').value = pp.discount != null ? parseFloat(pp.discount).toFixed(2) : '';
+    document.getElementById('ppMethod').value = pp.paymentMethod || 'CASH';
+    document.getElementById('ppPaidTo').value = pp.paidTo || '';
+    document.getElementById('ppNarration').value = pp.narration || '';
+
+    lookupPpTraderBalance(traderCode);
+}
+
+function topPp() { if (purchasePayments.length > 0) displayPurchasePayment(0); }
+function prevPp() { if (purchasePayments.length > 0 && currentPpIndex > 0) displayPurchasePayment(currentPpIndex - 1); }
+function nextPp() { if (purchasePayments.length > 0 && currentPpIndex < purchasePayments.length - 1) displayPurchasePayment(currentPpIndex + 1); }
+function bottomPp() { if (purchasePayments.length > 0) displayPurchasePayment(purchasePayments.length - 1); }
+
+function onPpTraderCodeChange() {
+    const code = document.getElementById('ppAccountId').value.trim();
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.id) === code
+    );
+    if (acc) {
+        currentPpTrader = acc;
+        document.getElementById('ppAccountName').value = acc.accountName || '';
+        lookupPpTraderBalance(acc.id);
+        loadPendingPurchasesForTrader(acc.id);
+    } else {
+        showToast('Trader code not found');
+    }
+}
+
+function onPpTraderNameChange() {
+    const name = document.getElementById('ppAccountName').value.trim();
+    if (!name) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (a.accountName || '').toUpperCase() === name.toUpperCase()
+    );
+    if (acc) {
+        currentPpTrader = acc;
+        document.getElementById('ppAccountId').value = acc.partyId || acc.id || '';
+        lookupPpTraderBalance(acc.id);
+        loadPendingPurchasesForTrader(acc.id);
+    }
+}
+
+function findPpTrader() {
+    const code = prompt('Enter Trader Code or Name:');
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.accountName).toUpperCase().includes(code.toUpperCase())
+    );
+    if (acc) {
+        currentPpTrader = acc;
+        document.getElementById('ppAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('ppAccountName').value = acc.accountName || '';
+        lookupPpTraderBalance(acc.id);
+        loadPendingPurchasesForTrader(acc.id);
+    }
+}
+
+function lookupPpTraderBalance(accId) {
+    if (!accId) return;
+    fetch('/api/reports/ledger?accountId=' + accId)
+        .then(res => res.json())
+        .then(data => {
+            const bal = (data && data.closingBalance != null) ? parseFloat(data.closingBalance) : 0;
+            document.getElementById('ppBalance').value = bal.toFixed(2);
+        })
+        .catch(() => {});
+}
+
+async function loadPendingPurchasesForTrader(accId) {
+    const tbody = document.getElementById('ppPendingBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px;">Loading pending bills...</td></tr>';
+    try {
+        const res = await fetch('/api/purchases/pending?accountId=' + accId);
+        const data = await res.json();
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#287733; font-weight:bold;">No pending bills for this trader</td></tr>';
+            return;
+        }
+
+        let htmlRows = '';
+        data.forEach(p => {
+            const net = parseFloat(p.netPayable) || 0;
+            const paid = parseFloat(p.paidAmount) || 0;
+            const bal = net - paid;
+            htmlRows += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
+                        <input type="checkbox" class="pp-bill-chk" data-id="${p.id}" data-bal="${bal}" onchange="onPpBillSelectChange()">
+                    </td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.purchaseNo || p.id}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${(p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '')}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">${net.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">${paid.toFixed(2)}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px; font-weight:bold; color:#0055aa;">${bal.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = htmlRows;
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#c00;">Error loading pending bills</td></tr>';
+    }
+}
+
+function onPpBillSelectChange() {
+    let tot = 0;
+    document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
+        tot += parseFloat(chk.getAttribute('data-bal')) || 0;
+    });
+    if (tot > 0) {
+        document.getElementById('ppAmount').value = tot.toFixed(2);
+    }
+}
+
+async function savePurchasePayment() {
+    const payNo = document.getElementById('ppNo')?.value.trim();
+    const payDate = document.getElementById('ppDate')?.value;
+    const amount = parseFloat(document.getElementById('ppAmount')?.value) || 0;
+    const discount = parseFloat(document.getElementById('ppDiscount')?.value) || 0;
+    const method = document.getElementById('ppMethod')?.value || 'CASH';
+    const paidTo = document.getElementById('ppPaidTo')?.value.trim();
+    const narration = document.getElementById('ppNarration')?.value.trim();
+
+    if (!currentPpTrader) {
+        alert('Please select Trader');
+        return;
+    }
+    if (amount <= 0) {
+        alert('Please enter valid Payment Amount');
+        return;
+    }
+
+    const purchaseIds = [];
+    document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
+        const pid = parseInt(chk.getAttribute('data-id'), 10);
+        if (pid) purchaseIds.push(pid);
+    });
+
+    const payload = {
+        paymentNo: payNo,
+        paymentDate: payDate,
+        traderAccount: { id: currentPpTrader.id, partyId: currentPpTrader.partyId, accountName: currentPpTrader.accountName },
+        amount: amount,
+        discount: discount,
+        paymentMethod: method,
+        paidTo: paidTo,
+        narration: narration,
+        purchaseId: purchaseIds.length > 0 ? purchaseIds[0] : null
+    };
+
+    try {
+        const res = await fetch('/api/purchase-payments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Purchase Payment Saved Successfully!');
+            await loadPurchasePayments();
+            newPurchasePayment();
+        } else {
+            alert('Failed to save payment');
+        }
+    } catch(err) {
+        console.error('Save PP error:', err);
+        alert('Network error saving payment');
+    }
+}
+
+async function deletePurchasePayment() {
+    if (currentPpIndex < 0 || !purchasePayments[currentPpIndex]) {
+        alert('No payment selected to delete');
+        return;
+    }
+    const pp = purchasePayments[currentPpIndex];
+    if (!confirm('Are you sure you want to delete Payment #' + (pp.paymentNo || pp.id) + '?')) return;
+
+    try {
+        const res = await fetch('/api/purchase-payments/' + pp.id, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Payment Deleted');
+            await loadPurchasePayments();
+            newPurchasePayment();
+        }
+    } catch(e) {
+        console.error('Delete PP error:', e);
+    }
+}
+
+// -------------------------------------------------------------------------
+// PURCHASE OPENING BALANCE
+// -------------------------------------------------------------------------
+let currentPobTrader = null;
+
+function initPurchaseOpeningBalanceWindow() {
+    document.getElementById('pobDate').value = getTodayDateStr();
+    document.getElementById('pobAccountId').value = '';
+    document.getElementById('pobAccountName').value = '';
+    document.getElementById('pobAmount').value = '';
+    document.getElementById('pobNarration').value = '';
+    document.getElementById('pobAccountId').focus();
+}
+
+function onPobTraderCodeChange() {
+    const code = document.getElementById('pobAccountId').value.trim();
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.id) === code
+    );
+    if (acc) {
+        currentPobTrader = acc;
+        document.getElementById('pobAccountName').value = acc.accountName || '';
+    }
+}
+
+function onPobTraderNameChange() {
+    const name = document.getElementById('pobAccountName').value.trim();
+    if (!name) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        (a.accountName || '').toUpperCase() === name.toUpperCase()
+    );
+    if (acc) {
+        currentPobTrader = acc;
+        document.getElementById('pobAccountId').value = acc.partyId || acc.id || '';
+    }
+}
+
+function findPobTrader() {
+    const code = prompt('Enter Trader Code or Name:');
+    if (!code) return;
+    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
+        String(a.accountName).toUpperCase().includes(code.toUpperCase())
+    );
+    if (acc) {
+        currentPobTrader = acc;
+        document.getElementById('pobAccountId').value = acc.partyId || acc.id || '';
+        document.getElementById('pobAccountName').value = acc.accountName || '';
+    }
+}
+
+async function savePurchaseOpeningBalance() {
+    const pobDate = document.getElementById('pobDate')?.value;
+    const amt = parseFloat(document.getElementById('pobAmount')?.value) || 0;
+    const type = document.getElementById('pobType')?.value || 'CREDIT';
+    const narration = document.getElementById('pobNarration')?.value.trim();
+
+    if (!currentPobTrader) {
+        alert('Please select Trader Account');
+        return;
+    }
+    if (amt <= 0) {
+        alert('Please enter valid Opening Balance Amount');
+        return;
+    }
+
+    const payload = {
+        balanceDate: pobDate,
+        traderAccount: { id: currentPobTrader.id, partyId: currentPobTrader.partyId, accountName: currentPobTrader.accountName },
+        amount: amt,
+        balanceType: type,
+        narration: narration
+    };
+
+    try {
+        const res = await fetch('/api/purchase-opening-balances', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast('Purchase Opening Balance Saved');
+            closeWin('purchaseOpeningBalance');
+        } else {
+            alert('Failed to save opening balance');
+        }
+    } catch(e) {
+        alert('Network error saving opening balance');
+    }
+}
+
+// -------------------------------------------------------------------------
+// PURCHASE REGISTERS & REPORTS
+// -------------------------------------------------------------------------
+function initPurchaseRegisterWindow() {
+    const curDate = getTodayDateStr();
+    if (!document.getElementById('prFromDate').value) document.getElementById('prFromDate').value = curDate;
+    if (!document.getElementById('prToDate').value) document.getElementById('prToDate').value = curDate;
+    loadPurchaseRegister();
+}
+
+async function loadPurchaseRegister() {
+    const tbody = document.getElementById('purchaseRegisterBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#555;">Loading Purchase records...</td></tr>';
+
+    try {
+        let url = '/api/reports/purchase-register?';
+        const fromDate = document.getElementById('prFromDate')?.value;
+        const toDate = document.getElementById('prToDate')?.value;
+        const traderName = document.getElementById('prAccountName')?.value.trim();
+
+        if (fromDate) url += 'startDate=' + fromDate + '&';
+        if (toDate) url += 'endDate=' + toDate + '&';
+
+        if (traderName) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+            );
+            if (acc) url += 'accountId=' + acc.id;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No purchase records found</td></tr>';
+            resetPrTotals();
+            return;
+        }
+
+        let totBags = 0, totWeight = 0, totGross = 0, totFreight = 0, totPack = 0, totDisc = 0, totNet = 0;
+        let rowsHtml = '';
+
+        data.forEach((p, idx) => {
+            const b = parseFloat(p.bags) || 0;
+            const w = parseFloat(p.weight) || 0;
+            const g = parseFloat(p.grossAmount) || 0;
+            const f = parseFloat(p.freight) || 0;
+            const pk = (parseFloat(p.packing) || 0) + (parseFloat(p.other) || 0);
+            const d = parseFloat(p.discount) || 0;
+            const n = parseFloat(p.netPayable) || 0;
+
+            totBags += b;
+            totWeight += w;
+            totGross += g;
+            totFreight += f;
+            totPack += pk;
+            totDisc += d;
+            totNet += n;
+
+            const dtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''" onclick="openPurchaseFromRegister('${p.purchaseNo || p.id}')">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${p.purchaseNo || p.id}</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.traderName || '—'}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${b}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${w.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${g.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${f.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${pk.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${d.toFixed(2)}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; font-weight:bold; color:#0055aa;">${n.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('prTotBags').innerText = totBags;
+        document.getElementById('prTotWeight').innerText = totWeight.toFixed(2);
+        document.getElementById('prTotGross').innerText = totGross.toFixed(2);
+        document.getElementById('prTotFreight').innerText = totFreight.toFixed(2);
+        document.getElementById('prTotPack').innerText = totPack.toFixed(2);
+        document.getElementById('prTotDisc').innerText = totDisc.toFixed(2);
+        document.getElementById('prTotNet').innerText = totNet.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#c00;">Error loading purchase register</td></tr>';
+    }
+}
+
+function openPurchaseFromRegister(purNoOrId) {
+    openWin('purchase');
+    setTimeout(() => {
+        const idx = (purchases || []).findIndex(p => String(p.purchaseNo) === String(purNoOrId) || String(p.id) === String(purNoOrId));
+        if (idx >= 0) displayPurchase(idx);
+    }, 150);
+}
+
+function resetPrTotals() {
+    ['prTotBags', 'prTotWeight', 'prTotGross', 'prTotFreight', 'prTotPack', 'prTotDisc', 'prTotNet'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = '0.00';
+    });
+}
+
+function initPurchasePaymentRegisterWindow() {
+    const curDate = getTodayDateStr();
+    if (!document.getElementById('pprFromDate').value) document.getElementById('pprFromDate').value = curDate;
+    if (!document.getElementById('pprToDate').value) document.getElementById('pprToDate').value = curDate;
+    loadPurchasePaymentRegister();
+}
+
+async function loadPurchasePaymentRegister() {
+    const tbody = document.getElementById('purchasePaymentRegisterBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#555;">Loading Payment records...</td></tr>';
+
+    try {
+        let url = '/api/reports/purchase-payment-register?';
+        const fromDate = document.getElementById('pprFromDate')?.value;
+        const toDate = document.getElementById('pprToDate')?.value;
+        const traderName = document.getElementById('pprAccountName')?.value.trim();
+
+        if (fromDate) url += 'startDate=' + fromDate + '&';
+        if (toDate) url += 'endDate=' + toDate + '&';
+
+        if (traderName) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+            );
+            if (acc) url += 'accountId=' + acc.id;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#888;">No purchase payment records found</td></tr>';
+            document.getElementById('pprTotAmount').innerText = '0.00';
+            document.getElementById('pprTotDiscount').innerText = '0.00';
+            return;
+        }
+
+        let totAmt = 0, totDisc = 0;
+        let rowsHtml = '';
+
+        data.forEach((pp, idx) => {
+            const amt = parseFloat(pp.amount) || 0;
+            const disc = parseFloat(pp.discount) || 0;
+            totAmt += amt;
+            totDisc += disc;
+
+            const dtStr = pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${pp.paymentNo || pp.id}</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${pp.traderName || '—'}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${pp.paymentMethod || 'CASH'}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold;">${amt.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${disc.toFixed(2)}</td>
+                    <td style="border-bottom:1px solid #ccc;">${pp.narration || ''}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('pprTotAmount').innerText = totAmt.toFixed(2);
+        document.getElementById('pprTotDiscount').innerText = totDisc.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#c00;">Error loading payment register</td></tr>';
+    }
+}
+
+function initPurchasePendingRegisterWindow() {
+    loadPurchasePendingRegister();
+}
+
+function onPpndTraderChange() {
+    loadPurchasePendingRegister();
+}
+
+async function loadPurchasePendingRegister() {
+    const tbody = document.getElementById('purchasePendingRegisterBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:#555;">Loading pending purchases...</td></tr>';
+
+    try {
+        let url = '/api/reports/purchase-pending-register?';
+        const traderName = document.getElementById('ppndAccountName')?.value.trim();
+
+        if (traderName) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                (a.accountName || '').toUpperCase() === traderName.toUpperCase()
+            );
+            if (acc) url += 'accountId=' + acc.id;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:#287733; font-weight:bold;">No pending purchase bills</td></tr>';
+            document.getElementById('ppndTotNet').innerText = '0.00';
+            document.getElementById('ppndTotPaid').innerText = '0.00';
+            document.getElementById('ppndTotBal').innerText = '0.00';
+            return;
+        }
+
+        let totNet = 0, totPaid = 0, totBal = 0;
+        let rowsHtml = '';
+
+        data.forEach((p, idx) => {
+            const net = parseFloat(p.netPayable) || 0;
+            const paid = parseFloat(p.paidAmount) || 0;
+            const bal = parseFloat(p.balance) || (net - paid);
+
+            totNet += net;
+            totPaid += paid;
+            totBal += bal;
+
+            const dtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''" onclick="openPurchaseFromRegister('${p.purchaseNo || p.id}')">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${p.purchaseNo || p.id}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.traderName || '—'}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${net.toFixed(2)}</td>
+                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${paid.toFixed(2)}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; font-weight:bold; color:#c00;">${bal.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('ppndTotNet').innerText = totNet.toFixed(2);
+        document.getElementById('ppndTotPaid').innerText = totPaid.toFixed(2);
+        document.getElementById('ppndTotBal').innerText = totBal.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#c00;">Error loading pending register</td></tr>';
+    }
 }
 
 </script>
