@@ -9,7 +9,9 @@ on:
       - 'src/main/resources/static/**'
       - 'index.html'
       - 'gh_pages_adapter.js'
+      - 'seed_data.js'
       - 'modal_logic.js'
+      - 'data/**'
   workflow_dispatch:
 
 permissions:
@@ -37,10 +39,12 @@ jobs:
 
       - name: Sync Latest Web Assets
         run: |
-          mkdir -p android/app/src/main/assets/www
-          cp -r src/main/resources/static/* android/app/src/main/assets/www/
+          mkdir -p android/app/src/main/assets/www/data
+          cp -r data/* android/app/src/main/assets/www/data/ || true
+          cp -r src/main/resources/static/* android/app/src/main/assets/www/ || true
           cp index.html android/app/src/main/assets/www/index.html
           cp gh_pages_adapter.js android/app/src/main/assets/www/gh_pages_adapter.js
+          cp seed_data.js android/app/src/main/assets/www/seed_data.js
           cp modal_logic.js android/app/src/main/assets/www/modal_logic.js
           echo "Assets bundled into APK:"
           ls -la android/app/src/main/assets/www/
@@ -80,7 +84,7 @@ jobs:
             ## 📱 KANIMC Tablet Application (Android APK)
             
             This APK is fully implemented for Android Tablets and mobile devices:
-            - **Complete Offline Engine**: 100% offline-ready with local IndexedDB/localStorage storage.
+            - **Complete Database Seeded Offline**: Includes all 2,466 accounts, groups, places, items, periods, and company settings directly inside the APK for instant offline use.
             - **All Masters & Registers**: Chittas, Purchases, Payments, Opening Balances, Ledger, Day Book, Cash Book, Group Master, Company Master, and Reports.
             - **Direct Android Printing**: Thermal and Wi-Fi printer support using native Android PrintManager.
             - **Wi-Fi Multi-Device Auto-Sync**: Connects directly to desktop computer server over Wi-Fi with instant real-time synchronization.

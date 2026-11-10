@@ -34,6 +34,7 @@
     }
 })();
 </script>
+<script src="seed_data.js"></script>
 <script src="gh_pages_adapter.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
@@ -5341,6 +5342,8 @@ function login() {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('app').style.filter = 'none';
     document.getElementById('app').style.pointerEvents = 'auto';
+    if (typeof fetchAccounts === 'function') fetchAccounts(false);
+    if (typeof fetchItems === 'function') fetchItems();
     showToast(`Logged in as ${currentUser}`);
 }
 
@@ -5480,7 +5483,8 @@ async function fetchItems() {
 
 // Call fetchItems when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    fetchItems();
+    if (typeof fetchAccounts === 'function') fetchAccounts(false);
+    if (typeof fetchItems === 'function') fetchItems();
 });
 
 // --- CHITTA LOGIC ---
@@ -7249,24 +7253,44 @@ calcChitta();
 let accounts = [];
 let currentAccountIndex = -1;
 
+function populateAccountDatalists(accList) {
+    if (!accList || !Array.isArray(accList) || accList.length === 0) return;
+    const dataList = document.getElementById('accountNamesList');
+    if (dataList) {
+        dataList.innerHTML = accList.map(a => '<option value="' + (a.accountName || '').replace(/"/g, '&quot;') + '">').join('');
+    }
+    const datalist = document.getElementById('farmerNameList');
+    if (datalist) {
+        datalist.innerHTML = accList.filter(a => a.accountName).map(a => '<option value="' + a.accountName.replace(/"/g, '&quot;') + '">').join('');
+    }
+}
+
 async function fetchAccounts(loadFirst = false) {
     try {
+        // Instant bootstrap from bundled seed if accounts not yet loaded
+        if ((!accounts || accounts.length === 0) && typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && window.INITIAL_SEED_DATABASE.accounts) {
+            accounts = window.INITIAL_SEED_DATABASE.accounts;
+            populateAccountDatalists(accounts);
+            if (loadFirst && accounts.length > 0) loadFirstAccount();
+        }
+
         const res = await fetch('/api/accounts');
         if(res.ok) {
-            accounts = await res.json();
-                        if (loadFirst && accounts.length > 0) loadFirstAccount();
-            // Fast string-buffer datalist population (non-blocking)
-            const dataList = document.getElementById('accountNamesList');
-            if (dataList) {
-                dataList.innerHTML = accounts.map(a => '<option value="' + (a.accountName || '').replace(/"/g, '&quot;') + '">').join('');
+            const fetched = await res.json();
+            if (Array.isArray(fetched) && fetched.length > 0) {
+                accounts = fetched;
+            } else if ((!accounts || accounts.length === 0) && window.INITIAL_SEED_DATABASE) {
+                accounts = window.INITIAL_SEED_DATABASE.accounts || [];
             }
-            const datalist = document.getElementById('farmerNameList');
-            if (datalist) {
-                datalist.innerHTML = accounts.filter(a => a.accountName).map(a => '<option value="' + a.accountName.replace(/"/g, '&quot;') + '">').join('');
-            }
+            if (loadFirst && accounts.length > 0) loadFirstAccount();
+            populateAccountDatalists(accounts);
         }
     } catch(e) {
-        console.error(e);
+        console.error('fetchAccounts error:', e);
+        if ((!accounts || accounts.length === 0) && window.INITIAL_SEED_DATABASE) {
+            accounts = window.INITIAL_SEED_DATABASE.accounts || [];
+            populateAccountDatalists(accounts);
+        }
     }
 }
 

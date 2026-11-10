@@ -302,6 +302,17 @@
         if (cached) {
             try {
                 db = JSON.parse(cached);
+                // Ensure accounts are present even if previous cache had empty accounts
+                if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && (!db.accounts || db.accounts.length < 50)) {
+                    console.log('[KANIMC] Restoring accounts from bundled seed into existing cache...');
+                    db.accounts = window.INITIAL_SEED_DATABASE.accounts || [];
+                    if (!db.places || db.places.length === 0) db.places = window.INITIAL_SEED_DATABASE.places || [];
+                    if (!db.items || db.items.length === 0) db.items = window.INITIAL_SEED_DATABASE.items || [];
+                    if (!db.groups || db.groups.length === 0) db.groups = window.INITIAL_SEED_DATABASE.groups || [];
+                    if (!db.periods || db.periods.length === 0) db.periods = window.INITIAL_SEED_DATABASE.periods || [];
+                    if (!db.company || Object.keys(db.company).length === 0) db.company = window.INITIAL_SEED_DATABASE.company || {};
+                    saveDb();
+                }
                 if (db.accounts && db.accounts.length > 0) {
                     console.log('[KANIMC] Loaded DB from localStorage (' + db.accounts.length + ' accounts, ' + (db.chittas ? db.chittas.length : 0) + ' chittas)');
                     return;
@@ -309,6 +320,30 @@
             } catch(e) {
                 console.warn('[KANIMC] Failed parsing cached DB, reloading:', e);
             }
+        }
+
+        // Direct instant offline seed from bundled seed_data.js
+        if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE) {
+            const seed = window.INITIAL_SEED_DATABASE;
+            db.accounts = seed.accounts || [];
+            db.periods = seed.periods || [];
+            db.places = seed.places || [];
+            db.items = seed.items || [];
+            db.groups = seed.groups || [];
+            db.commissionRates = seed.commissionRates || [];
+            db.company = seed.company || {};
+            db.settings = seed.settings || {};
+            db.chittas = db.chittas || [];
+            db.salesBills = db.salesBills || [];
+            db.purchases = db.purchases || [];
+            db.purchasePayments = db.purchasePayments || [];
+            db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
+            db.cashVouchers = db.cashVouchers || [];
+            db.receiptVouchers = db.receiptVouchers || [];
+            db.openingBalances = db.openingBalances || [];
+            saveDb();
+            console.log('[KANIMC] Seeded database directly from seed_data.js (' + db.accounts.length + ' accounts)');
+            return;
         }
 
         const oldV3 = localStorage.getItem('KANIMC_GHPAGES_DB_V3') || localStorage.getItem('KANIMC_GHPAGES_DB_V2');
