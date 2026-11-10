@@ -23,6 +23,9 @@ public class PurchaseItem {
     @Column(name = "item_description", length = 150)
     private String itemDescription;
 
+    @Column(length = 150)
+    private String particulars;
+
     @Column(name = "bags", precision = 10, scale = 2)
     private BigDecimal bags = BigDecimal.ZERO;
 
@@ -48,6 +51,9 @@ public class PurchaseItem {
 
     public String getItemDescription() { return itemDescription; }
     public void setItemDescription(String itemDescription) { this.itemDescription = itemDescription; }
+
+    public String getParticulars() { return particulars; }
+    public void setParticulars(String particulars) { this.particulars = particulars; }
 
     public BigDecimal getBags() { return bags; }
     public void setBags(BigDecimal bags) { this.bags = bags; }

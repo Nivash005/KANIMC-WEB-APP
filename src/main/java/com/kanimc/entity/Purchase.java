@@ -28,8 +28,20 @@ public class Purchase extends BaseEntity {
     @JoinColumn(name = "financial_year_id")
     private FinancialYear financialYear;
 
+    @Column(length = 50)
+    private String phone;
+
+    @Column(name = "paid_to", length = 150)
+    private String paidTo;
+
+    @Column(name = "pay_date")
+    private LocalDate payDate;
+
     @Column(name = "gross_amount", nullable = false, precision = 14, scale = 2)
     private BigDecimal grossAmount = BigDecimal.ZERO;
+
+    @Column(precision = 14, scale = 2)
+    private BigDecimal advance = BigDecimal.ZERO;
 
     @Column(name = "freight_charges", precision = 14, scale = 2)
     private BigDecimal freightCharges = BigDecimal.ZERO;
@@ -52,8 +64,8 @@ public class Purchase extends BaseEntity {
     @Column(name = "paid_amount", precision = 14, scale = 2)
     private BigDecimal paidAmount = BigDecimal.ZERO;
 
-    @Column(name = "pay_date")
-    private LocalDate payDate;
+    @Column(name = "audit_info", length = 255)
+    private String auditInfo;
 
     @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("purchase")
@@ -76,8 +88,20 @@ public class Purchase extends BaseEntity {
     public FinancialYear getFinancialYear() { return financialYear; }
     public void setFinancialYear(FinancialYear financialYear) { this.financialYear = financialYear; }
 
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getPaidTo() { return paidTo; }
+    public void setPaidTo(String paidTo) { this.paidTo = paidTo; }
+
+    public LocalDate getPayDate() { return payDate; }
+    public void setPayDate(LocalDate payDate) { this.payDate = payDate; }
+
     public BigDecimal getGrossAmount() { return grossAmount; }
     public void setGrossAmount(BigDecimal grossAmount) { this.grossAmount = grossAmount; }
+
+    public BigDecimal getAdvance() { return advance; }
+    public void setAdvance(BigDecimal advance) { this.advance = advance; }
 
     public BigDecimal getFreightCharges() { return freightCharges; }
     public void setFreightCharges(BigDecimal freightCharges) { this.freightCharges = freightCharges; }
@@ -100,8 +124,8 @@ public class Purchase extends BaseEntity {
     public BigDecimal getPaidAmount() { return paidAmount; }
     public void setPaidAmount(BigDecimal paidAmount) { this.paidAmount = paidAmount; }
 
-    public LocalDate getPayDate() { return payDate; }
-    public void setPayDate(LocalDate payDate) { this.payDate = payDate; }
+    public String getAuditInfo() { return auditInfo; }
+    public void setAuditInfo(String auditInfo) { this.auditInfo = auditInfo; }
 
     public List<PurchaseItem> getItems() { return items; }
     public void setItems(List<PurchaseItem> items) {

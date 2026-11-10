@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261109_9"></script>
+<script src="gh_pages_adapter.js?v=20261110_1"></script>
 <script>
 if ('serviceWorker' in navigator) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -2334,91 +2334,154 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 38. PURCHASE ================= -->
 <div class="modal-overlay" id="purchase">
-<div class="modal" style="width:1050px; padding:5px; background:#c0c0c0;">
-<div class="modal-title" id="purchaseModalTitle" style="border:1px solid #999;">Purchase - New<span onclick="closeAll()">✖</span></div>
-<div style="display:flex; flex-direction:column; gap:2px; margin-top:2px;">
-    <!-- Header Info -->
-    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:80px 120px 100px 150px 1fr 100px 120px; gap:5px; align-items:center;">
-        <label>Date</label>
-        <input type="date" id="purchaseDate" class="p-field" data-next="purchaseAccountId">
-        
-        <label>Trader Code</label>
-        <div style="display:flex;">
-            <input id="purchaseAccountId" onchange="onPurchaseTraderCodeChange()" class="p-field" data-next="purchaseNo" style="width:100px;">
-            <button style="width:20px;padding:0;" onclick="findPurchaseTrader()">▼</button>
-        </div>
-        <div></div>
-        <label style="text-align:right;">Balance</label>
-        <input id="purchaseBalance" readonly style="background:#eef; text-align:right; font-weight:bold; color:#0055aa;">
+<div class="modal" style="width:1120px; max-width:98vw; padding:4px; background:#c0c0c0; border:2px solid #666; box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+<div class="modal-title" id="purchaseModalTitle" style="border:1px solid #777; font-weight:bold; background:linear-gradient(to right, #0055aa, #4a90e2); color:#fff; display:flex; justify-content:space-between; align-items:center; padding:3px 6px;">
+    <span>Purchase</span>
+    <span onclick="closeAll()" style="cursor:pointer; font-size:14px;">✖</span>
+</div>
 
-        <label>Purchase No</label>
-        <div style="display:flex;">
-            <input id="purchaseNo" style="background:#ccffff;" class="p-field" data-next="pGridItem0">
-            <button style="width:20px;padding:0;" onclick="findPurchaseBill()">▼</button>
+<div style="display:flex; gap:6px; margin-top:4px;">
+    <!-- LEFT MAIN SECTION -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+        <!-- Header Info (3 Rows) -->
+        <div style="border:1px solid #fff; padding:6px; background:#d4d0c8; display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <!-- Row 1: Date, Code, Supplier Name, Account Master button -->
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="width:45px;">Date</label>
+                <input type="date" id="purchaseDate" class="p-field" data-next="purchaseAccountId" style="width:125px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px;">
+                
+                <label style="margin-left:10px; width:40px;">Code</label>
+                <div style="display:flex;">
+                    <input id="purchaseAccountId" onchange="onPurchaseTraderCodeChange()" class="p-field" data-next="purchaseAccountName" style="width:80px; padding:2px 4px; border:1px solid #777; font-size:12px;">
+                    <button style="width:20px; padding:0; cursor:pointer;" onclick="findPurchaseTrader()" title="Lookup Supplier">▼</button>
+                </div>
+
+                <label style="margin-left:10px;">Supplier Name</label>
+                <input id="purchaseAccountName" list="accountNamesList" onchange="onPurchaseTraderNameChange()" style="flex:1; min-width:200px; padding:2px 4px; border:1px solid #777; font-size:12px;" class="p-field" data-next="purchasePhone">
+                
+                <button onclick="openWin('account')" style="padding:2px 8px; font-size:11px; white-space:nowrap; cursor:pointer;">Account Master</button>
+            </div>
+
+            <!-- Row 2: No, Phone -->
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="width:45px;">No</label>
+                <div style="display:flex;">
+                    <input id="purchaseNo" class="p-field" data-next="purchasePhone" style="width:105px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px; font-weight:bold;">
+                    <button style="width:20px; padding:0; cursor:pointer;" onclick="findPurchaseBill()" title="Find Bill">▼</button>
+                </div>
+
+                <label style="margin-left:30px; width:45px;">Phone</label>
+                <input id="purchasePhone" style="width:180px; padding:2px 4px; border:1px solid #777; font-size:12px;">
+            </div>
+
+            <!-- Row 3: Paid on, Paid to -->
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="width:45px;">Paid on</label>
+                <input type="date" id="purchasePayDate" style="width:125px; padding:2px 4px; border:1px solid #777; font-size:12px;">
+
+                <label style="margin-left:10px; width:45px;">Paid to</label>
+                <input id="purchasePaidTo" style="width:180px; padding:2px 4px; border:1px solid #777; font-size:12px;" placeholder="Recipient / Note">
+                
+                <input type="hidden" id="purchaseBalance" value="0.00">
+                <input type="hidden" id="purchaseFreight" value="0.00">
+                <input type="hidden" id="purchasePacking" value="0.00">
+                <input type="hidden" id="purchaseOther" value="0.00">
+                <input type="hidden" id="purchaseDiscount" value="0.00">
+            </div>
         </div>
 
-        <label>Trader Name</label>
-        <input id="purchaseAccountName" list="accountNamesList" onchange="onPurchaseTraderNameChange()" style="grid-column:span 2; width:280px;" class="p-field" data-next="purchaseNo">
-        <div></div>
-        <div></div>
+        <!-- Main Items Grid -->
+        <div style="border:1px solid #777; background:#fff; height:220px; overflow-y:auto;">
+            <table id="purchaseGrid" style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
+                <thead>
+                    <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #999;">
+                        <th style="width:40px; border-right:1px solid #aaa; padding:4px 2px; text-align:center;">Sno</th>
+                        <th style="border-right:1px solid #aaa; padding:4px 6px; text-align:left;">Item description</th>
+                        <th style="width:140px; border-right:1px solid #aaa; padding:4px 6px; text-align:left;">Particulars</th>
+                        <th style="width:85px; border-right:1px solid #aaa; padding:4px 6px; text-align:right;">Rate</th>
+                        <th style="width:85px; border-right:1px solid #aaa; padding:4px 6px; text-align:right;">Weight</th>
+                        <th style="width:110px; padding:4px 6px; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="purchaseGridBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bottom Totals & Big Red Display -->
+        <div style="border:1px solid #fff; padding:6px; background:#d4d0c8; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px; font-size:12px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Total</label>
+                    <input id="purchaseGrossAmount" readonly style="width:120px; background:#fff; border:1px solid #777; text-align:right; font-weight:bold; padding:3px 6px; font-size:13px;" value="0.00">
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="font-weight:bold;">Advance</label>
+                    <input id="purchaseAdvance" type="number" step="0.01" oninput="calcPurchaseTotals()" style="width:110px; background:#fff; border:1px solid #777; text-align:right; padding:3px 6px; font-size:13px;" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- Big Red Display -->
+            <div style="display:flex; align-items:center;">
+                <input type="hidden" id="purchaseNetPayable" value="0.00">
+                <input type="hidden" id="purchaseTotalBags" value="0">
+                <input type="hidden" id="purchaseTotalWeight" value="0.00">
+                <div id="purchaseNetBigDisplay" style="min-width:180px; height:46px; background:#fff; border:2px inset #999; display:flex; align-items:center; justify-content:flex-end; padding:0 12px; font-size:28px; font-weight:bold; color:#cc0000; font-family:'Courier New', monospace, sans-serif; letter-spacing:1px; box-shadow:inset 1px 1px 3px rgba(0,0,0,0.2);">
+                    0.00
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Line -->
+        <div id="purchaseAuditLine" style="font-size:11px; color:#333; font-family:monospace; padding:2px 4px;">
+            Created by :ADMIN*10/11/2026*00:00:00*WEB # BAL
+        </div>
+
+        <!-- Bottom Toolbar Buttons -->
+        <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; align-items:center; background:#c0c0c0;">
+            <div style="display:flex; gap:3px;">
+                <button onclick="newPurchase()" id="btnPurchaseNew" style="padding:3px 12px; font-size:12px; font-weight:bold; border:2px solid #0055aa; cursor:pointer;"><span style="color:#c00; text-decoration:underline;">N</span>ew</button>
+                <button onclick="findPurchaseDialog()" id="btnPurchaseFind" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>F</u>ind</button>
+                <button onclick="editPurchase()" id="btnPurchaseChange" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>C</u>hange</button>
+                <button onclick="deletePurchase()" id="btnPurchaseDelete" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>D</u>elete</button>
+                <button onclick="closeAll()" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>C</u>lose</button>
+                <button onclick="printPurchaseInvoice()" id="btnPurchasePrint" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>P</u>rint</button>
+                <button onclick="viewPurchaseInvoice()" id="btnPurchaseView" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>V</u>iew</button>
+                <button onclick="openPurchasePaymentFromPurchase()" id="btnPurchasePayment" style="padding:3px 12px; font-size:12px; font-weight:bold; color:#0055aa; cursor:pointer;">Payment</button>
+            </div>
+            <div style="display:flex; gap:2px;">
+                <button onclick="topPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>T</u>op</button>
+                <button onclick="prevPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>P</u>rev</button>
+                <button onclick="nextPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>N</u>ext</button>
+                <button onclick="bottomPurchase()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>B</u>ottom</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Items Grid -->
-    <div style="border:1px solid #fff; background:#fff; height:200px; overflow-y:auto;">
-        <table id="purchaseGrid" style="width:100%; border-collapse:collapse; font-size:12px;">
-            <thead>
-                <tr style="background:#eee; font-weight:bold; position:sticky; top:0;">
-                    <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Sno</th>
-                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Item description</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Bags</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Rate</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Weight (kg)</th>
-                    <th style="width:110px; border-bottom:1px solid #ccc; text-align:right;">Amount</th>
-                </tr>
-            </thead>
-            <tbody id="purchaseGridBody">
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Summary & Charges -->
-    <div style="border:1px solid #fff; padding:6px; display:flex; justify-content:space-between; align-items:flex-start; font-size:12px;">
-        <div style="display:grid; grid-template-columns:80px 100px 80px 100px; gap:4px; align-items:center;">
-            <label>Freight</label> <input type="number" step="0.01" id="purchaseFreight" oninput="calcPurchaseTotals()" style="width:90px;">
-            <label>Packing</label> <input type="number" step="0.01" id="purchasePacking" oninput="calcPurchaseTotals()" style="width:90px;">
-            <label>Other</label> <input type="number" step="0.01" id="purchaseOther" oninput="calcPurchaseTotals()" style="width:90px;">
-            <label>Discount</label> <input type="number" step="0.01" id="purchaseDiscount" oninput="calcPurchaseTotals()" style="width:90px;">
+    <!-- RIGHT SECTION: PENDING / RECENT BILLS TABLE -->
+    <div style="width:260px; border:1px solid #777; background:#d4d0c8; padding:3px; display:flex; flex-direction:column; gap:3px;">
+        <div style="border:1px solid #999; background:#fff; height:340px; overflow-y:auto;">
+            <table id="purchaseRightPendingTable" style="width:100%; border-collapse:collapse; font-size:11px; font-family:Tahoma, Arial, sans-serif;">
+                <thead>
+                    <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #aaa;">
+                        <th style="width:30px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">Sno</th>
+                        <th style="width:65px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">Date</th>
+                        <th style="width:45px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">No</th>
+                        <th style="padding:3px 4px; text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="purchaseRightPendingBody">
+                    <tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">Select supplier to view pending bills</td></tr>
+                </tbody>
+            </table>
         </div>
-        <div style="display:grid; grid-template-columns:90px 120px; gap:4px; align-items:center; text-align:right;">
-            <label>Total Bags</label> <input id="purchaseTotalBags" readonly style="width:110px; background:#f0f0f0; text-align:right;">
-            <label>Total Weight</label> <input id="purchaseTotalWeight" readonly style="width:110px; background:#f0f0f0; text-align:right;">
-            <label>Gross Amount</label> <input id="purchaseGrossAmount" readonly style="width:110px; background:#f0f0f0; text-align:right; font-weight:bold;">
-            <label style="font-weight:bold; color:#0055aa;">Net Payable</label> <input id="purchaseNetPayable" readonly style="width:110px; background:#ccffff; text-align:right; font-weight:bold; font-size:14px; color:#0055aa;">
-        </div>
-    </div>
-
-    <!-- Toolbar Buttons -->
-    <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; background:#c0c0c0;">
-        <div style="display:flex; gap:2px;">
-            <button onclick="topPurchase()" style="padding:2px 8px;">Top</button>
-            <button onclick="prevPurchase()" style="padding:2px 8px;">Prev</button>
-            <button onclick="nextPurchase()" style="padding:2px 8px;">Next</button>
-            <button onclick="bottomPurchase()" style="padding:2px 8px;">Bottom</button>
-        </div>
-        <div style="display:flex; gap:3px;">
-            <button onclick="newPurchase()" id="btnPurchaseNew" style="padding:2px 10px;"><u>N</u>ew</button>
-            <button onclick="findPurchaseDialog()" id="btnPurchaseFind" style="padding:2px 10px;"><u>F</u>ind</button>
-            <button onclick="savePurchase()" id="btnPurchaseSave" style="padding:2px 10px; font-weight:bold;"><u>S</u>ave</button>
-            <button onclick="editPurchase()" id="btnPurchaseChange" style="padding:2px 10px;"><u>C</u>hange</button>
-            <button onclick="deletePurchase()" id="btnPurchaseDelete" style="padding:2px 10px;"><u>D</u>elete</button>
-            <button onclick="printPurchaseInvoice()" id="btnPurchasePrint" style="padding:2px 10px;"><u>P</u>rint</button>
-            <button onclick="closeAll()" style="padding:2px 10px;">Close</button>
+        <div style="display:flex; justify-content:flex-end; padding-top:2px;">
+            <input id="purchaseRightPendingTotal" readonly style="width:120px; background:#fff; border:1px inset #999; text-align:right; font-weight:bold; font-size:12px; padding:2px 4px;" value="0.00">
         </div>
     </div>
 </div>
 </div>
 </div>
-
 <!-- ================= 39. PURCHASE PAYMENT ================= -->
 <div class="modal-overlay" id="purchasePayment">
 <div class="modal" style="width:800px; padding:5px; background:#c0c0c0;">
@@ -9691,11 +9754,12 @@ let currentPurchaseIndex = -1;
 let purchasePayments = [];
 let currentPpIndex = -1;
 let currentPurchaseTrader = null;
+let currentActivePurchaseRow = 0;
 
 function initPurchaseWindow() {
     initPurchaseGrid();
     loadPurchases().then(() => {
-        if (purchases.length > 0) {
+        if (purchases && purchases.length > 0) {
             displayPurchase(purchases.length - 1);
         } else {
             newPurchase();
@@ -9707,8 +9771,23 @@ function initPurchaseGrid() {
     const tbody = document.getElementById('purchaseGridBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         addPurchaseGridRow(i);
+    }
+    highlightPurchaseRow(0);
+}
+
+function highlightPurchaseRow(rowIdx) {
+    currentActivePurchaseRow = rowIdx;
+    const tbody = document.getElementById('purchaseGridBody');
+    if (!tbody) return;
+    for (let i = 0; i < tbody.children.length; i++) {
+        const tr = tbody.children[i];
+        if (i === rowIdx) {
+            tr.style.backgroundColor = '#00ffff';
+        } else {
+            tr.style.backgroundColor = '';
+        }
     }
 }
 
@@ -9717,22 +9796,25 @@ function addPurchaseGridRow(rowIdx) {
     if (!tbody) return;
     const tr = document.createElement('tr');
     tr.id = 'pGridRow' + rowIdx;
+    tr.style.cursor = 'pointer';
+    tr.onclick = function() { highlightPurchaseRow(rowIdx); };
+
     tr.innerHTML = `
-        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${rowIdx + 1}</td>
-        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
-            <input type="text" id="pGridItem${rowIdx}" class="p-field" list="itemMasterList" style="border:none; width:100%; outline:none; background:transparent;" onchange="onPurchaseItemSelect(${rowIdx})">
+        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${rowIdx + 1}</td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="text" id="pGridItem${rowIdx}" class="p-field" list="itemMasterList" style="border:none; width:100%; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})" onchange="onPurchaseItemSelect(${rowIdx})">
         </td>
-        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
-            <input type="number" step="1" id="pGridBags${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent;" oninput="calcPurchaseTotals()">
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="text" id="pGridPart${rowIdx}" class="p-field" style="border:none; width:100%; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})">
         </td>
-        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
-            <input type="number" step="0.01" id="pGridRate${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent;" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="number" step="0.01" id="pGridRate${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
         </td>
-        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
-            <input type="number" step="0.01" id="pGridWeight${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent;" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="number" step="0.01" id="pGridWeight${rowIdx}" class="p-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent; font-size:12px;" onfocus="highlightPurchaseRow(${rowIdx})" oninput="calcPurchaseRowAmount(${rowIdx}); calcPurchaseTotals();">
         </td>
-        <td style="border-bottom:1px solid #ccc; text-align:right; padding-right:4px;">
-            <input type="text" id="pGridAmt${rowIdx}" readonly style="border:none; width:100%; text-align:right; font-weight:bold; background:transparent;" value="0.00">
+        <td style="border-bottom:1px solid #ccc; text-align:right; padding:2px 6px;">
+            <input type="text" id="pGridAmt${rowIdx}" readonly style="border:none; width:100%; text-align:right; font-weight:bold; background:transparent; font-size:12px;" value="0.00">
         </td>
     `;
     tbody.appendChild(tr);
@@ -9741,53 +9823,54 @@ function addPurchaseGridRow(rowIdx) {
 function calcPurchaseRowAmount(rowIdx) {
     const rate = parseFloat(document.getElementById('pGridRate' + rowIdx)?.value) || 0;
     const weight = parseFloat(document.getElementById('pGridWeight' + rowIdx)?.value) || 0;
-    const bags = parseFloat(document.getElementById('pGridBags' + rowIdx)?.value) || 0;
-    const qty = weight > 0 ? weight : bags;
-    const amt = rate * qty;
+    const amt = rate * weight;
     const amtEl = document.getElementById('pGridAmt' + rowIdx);
     if (amtEl) amtEl.value = amt > 0 ? amt.toFixed(2) : '0.00';
 }
 
+function formatIndianNumber(num) {
+    const parts = num.toFixed(2).split('.');
+    let x = parts[0];
+    let lastThree = x.substring(x.length - 3);
+    let otherNumbers = x.substring(0, x.length - 3);
+    if (otherNumbers !== '') {
+        lastThree = ',' + lastThree;
+    }
+    const res = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree + '.' + parts[1];
+    return res;
+}
+
 function calcPurchaseTotals() {
-    let totBags = 0;
-    let totWeight = 0;
     let gross = 0;
+    let totWeight = 0;
 
-    for (let i = 0; i < 20; i++) {
-        const bagsEl = document.getElementById('pGridBags' + i);
-        const weightEl = document.getElementById('pGridWeight' + i);
+    for (let i = 0; i < 30; i++) {
         const amtEl = document.getElementById('pGridAmt' + i);
-        if (!bagsEl && !weightEl) break;
+        const wtEl = document.getElementById('pGridWeight' + i);
+        if (!amtEl && !wtEl) break;
 
-        const b = parseFloat(bagsEl?.value) || 0;
-        const w = parseFloat(weightEl?.value) || 0;
         const a = parseFloat(amtEl?.value) || 0;
-
-        totBags += b;
-        totWeight += w;
+        const w = parseFloat(wtEl?.value) || 0;
         gross += a;
+        totWeight += w;
     }
 
-    const freight = parseFloat(document.getElementById('purchaseFreight')?.value) || 0;
-    const packing = parseFloat(document.getElementById('purchasePacking')?.value) || 0;
-    const other = parseFloat(document.getElementById('purchaseOther')?.value) || 0;
-    const discount = parseFloat(document.getElementById('purchaseDiscount')?.value) || 0;
+    const advance = parseFloat(document.getElementById('purchaseAdvance')?.value) || 0;
+    const net = gross - advance;
 
-    const net = gross + freight + packing + other - discount;
-
-    const elTotBags = document.getElementById('purchaseTotalBags');
-    const elTotWeight = document.getElementById('purchaseTotalWeight');
     const elGross = document.getElementById('purchaseGrossAmount');
     const elNet = document.getElementById('purchaseNetPayable');
+    const elBig = document.getElementById('purchaseNetBigDisplay');
 
-    if (elTotBags) elTotBags.value = totBags;
-    if (elTotWeight) elTotWeight.value = totWeight.toFixed(2);
     if (elGross) elGross.value = gross.toFixed(2);
-    if (elNet) elNet.value = (net > 0 ? net : 0).toFixed(2);
+    if (elNet) elNet.value = (net > 0 ? net : gross).toFixed(2);
+    if (elBig) {
+        const displayVal = net > 0 ? net : (gross > 0 ? gross : 0);
+        elBig.innerText = formatIndianNumber(displayVal);
+    }
 }
 
 function onPurchaseItemSelect(rowIdx) {
-    // If last row has input, append next row
     const tbody = document.getElementById('purchaseGridBody');
     if (tbody && rowIdx === tbody.children.length - 1) {
         addPurchaseGridRow(rowIdx + 1);
@@ -9811,19 +9894,30 @@ function displayPurchase(idx) {
     currentPurchaseIndex = idx;
     const p = purchases[idx];
 
-    document.getElementById('purchaseModalTitle').innerText = 'Purchase - Viewing #' + (p.purchaseNo || p.id);
-    document.getElementById('purchaseDate').value = (p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : getTodayDateStr());
+    const titleEl = document.getElementById('purchaseModalTitle');
+    if (titleEl) titleEl.children[0].innerText = 'Purchase - #' + (p.purchaseNo || p.id);
+
+    const dt = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : getTodayDateStr();
+    document.getElementById('purchaseDate').value = dt;
     document.getElementById('purchaseNo').value = p.purchaseNo || '';
 
     let traderCode = '';
     let traderName = '';
+    let traderPhone = p.phone || '';
     if (p.traderAccount) {
         traderCode = p.traderAccount.partyId || p.traderAccount.id || '';
         traderName = p.traderAccount.accountName || '';
+        if (!traderPhone && (p.traderAccount.phone || p.traderAccount.mobileNumber)) {
+            traderPhone = p.traderAccount.phone || p.traderAccount.mobileNumber;
+        }
         currentPurchaseTrader = p.traderAccount;
     }
     document.getElementById('purchaseAccountId').value = traderCode;
     document.getElementById('purchaseAccountName').value = traderName;
+    document.getElementById('purchasePhone').value = traderPhone;
+    document.getElementById('purchasePayDate').value = p.payDate ? String(p.payDate).substring(0, 10) : '';
+    document.getElementById('purchasePaidTo').value = p.paidTo || '';
+    document.getElementById('purchaseAdvance').value = p.advance != null && parseFloat(p.advance) > 0 ? parseFloat(p.advance).toFixed(2) : '';
 
     // Items
     initPurchaseGrid();
@@ -9833,47 +9927,63 @@ function displayPurchase(idx) {
         p.items.forEach((item, r) => {
             addPurchaseGridRow(r);
             const descEl = document.getElementById('pGridItem' + r);
-            const bagsEl = document.getElementById('pGridBags' + r);
+            const partEl = document.getElementById('pGridPart' + r);
             const rateEl = document.getElementById('pGridRate' + r);
             const wtEl = document.getElementById('pGridWeight' + r);
             const amtEl = document.getElementById('pGridAmt' + r);
 
             if (descEl) descEl.value = item.itemDescription || (item.item ? item.item.itemName : '');
-            if (bagsEl) bagsEl.value = item.bags || '';
-            if (rateEl) rateEl.value = item.rate != null ? item.rate : '';
-            if (wtEl) wtEl.value = item.quantity != null ? item.quantity : '';
+            if (partEl) partEl.value = item.particulars || '';
+            if (rateEl) rateEl.value = item.rate != null ? parseFloat(item.rate).toFixed(2) : '';
+            if (wtEl) wtEl.value = item.quantity != null ? parseFloat(item.quantity).toFixed(1) : '';
             if (amtEl) amtEl.value = item.amount != null ? parseFloat(item.amount).toFixed(2) : '0.00';
         });
-        // Add 2 extra empty rows for editing
         const len = p.items.length;
         addPurchaseGridRow(len);
         addPurchaseGridRow(len + 1);
     }
 
-    document.getElementById('purchaseFreight').value = p.freightCharges || '';
-    document.getElementById('purchasePacking').value = p.packingCharges || '';
-    document.getElementById('purchaseOther').value = p.otherCharges || '';
-    document.getElementById('purchaseDiscount').value = p.discount || '';
-
+    highlightPurchaseRow(0);
     calcPurchaseTotals();
-    lookupPurchaseTraderBalance(traderCode);
+
+    // Audit Info
+    const dtParts = dt.split('-');
+    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : dt;
+    const auditEl = document.getElementById('purchaseAuditLine');
+    if (auditEl) {
+        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL');
+    }
+
+    loadRightPendingBills(traderCode, p.id);
 }
 
 function newPurchase() {
     currentPurchaseIndex = -1;
     currentPurchaseTrader = null;
-    document.getElementById('purchaseModalTitle').innerText = 'Purchase - New';
-    document.getElementById('purchaseDate').value = getTodayDateStr();
+    const titleEl = document.getElementById('purchaseModalTitle');
+    if (titleEl) titleEl.children[0].innerText = 'Purchase';
+
+    const todayStr = getTodayDateStr();
+    document.getElementById('purchaseDate').value = todayStr;
     document.getElementById('purchaseAccountId').value = '';
     document.getElementById('purchaseAccountName').value = '';
-    document.getElementById('purchaseBalance').value = '0.00';
+    document.getElementById('purchasePhone').value = '';
+    document.getElementById('purchasePayDate').value = todayStr;
+    document.getElementById('purchasePaidTo').value = 'O';
+    document.getElementById('purchaseAdvance').value = '';
 
-    document.getElementById('purchaseFreight').value = '';
-    document.getElementById('purchasePacking').value = '';
-    document.getElementById('purchaseOther').value = '';
-    document.getElementById('purchaseDiscount').value = '';
     initPurchaseGrid();
     calcPurchaseTotals();
+
+    const dtParts = todayStr.split('-');
+    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : todayStr;
+    const auditEl = document.getElementById('purchaseAuditLine');
+    if (auditEl) auditEl.innerText = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
+
+    const rightBody = document.getElementById('purchaseRightPendingBody');
+    if (rightBody) rightBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">Select supplier to view pending bills</td></tr>';
+    const rightTot = document.getElementById('purchaseRightPendingTotal');
+    if (rightTot) rightTot.value = '0.00';
 
     fetch('/api/purchases/next-no')
         .then(res => res.json())
@@ -9894,22 +10004,10 @@ function newPurchase() {
     document.getElementById('purchaseAccountId').focus();
 }
 
-function topPurchase() {
-    if (purchases && purchases.length > 0) displayPurchase(0);
-}
-function prevPurchase() {
-    if (purchases && purchases.length > 0 && currentPurchaseIndex > 0) {
-        displayPurchase(currentPurchaseIndex - 1);
-    }
-}
-function nextPurchase() {
-    if (purchases && purchases.length > 0 && currentPurchaseIndex < purchases.length - 1) {
-        displayPurchase(currentPurchaseIndex + 1);
-    }
-}
-function bottomPurchase() {
-    if (purchases && purchases.length > 0) displayPurchase(purchases.length - 1);
-}
+function topPurchase() { if (purchases && purchases.length > 0) displayPurchase(0); }
+function prevPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex > 0) displayPurchase(currentPurchaseIndex - 1); }
+function nextPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex < purchases.length - 1) displayPurchase(currentPurchaseIndex + 1); }
+function bottomPurchase() { if (purchases && purchases.length > 0) displayPurchase(purchases.length - 1); }
 
 function onPurchaseTraderCodeChange() {
     const code = document.getElementById('purchaseAccountId').value.trim();
@@ -9921,7 +10019,8 @@ function onPurchaseTraderCodeChange() {
     if (acc) {
         currentPurchaseTrader = acc;
         document.getElementById('purchaseAccountName').value = acc.accountName || '';
-        lookupPurchaseTraderBalance(acc.id);
+        document.getElementById('purchasePhone').value = acc.phone || acc.mobileNumber || '';
+        loadRightPendingBills(acc.partyId || acc.id);
     } else {
         showToast('Trader code not found');
     }
@@ -9936,36 +10035,112 @@ function onPurchaseTraderNameChange() {
     if (acc) {
         currentPurchaseTrader = acc;
         document.getElementById('purchaseAccountId').value = acc.partyId || acc.id || '';
-        lookupPurchaseTraderBalance(acc.id);
+        document.getElementById('purchasePhone').value = acc.phone || acc.mobileNumber || '';
+        loadRightPendingBills(acc.partyId || acc.id);
     }
 }
 
-function lookupPurchaseTraderBalance(accId) {
-    if (!accId) return;
-    fetch('/api/reports/ledger?accountId=' + accId)
-        .then(res => res.json())
-        .then(data => {
-            const bal = (data && data.closingBalance != null) ? parseFloat(data.closingBalance) : 0;
-            document.getElementById('purchaseBalance').value = bal.toFixed(2);
-        })
-        .catch(() => {});
+async function loadRightPendingBills(accIdOrCode, currentPurId = null) {
+    const tbody = document.getElementById('purchaseRightPendingBody');
+    if (!tbody || !accIdOrCode) return;
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#555;">Loading...</td></tr>';
+
+    try {
+        let traderPurchases = (purchases || []).filter(p => {
+            if (!p.traderAccount) return false;
+            return String(p.traderAccount.id) === String(accIdOrCode) || 
+                   String(p.traderAccount.partyId) === String(accIdOrCode) ||
+                   (currentPurchaseTrader && p.traderAccount.id === currentPurchaseTrader.id);
+        });
+
+        if (traderPurchases.length === 0) {
+            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+                String(a.partyId) === String(accIdOrCode) || String(a.id) === String(accIdOrCode)
+            );
+            const apiAccId = acc ? acc.id : accIdOrCode;
+            const res = await fetch('/api/purchases/pending?accountId=' + apiAccId);
+            if (res.ok) {
+                traderPurchases = await res.json();
+            }
+        }
+
+        if (!traderPurchases || traderPurchases.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:12px; color:#888;">No bills for this supplier</td></tr>';
+            document.getElementById('purchaseRightPendingTotal').value = '0.00';
+            return;
+        }
+
+        let totAmt = 0;
+        let rowsHtml = '';
+        traderPurchases.forEach((p, idx) => {
+            const amt = parseFloat(p.netPayable || p.grossAmount) || 0;
+            totAmt += amt;
+            const dt = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
+            const dtParts = dt.split('-');
+            const dtShort = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0].slice(-2) : dt;
+
+            const isSelected = currentPurId && (p.id === currentPurId || p.purchaseNo === currentPurId);
+            const rowBg = isSelected ? 'background-color:#99ffff;' : '';
+
+            rowsHtml += `
+                <tr style="cursor:pointer; ${rowBg}" onmouseover="if(!this.style.backgroundColor.includes('99ffff')) this.style.backgroundColor='#e8f4e5'" onmouseout="if(!this.style.backgroundColor.includes('99ffff')) this.style.backgroundColor=''" onclick="selectPurchaseFromRightTable('${p.purchaseNo || p.id}')">
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${dtShort}</td>
+                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa;">${p.purchaseNo || p.id}</td>
+                    <td style="text-align:right; border-bottom:1px solid #ccc; padding:2px 4px; font-weight:bold;">${amt.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        document.getElementById('purchaseRightPendingTotal').value = totAmt.toFixed(2);
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#c00;">Error</td></tr>';
+    }
+}
+
+function selectPurchaseFromRightTable(purNoOrId) {
+    const idx = (purchases || []).findIndex(p => String(p.purchaseNo) === String(purNoOrId) || String(p.id) === String(purNoOrId));
+    if (idx >= 0) {
+        displayPurchase(idx);
+    }
+}
+
+function openPurchasePaymentFromPurchase() {
+    if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
+        alert('Please save or select a purchase first');
+        return;
+    }
+    const p = purchases[currentPurchaseIndex];
+    openWin('purchasePayment');
+    setTimeout(() => {
+        if (p.traderAccount) {
+            document.getElementById('ppAccountId').value = p.traderAccount.partyId || p.traderAccount.id || '';
+            document.getElementById('ppAccountName').value = p.traderAccount.accountName || '';
+            onPpTraderCodeChange();
+        }
+        document.getElementById('ppAmount').value = parseFloat(p.netPayable || p.grossAmount || 0).toFixed(2);
+    }, 150);
 }
 
 async function savePurchase() {
     const purNo = document.getElementById('purchaseNo')?.value.trim();
     const purDate = document.getElementById('purchaseDate')?.value;
     const traderName = document.getElementById('purchaseAccountName')?.value.trim();
+    const phone = document.getElementById('purchasePhone')?.value.trim();
+    const payDate = document.getElementById('purchasePayDate')?.value;
+    const paidTo = document.getElementById('purchasePaidTo')?.value.trim();
+    const advance = parseFloat(document.getElementById('purchaseAdvance')?.value) || 0;
 
     if (!purNo) {
         alert('Please enter Purchase No');
         return;
     }
     if (!traderName) {
-        alert('Please select Trader Name');
+        alert('Please enter Supplier Name');
         return;
     }
 
-    // Resolve trader account
     let traderAcc = currentPurchaseTrader;
     if (!traderAcc) {
         traderAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
@@ -9974,57 +10149,56 @@ async function savePurchase() {
     }
 
     if (!traderAcc) {
-        alert('Trader Account must be an existing account in Account Master');
+        alert('Supplier Account must be registered in Account Master');
         return;
     }
 
-    // Build items
     const items = [];
     const tbody = document.getElementById('purchaseGridBody');
     const rowCount = tbody ? tbody.children.length : 0;
 
     for (let i = 0; i < rowCount; i++) {
         const desc = document.getElementById('pGridItem' + i)?.value.trim();
-        const bags = parseFloat(document.getElementById('pGridBags' + i)?.value) || 0;
+        const part = document.getElementById('pGridPart' + i)?.value.trim();
         const rate = parseFloat(document.getElementById('pGridRate' + i)?.value) || 0;
         const wt = parseFloat(document.getElementById('pGridWeight' + i)?.value) || 0;
         const amt = parseFloat(document.getElementById('pGridAmt' + i)?.value) || 0;
 
         if (desc || amt > 0 || wt > 0) {
             items.push({
-                itemDescription: desc || 'Drumstick',
-                bags: bags,
+                itemDescription: desc || 'SEDI',
+                particulars: part || '',
                 rate: rate,
                 quantity: wt,
-                amount: amt > 0 ? amt : (rate * (wt > 0 ? wt : bags))
+                amount: amt > 0 ? amt : (rate * wt)
             });
         }
     }
 
     if (items.length === 0) {
-        alert('Please add at least one item line');
+        alert('Please enter at least one item line');
         return;
     }
 
     calcPurchaseTotals();
 
     const gross = parseFloat(document.getElementById('purchaseGrossAmount')?.value) || 0;
-    const freight = parseFloat(document.getElementById('purchaseFreight')?.value) || 0;
-    const packing = parseFloat(document.getElementById('purchasePacking')?.value) || 0;
-    const other = parseFloat(document.getElementById('purchaseOther')?.value) || 0;
-    const discount = parseFloat(document.getElementById('purchaseDiscount')?.value) || 0;
-    const net = parseFloat(document.getElementById('purchaseNetPayable')?.value) || gross;
+    const net = gross - advance;
+    const dtParts = purDate ? purDate.split('-') : [];
+    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : purDate;
+    const auditStr = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
 
     const payload = {
         purchaseNo: purNo,
         purchaseDate: purDate,
         traderAccount: { id: traderAcc.id, partyId: traderAcc.partyId, accountName: traderAcc.accountName },
+        phone: phone,
+        payDate: payDate,
+        paidTo: paidTo,
+        advance: advance,
         grossAmount: gross,
-        freightCharges: freight,
-        packingCharges: packing,
-        otherCharges: other,
-        discount: discount,
-        netPayable: net,
+        netPayable: net > 0 ? net : gross,
+        auditInfo: auditStr,
         items: items
     };
 
@@ -10086,22 +10260,26 @@ function editPurchase() {
     showToast('Editing purchase...');
 }
 
-function printPurchaseInvoice() {
+function viewPurchaseInvoice() {
+    printPurchaseInvoice(false);
+}
+
+function printPurchaseInvoice(autoPrint = true) {
     if (currentPurchaseIndex < 0 || !purchases[currentPurchaseIndex]) {
         alert('Please select a purchase to print');
         return;
     }
     const p = purchases[currentPurchaseIndex];
-    const traderName = p.traderAccount ? p.traderAccount.accountName : 'Trader';
+    const traderName = p.traderAccount ? p.traderAccount.accountName : 'Supplier';
     let rowsHtml = '';
     (p.items || []).forEach((it, idx) => {
         rowsHtml += `
             <tr>
                 <td style="text-align:center; padding:4px; border:1px solid #777;">${idx + 1}</td>
                 <td style="padding:4px; border:1px solid #777;">${it.itemDescription || ''}</td>
-                <td style="text-align:right; padding:4px; border:1px solid #777;">${it.bags || 0}</td>
-                <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.quantity || 0).toFixed(2)}</td>
+                <td style="padding:4px; border:1px solid #777;">${it.particulars || ''}</td>
                 <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.rate || 0).toFixed(2)}</td>
+                <td style="text-align:right; padding:4px; border:1px solid #777;">${parseFloat(it.quantity || 0).toFixed(1)}</td>
                 <td style="text-align:right; padding:4px; border:1px solid #777; font-weight:bold;">${parseFloat(it.amount || 0).toFixed(2)}</td>
             </tr>
         `;
@@ -10111,41 +10289,39 @@ function printPurchaseInvoice() {
         <div style="font-family:Tahoma, Arial, sans-serif; padding:15px; color:#000;">
             <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:10px;">
                 <h2 style="margin:0;">KANI DRUMSTICK AGENCIES</h2>
-                <div style="font-size:12px;">PURCHASE INVOICE</div>
+                <div style="font-size:12px; font-weight:bold; letter-spacing:1px;">PURCHASE INVOICE</div>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:10px;">
-                <div><strong>Trader:</strong> ${traderName}</div>
-                <div><strong>Invoice No:</strong> ${p.purchaseNo || p.id} &nbsp;|&nbsp; <strong>Date:</strong> ${p.purchaseDate || ''}</div>
+                <div><strong>Supplier:</strong> ${traderName} &nbsp;|&nbsp; <strong>Phone:</strong> ${p.phone || '—'}</div>
+                <div><strong>No:</strong> ${p.purchaseNo || p.id} &nbsp;|&nbsp; <strong>Date:</strong> ${p.purchaseDate || ''}</div>
             </div>
             <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:10px;">
                 <thead>
                     <tr style="background:#eee;">
                         <th style="border:1px solid #777; padding:4px; width:40px;">Sno</th>
-                        <th style="border:1px solid #777; padding:4px;">Item</th>
-                        <th style="border:1px solid #777; padding:4px; width:60px; text-align:right;">Bags</th>
-                        <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Weight</th>
+                        <th style="border:1px solid #777; padding:4px;">Item description</th>
+                        <th style="border:1px solid #777; padding:4px; width:140px;">Particulars</th>
                         <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Rate</th>
+                        <th style="border:1px solid #777; padding:4px; width:80px; text-align:right;">Weight</th>
                         <th style="border:1px solid #777; padding:4px; width:100px; text-align:right;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
             <div style="display:flex; justify-content:flex-end; font-size:12px;">
-                <table style="width:280px; border-collapse:collapse;">
-                    <tr><td style="padding:2px 4px;">Gross:</td><td style="text-align:right; font-weight:bold;">${parseFloat(p.grossAmount || 0).toFixed(2)}</td></tr>
-                    <tr><td style="padding:2px 4px;">Freight:</td><td style="text-align:right;">${parseFloat(p.freightCharges || 0).toFixed(2)}</td></tr>
-                    <tr><td style="padding:2px 4px;">Packing:</td><td style="text-align:right;">${parseFloat(p.packingCharges || 0).toFixed(2)}</td></tr>
-                    <tr><td style="padding:2px 4px;">Discount:</td><td style="text-align:right;">${parseFloat(p.discount || 0).toFixed(2)}</td></tr>
-                    <tr style="font-size:14px; font-weight:bold; border-top:1px solid #000;"><td style="padding:4px;">Net Payable:</td><td style="text-align:right; color:#0055aa; padding:4px;">${parseFloat(p.netPayable || 0).toFixed(2)}</td></tr>
+                <table style="width:260px; border-collapse:collapse;">
+                    <tr><td style="padding:2px 4px;">Total:</td><td style="text-align:right; font-weight:bold;">${parseFloat(p.grossAmount || 0).toFixed(2)}</td></tr>
+                    <tr><td style="padding:2px 4px;">Advance:</td><td style="text-align:right;">${parseFloat(p.advance || 0).toFixed(2)}</td></tr>
+                    <tr style="font-size:15px; font-weight:bold; border-top:2px solid #000;"><td style="padding:4px;">Net Payable:</td><td style="text-align:right; color:#c00; padding:4px;">${parseFloat(p.netPayable || p.grossAmount || 0).toFixed(2)}</td></tr>
                 </table>
             </div>
         </div>
     `;
-    openVfpReportPreview('Purchase Invoice #' + (p.purchaseNo || p.id), htmlContent, true);
+    openVfpReportPreview('Purchase #' + (p.purchaseNo || p.id), htmlContent, autoPrint);
 }
 
 function findPurchaseTrader() {
-    const code = prompt('Enter Trader Code or Name:');
+    const code = prompt('Enter Supplier Code or Name:');
     if (!code) return;
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() ||
@@ -10155,9 +10331,10 @@ function findPurchaseTrader() {
         currentPurchaseTrader = acc;
         document.getElementById('purchaseAccountId').value = acc.partyId || acc.id || '';
         document.getElementById('purchaseAccountName').value = acc.accountName || '';
-        lookupPurchaseTraderBalance(acc.id);
+        document.getElementById('purchasePhone').value = acc.phone || acc.mobileNumber || '';
+        loadRightPendingBills(acc.partyId || acc.id);
     } else {
-        alert('Trader not found');
+        alert('Supplier not found');
     }
 }
 
@@ -10292,7 +10469,7 @@ function findPpTrader() {
     const code = prompt('Enter Trader Code or Name:');
     if (!code) return;
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        String(a.partyId).toUpperCase() === code.toUpperCase() ||
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
         String(a.accountName).toUpperCase().includes(code.toUpperCase())
     );
     if (acc) {
@@ -10379,7 +10556,6 @@ async function savePurchasePayment() {
         return;
     }
 
-    // Get selected purchase bill IDs
     const purchaseIds = [];
     document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
         const pid = parseInt(chk.getAttribute('data-id'), 10);
@@ -10481,7 +10657,7 @@ function findPobTrader() {
     const code = prompt('Enter Trader Code or Name:');
     if (!code) return;
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        String(a.partyId).toUpperCase() === code.toUpperCase() ||
+        String(a.partyId).toUpperCase() === code.toUpperCase() || 
         String(a.accountName).toUpperCase().includes(code.toUpperCase())
     );
     if (acc) {
@@ -10594,7 +10770,7 @@ async function loadPurchaseRegister() {
             const dtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
 
             rowsHtml += `
-                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''" onclick="openPurchaseFromRegister('${p.purchaseNo || p.id}')">
                     <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
                     <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>
                     <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${p.purchaseNo || p.id}</td>
@@ -10621,6 +10797,14 @@ async function loadPurchaseRegister() {
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#c00;">Error loading purchase register</td></tr>';
     }
+}
+
+function openPurchaseFromRegister(purNoOrId) {
+    openWin('purchase');
+    setTimeout(() => {
+        const idx = (purchases || []).findIndex(p => String(p.purchaseNo) === String(purNoOrId) || String(p.id) === String(purNoOrId));
+        if (idx >= 0) displayPurchase(idx);
+    }, 150);
 }
 
 function resetPrTotals() {
@@ -10751,7 +10935,7 @@ async function loadPurchasePendingRegister() {
             const dtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
 
             rowsHtml += `
-                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
+                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''" onclick="openPurchaseFromRegister('${p.purchaseNo || p.id}')">
                     <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
                     <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">${p.purchaseNo || p.id}</td>
                     <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${dtStr}</td>

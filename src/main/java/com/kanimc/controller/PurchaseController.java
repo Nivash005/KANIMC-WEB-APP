@@ -139,6 +139,11 @@ public class PurchaseController {
 
         if (existing != null) {
             if (purchase.getPurchaseDate() != null) existing.setPurchaseDate(purchase.getPurchaseDate());
+            if (purchase.getPhone() != null) existing.setPhone(purchase.getPhone());
+            if (purchase.getPaidTo() != null) existing.setPaidTo(purchase.getPaidTo());
+            if (purchase.getPayDate() != null) existing.setPayDate(purchase.getPayDate());
+            if (purchase.getAdvance() != null) existing.setAdvance(purchase.getAdvance());
+            if (purchase.getAuditInfo() != null) existing.setAuditInfo(purchase.getAuditInfo());
             if (purchase.getPurchaseNo() != null) existing.setPurchaseNo(purchase.getPurchaseNo());
             if (purchase.getGrossAmount() != null) existing.setGrossAmount(purchase.getGrossAmount());
             if (purchase.getFreightCharges() != null) existing.setFreightCharges(purchase.getFreightCharges());
