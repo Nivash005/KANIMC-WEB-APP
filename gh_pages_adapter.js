@@ -1295,6 +1295,128 @@
                 if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
+                list = list.map(v => {
+                    const item = Object.assign({}, v);
+                    let aName = (item.account && (item.account.accountName || item.account.name)) || item.accountName || '';
+                    let aCode = (item.account && (item.account.partyId || item.account.id)) || item.accountCode || item.accountId || '';
+                    if ((!aName || aName === 'undefined') && (aCode || (item.account && item.account.id)) && db.accounts) {
+                        const targetId = aCode || item.account.id;
+                        const found = db.accounts.find(a => String(a.id) === String(targetId) || String(a.partyId) === String(targetId));
+                        if (found) {
+                            aName = found.accountName;
+                            if (!aCode) aCode = found.partyId || found.id;
+                        }
+                    }
+                    item.accountName = aName || '—';
+                    item.accountCode = aCode;
+                    item.account = { id: item.account ? item.account.id : aCode, partyId: aCode, accountName: aName };
+                    return item;
+                });
+                list.sort((a, b) => {
+                    const da = String(a.voucherDate || '').substring(0, 10);
+                    const db = String(b.voucherDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.voucherNo, 10) || 0) - (parseInt(b.voucherNo, 10) || 0);
+                });
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/receipt-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = (db.receiptVouchers || []).slice();
+                if (startDate) list = list.filter(r => r.voucherDate && String(r.voucherDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(r => r.voucherDate && String(r.voucherDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(r => r.account && (r.account.id == accountId || String(r.account.partyId) == String(accountId)));
+                list = list.map(r => {
+                    const item = Object.assign({}, r);
+                    let aName = (item.account && (item.account.accountName || item.account.name)) || item.accountName || '';
+                    let aCode = (item.account && (item.account.partyId || item.account.id)) || item.accountCode || item.accountId || '';
+                    if ((!aName || aName === 'undefined') && (aCode || (item.account && item.account.id)) && db.accounts) {
+                        const targetId = aCode || item.account.id;
+                        const found = db.accounts.find(a => String(a.id) === String(targetId) || String(a.partyId) === String(targetId));
+                        if (found) {
+                            aName = found.accountName;
+                            if (!aCode) aCode = found.partyId || found.id;
+                        }
+                    }
+                    item.accountName = aName || '—';
+                    item.accountCode = aCode;
+                    item.account = { id: item.account ? item.account.id : aCode, partyId: aCode, accountName: aName };
+                    return item;
+                });
+                list.sort((a, b) => {
+                    const da = String(a.voucherDate || '').substring(0, 10);
+                    const db = String(b.voucherDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.voucherNo, 10) || 0) - (parseInt(b.voucherNo, 10) || 0);
+                });
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/chitta-pending-register') {
+                const asOfDate = search.get('asOfDate');
+                const startDate = search.get('startDate');
+                const accountId = search.get('accountId');
+                let list = (db.chittas || []).filter(c => !c.paid && !c.payDate);
+                if (startDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) >= startDate);
+                if (asOfDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= asOfDate);
+                if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.chittaDate || '').substring(0, 10);
+                    const db = String(b.chittaDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+                });
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/chitta-payment-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = (db.chittas || []).filter(c => c.paid || c.payDate);
+                if (startDate) list = list.filter(c => (c.payDate || c.chittaDate) && String(c.payDate || c.chittaDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(c => (c.payDate || c.chittaDate) && String(c.payDate || c.chittaDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(c => c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.payDate || a.chittaDate || '').substring(0, 10);
+                    const db = String(b.payDate || b.chittaDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
+                });
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/bill-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = (db.salesBills || []).map(b => {
+                    let weight = 0;
+                    (b.items || []).forEach(it => weight += (parseFloat(it.quantity) || 0));
+                    return {
+                        ...b,
+                        netReceivable: b.netReceivable !== undefined ? b.netReceivable : b.netAmount,
+                        weight: weight
+                    };
+                });
+                if (startDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(b => b.buyerAccount && (b.buyerAccount.id == accountId || String(b.buyerAccount.partyId) == String(accountId)));
+                list.sort((a, b) => {
+                    const da = String(a.billDate || '').substring(0, 10);
+                    const db = String(b.billDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.billNo, 10) || 0) - (parseInt(b.billNo, 10) || 0);
+                });
+                return jsonResponse(list);
+            }
+            if (path === '/api/reports/cash-payment-register') {
+                const startDate = search.get('startDate');
+                const endDate = search.get('endDate');
+                const accountId = search.get('accountId');
+                let list = (db.cashVouchers || []).slice();
+                if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
+                if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
+                if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
                 list.sort((a, b) => {
                     const da = String(a.voucherDate || '').substring(0, 10);
                     const db = String(b.voucherDate || '').substring(0, 10);
@@ -1458,9 +1580,24 @@
                 (db.chittas || []).forEach(c => {
                     const dt = (c.payDate || c.chittaDate || '').substring(0, 10);
                     if (dt && dt < sDate) {
-                        if (c.isPaid || (c.paymentMethod && c.paymentMethod.toUpperCase() === 'CASH')) {
+                        if (c.isPaid || (c.paymentMethod && c.paymentMethod.toUpperCase() === 'CASH') || c.payDate) {
                             opening -= (parseFloat(c.netPayable || c.grossAmount) || 0);
                         }
+                    }
+                });
+
+                (db.purchases || []).forEach(p => {
+                    const dt = (p.payDate || p.purchaseDate || '').substring(0, 10);
+                    if (dt && dt < sDate) {
+                        const amt = parseFloat(p.netPayable || p.grossAmount) || 0;
+                        opening -= amt;
+                    }
+                });
+
+                (db.purchasePayments || []).forEach(pp => {
+                    const dt = (pp.paymentDate || '').substring(0, 10);
+                    if (dt && dt < sDate) {
+                        opening -= (parseFloat(pp.amount) || 0);
                     }
                 });
 
@@ -1480,7 +1617,7 @@
                 (db.chittas || []).forEach(c => {
                     const dt = (c.payDate || c.chittaDate || '').substring(0, 10);
                     if (dt && dt >= sDate && dt <= eDate) {
-                        if (c.isPaid || (c.paymentMethod && c.paymentMethod.toUpperCase() === 'CASH')) {
+                        if (c.isPaid || (c.paymentMethod && c.paymentMethod.toUpperCase() === 'CASH') || c.payDate) {
                             const amt = parseFloat(c.netPayable || c.grossAmount) || 0;
                             chittaByDate[dt] = (chittaByDate[dt] || 0) + amt;
                         }
@@ -1499,41 +1636,31 @@
                     }
                 });
 
-                // Row 2B: Purchase Payments in range
+                // Row 3: Purchases & Purchase Payments -> "PURCHASE A/C"
+                const purchaseByDate = {};
+                (db.purchases || []).forEach(p => {
+                    const dt = (p.payDate || p.purchaseDate || '').substring(0, 10);
+                    if (dt && dt >= sDate && dt <= eDate) {
+                        const amt = parseFloat(p.netPayable || p.grossAmount) || 0;
+                        purchaseByDate[dt] = (purchaseByDate[dt] || 0) + amt;
+                    }
+                });
                 (db.purchasePayments || []).forEach(pp => {
                     const dt = (pp.paymentDate || '').substring(0, 10);
                     if (dt && dt >= sDate && dt <= eDate) {
-                        if (!pp.paymentMethod || pp.paymentMethod.toUpperCase() === 'CASH') {
-                            let accName = pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : 'PURCHASE A/C';
-                            list.push({
-                                date: dt,
-                                name: accName,
-                                accountName: accName,
-                                credit: 0,
-                                debit: parseFloat(pp.amount) || 0,
-                                narration: pp.narration || ''
-                            });
-                        }
+                        const amt = parseFloat(pp.amount) || 0;
+                        purchaseByDate[dt] = (purchaseByDate[dt] || 0) + amt;
                     }
                 });
 
-                // Row 3: Cash Vouchers in range
-                (db.cashVouchers || []).forEach(v => {
-                    const dt = (v.voucherDate || '').substring(0, 10);
-                    if (dt && dt >= sDate && dt <= eDate) {
-                        let accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
-                        if (!accName && v.account && v.account.id && db.accounts) {
-                            const found = db.accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
-                            if (found) accName = found.accountName;
-                        }
-                        if (!accName) accName = 'PURCHASE A/C';
+                Object.keys(purchaseByDate).sort().forEach(dt => {
+                    if (purchaseByDate[dt] > 0) {
                         list.push({
                             date: dt,
-                            name: accName,
-                            accountName: accName,
+                            name: 'PURCHASE A/C',
+                            accountName: 'PURCHASE A/C',
                             credit: 0,
-                            debit: parseFloat(v.amount) || 0,
-                            narration: v.narration || ''
+                            debit: purchaseByDate[dt]
                         });
                     }
                 });
@@ -1555,6 +1682,27 @@
                             credit: parseFloat(r.amount) || 0,
                             debit: 0,
                             narration: r.narration || ''
+                        });
+                    }
+                });
+
+                // Row 5: Cash Vouchers in range
+                (db.cashVouchers || []).forEach(v => {
+                    const dt = (v.voucherDate || '').substring(0, 10);
+                    if (dt && dt >= sDate && dt <= eDate) {
+                        let accName = v.account ? (v.account.accountName || v.account.name) : (v.accountName || '');
+                        if (!accName && v.account && v.account.id && db.accounts) {
+                            const found = db.accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
+                            if (found) accName = found.accountName;
+                        }
+                        if (!accName) accName = 'CASH PAYMENT';
+                        list.push({
+                            date: dt,
+                            name: accName,
+                            accountName: accName,
+                            credit: 0,
+                            debit: parseFloat(v.amount) || 0,
+                            narration: v.narration || ''
                         });
                     }
                 });
