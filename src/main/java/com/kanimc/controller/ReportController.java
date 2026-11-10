@@ -290,22 +290,179 @@ public class ReportController {
 
     @GetMapping("/ledger")
     public Map<String, Object> getLedger(
-            @RequestParam Long accountId,
+            @RequestParam(required = false) Long accountId,
+            @RequestParam(required = false) String accountCode,
+            @RequestParam(required = false) String accountName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         
-        Account acc = accountRepository.findById(accountId)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + accountId));
-        
-        List<com.kanimc.entity.AccountTransaction> allTxns = txnRepository.findByAccountIdOrderByTransactionDateAsc(accountId);
-        
+        Account acc = null;
+        if (accountId != null) {
+            acc = accountRepository.findById(accountId).orElse(null);
+        }
+        if (acc == null && accountCode != null && !accountCode.trim().isEmpty()) {
+            String c = accountCode.trim();
+            acc = accountRepository.findAll().stream()
+                    .filter(a -> c.equalsIgnoreCase(String.valueOf(a.getId())) || 
+                                 (a.getPartyId() != null && c.equalsIgnoreCase(a.getPartyId().trim())))
+                    .findFirst().orElse(null);
+        }
+        if (acc == null && accountName != null && !accountName.trim().isEmpty()) {
+            String n = accountName.trim();
+            acc = accountRepository.findAll().stream()
+                    .filter(a -> a.getAccountName() != null && n.equalsIgnoreCase(a.getAccountName().trim()))
+                    .findFirst().orElse(null);
+        }
+        if (acc == null) {
+            var all = accountRepository.findAll();
+            if (!all.isEmpty()) acc = all.get(0);
+        }
+
+        if (acc == null) {
+            Map<String, Object> empty = new HashMap<>();
+            empty.put("accountName", "—");
+            empty.put("openingBalance", BigDecimal.ZERO);
+            empty.put("transactions", Collections.emptyList());
+            empty.put("totalDebit", BigDecimal.ZERO);
+            empty.put("totalCredit", BigDecimal.ZERO);
+            empty.put("closingBalance", BigDecimal.ZERO);
+            return empty;
+        }
+
+        final Long targetAccId = acc.getId();
+        List<com.kanimc.entity.AccountTransaction> allTxns = txnRepository.findByAccountIdOrderByTransactionDateAsc(targetAccId);
+        if (allTxns == null) allTxns = new ArrayList<>();
+        else allTxns = new ArrayList<>(allTxns);
+
+        Set<String> existingKeys = new HashSet<>();
+        for (com.kanimc.entity.AccountTransaction t : allTxns) {
+            String key = (t.getDocCode() != null ? t.getDocCode() : "") + "_" + (t.getDocNo() != null ? t.getDocNo().trim() : "");
+            existingKeys.add(key.toUpperCase());
+        }
+
+        // Merge any unposted or standalone transactions:
+        // 1. Chittas
+        try {
+            List<Chitta> chittas = chittaRepository.findAll();
+            for (Chitta c : chittas) {
+                if (c.getFarmerAccount() != null && targetAccId.equals(c.getFarmerAccount().getId())) {
+                    String docNoStr = String.valueOf(c.getChittaNo());
+                    if (!existingKeys.contains("1_" + docNoStr) && !existingKeys.contains("CH_" + docNoStr) && !existingKeys.contains("CHITTA_" + docNoStr)) {
+                        com.kanimc.entity.AccountTransaction t = new com.kanimc.entity.AccountTransaction();
+                        t.setTransactionDate(c.getChittaDate() != null ? c.getChittaDate() : LocalDate.now());
+                        t.setDocCode(1);
+                        t.setDocNo("CH-" + docNoStr);
+                        t.setNarration("CHITTA #" + docNoStr);
+                        BigDecimal amt = c.getNetPayable() != null ? c.getNetPayable() : (c.getGrossAmount() != null ? c.getGrossAmount() : BigDecimal.ZERO);
+                        t.setCreditAmount(amt);
+                        t.setDebitAmount(BigDecimal.ZERO);
+                        allTxns.add(t);
+                    }
+                }
+            }
+        } catch(Exception ignored) {}
+
+        // 2. Sales Bills
+        try {
+            List<SalesBill> bills = salesBillRepository.findAll();
+            for (SalesBill b : bills) {
+                if (b.getBuyerAccount() != null && targetAccId.equals(b.getBuyerAccount().getId())) {
+                    String docNoStr = String.valueOf(b.getBillNo());
+                    if (!existingKeys.contains("3_" + docNoStr) && !existingKeys.contains("BL_" + docNoStr) && !existingKeys.contains("BILL_" + docNoStr)) {
+                        com.kanimc.entity.AccountTransaction t = new com.kanimc.entity.AccountTransaction();
+                        t.setTransactionDate(b.getBillDate() != null ? b.getBillDate() : LocalDate.now());
+                        t.setDocCode(3);
+                        t.setDocNo("BL-" + docNoStr);
+                        t.setNarration("SALES BILL #" + docNoStr);
+                        BigDecimal amt = b.getNetReceivable() != null ? b.getNetReceivable() : (b.getGrossAmount() != null ? b.getGrossAmount() : BigDecimal.ZERO);
+                        t.setDebitAmount(amt);
+                        t.setCreditAmount(BigDecimal.ZERO);
+                        allTxns.add(t);
+                    }
+                }
+            }
+        } catch(Exception ignored) {}
+
+        // 3. Cash Payments
+        try {
+            List<com.kanimc.entity.CashVoucher> cvs = cashVoucherRepository.findAll();
+            for (com.kanimc.entity.CashVoucher cv : cvs) {
+                if (cv.getAccount() != null && targetAccId.equals(cv.getAccount().getId())) {
+                    String docNoStr = String.valueOf(cv.getVoucherNo());
+                    if (!existingKeys.contains("2_" + docNoStr) && !existingKeys.contains("CP_" + docNoStr)) {
+                        com.kanimc.entity.AccountTransaction t = new com.kanimc.entity.AccountTransaction();
+                        t.setTransactionDate(cv.getVoucherDate() != null ? cv.getVoucherDate() : LocalDate.now());
+                        t.setDocCode(2);
+                        t.setDocNo("CP-" + docNoStr);
+                        t.setNarration(cv.getNarration() != null && !cv.getNarration().isEmpty() ? cv.getNarration() : "CASH PAYMENT");
+                        t.setDebitAmount(cv.getAmount() != null ? cv.getAmount() : BigDecimal.ZERO);
+                        t.setCreditAmount(BigDecimal.ZERO);
+                        allTxns.add(t);
+                    }
+                }
+            }
+        } catch(Exception ignored) {}
+
+        // 4. Receipt Vouchers
+        try {
+            List<com.kanimc.entity.ReceiptVoucher> rvs = receiptVoucherRepository.findAll();
+            for (com.kanimc.entity.ReceiptVoucher rv : rvs) {
+                if (rv.getAccount() != null && targetAccId.equals(rv.getAccount().getId())) {
+                    String docNoStr = String.valueOf(rv.getVoucherNo());
+                    if (!existingKeys.contains("5_" + docNoStr) && !existingKeys.contains("RC_" + docNoStr)) {
+                        com.kanimc.entity.AccountTransaction t = new com.kanimc.entity.AccountTransaction();
+                        t.setTransactionDate(rv.getVoucherDate() != null ? rv.getVoucherDate() : LocalDate.now());
+                        t.setDocCode(5);
+                        t.setDocNo("RC-" + docNoStr);
+                        t.setNarration(rv.getNarration() != null && !rv.getNarration().isEmpty() ? rv.getNarration() : "RECEIPT VOUCHER");
+                        t.setCreditAmount(rv.getAmount() != null ? rv.getAmount() : BigDecimal.ZERO);
+                        t.setDebitAmount(BigDecimal.ZERO);
+                        allTxns.add(t);
+                    }
+                }
+            }
+        } catch(Exception ignored) {}
+
+        // 5. Purchases
+        try {
+            List<com.kanimc.entity.Purchase> purs = purchaseRepository.findAll();
+            for (com.kanimc.entity.Purchase p : purs) {
+                if (p.getTraderAccount() != null && targetAccId.equals(p.getTraderAccount().getId())) {
+                    String docNoStr = String.valueOf(p.getPurchaseNo());
+                    if (!existingKeys.contains("6_" + docNoStr) && !existingKeys.contains("PUR_" + docNoStr)) {
+                        com.kanimc.entity.AccountTransaction t = new com.kanimc.entity.AccountTransaction();
+                        t.setTransactionDate(p.getPurchaseDate() != null ? p.getPurchaseDate() : LocalDate.now());
+                        t.setDocCode(6);
+                        t.setDocNo("PUR-" + docNoStr);
+                        t.setNarration("PURCHASE #" + docNoStr);
+                        BigDecimal amt = p.getNetPayable() != null ? p.getNetPayable() : (p.getGrossAmount() != null ? p.getGrossAmount() : BigDecimal.ZERO);
+                        t.setCreditAmount(amt);
+                        t.setDebitAmount(BigDecimal.ZERO);
+                        allTxns.add(t);
+                    }
+                }
+            }
+        } catch(Exception ignored) {}
+
+        // Sort all by transactionDate ascending
+        allTxns.sort(Comparator.comparing(t -> (t.getTransactionDate() != null ? t.getTransactionDate() : LocalDate.MIN)));
+
         boolean isFarmer = Boolean.TRUE.equals(acc.getIsFarmer()) || 
             (acc.getAccountGroup() != null && acc.getAccountGroup().getGroupName() != null && 
              acc.getAccountGroup().getGroupName().toUpperCase().contains("FARMER"));
         
         BigDecimal opening = acc.getOpeningBalance() != null ? acc.getOpeningBalance() : BigDecimal.ZERO;
+        if (opening.compareTo(BigDecimal.ZERO) == 0) {
+            try {
+                var obs = openingBalanceRepository.findByAccountId(targetAccId);
+                if (obs != null && !obs.isEmpty() && obs.get(0).getAmount() != null) {
+                    opening = obs.get(0).getAmount();
+                }
+            } catch(Exception ignored) {}
+        }
+
         for (com.kanimc.entity.AccountTransaction t : allTxns) {
-            if (startDate != null && t.getTransactionDate().isBefore(startDate)) {
+            if (startDate != null && t.getTransactionDate() != null && t.getTransactionDate().isBefore(startDate)) {
                 BigDecimal dr = t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO;
                 BigDecimal cr = t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO;
                 if (isFarmer) {
@@ -322,8 +479,9 @@ public class ReportController {
         BigDecimal totalCredit = BigDecimal.ZERO;
         
         for (com.kanimc.entity.AccountTransaction t : allTxns) {
-            if ((startDate == null || !t.getTransactionDate().isBefore(startDate)) &&
-                (endDate == null || !t.getTransactionDate().isAfter(endDate))) {
+            LocalDate tDate = t.getTransactionDate() != null ? t.getTransactionDate() : LocalDate.now();
+            if ((startDate == null || !tDate.isBefore(startDate)) &&
+                (endDate == null || !tDate.isAfter(endDate))) {
                 
                 BigDecimal dr = t.getDebitAmount() != null ? t.getDebitAmount() : BigDecimal.ZERO;
                 BigDecimal cr = t.getCreditAmount() != null ? t.getCreditAmount() : BigDecimal.ZERO;
@@ -336,9 +494,9 @@ public class ReportController {
                 totalCredit = totalCredit.add(cr);
                 
                 Map<String, Object> row = new HashMap<>();
-                row.put("date", t.getTransactionDate());
-                row.put("docNo", t.getDocNo());
-                row.put("docCode", t.getDocCode());
+                row.put("date", tDate);
+                row.put("docNo", t.getDocNo() != null ? t.getDocNo() : "");
+                row.put("docCode", t.getDocCode() != null ? String.valueOf(t.getDocCode()) : "");
                 row.put("narration", t.getNarration() != null ? t.getNarration() : "");
                 row.put("debit", dr);
                 row.put("credit", cr);
@@ -349,7 +507,9 @@ public class ReportController {
         
         Map<String, Object> result = new HashMap<>();
         result.put("accountId", acc.getId());
+        result.put("accountCode", acc.getPartyId() != null ? acc.getPartyId() : String.valueOf(acc.getId()));
         result.put("accountName", acc.getAccountName());
+        result.put("isFarmer", isFarmer);
         result.put("openingBalance", opening);
         result.put("transactions", rows);
         result.put("totalDebit", totalDebit);
