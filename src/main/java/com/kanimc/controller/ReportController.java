@@ -696,6 +696,9 @@ public class ReportController {
         if (items != null && !items.isEmpty()) {
             for (com.kanimc.entity.SalesBillItem i : items) {
                 Map<String, Object> map = new HashMap<>();
+                map.put("id", i.getSalesBill() != null ? i.getSalesBill().getId() : null);
+                map.put("billId", i.getSalesBill() != null ? i.getSalesBill().getId() : null);
+                map.put("docType", "BILL");
                 map.put("date", i.getSalesBill() != null ? i.getSalesBill().getBillDate() : null);
                 map.put("docNo", i.getSalesBill() != null ? i.getSalesBill().getBillNo() : "");
                 map.put("partyName", (i.getSalesBill() != null && i.getSalesBill().getBuyerAccount() != null) ? i.getSalesBill().getBuyerAccount().getAccountName() : "");
@@ -713,6 +716,9 @@ public class ReportController {
                     if (c.getItems() != null) {
                         for (com.kanimc.entity.ChittaItem ci : c.getItems()) {
                             Map<String, Object> map = new HashMap<>();
+                            map.put("id", c.getId());
+                            map.put("chittaId", c.getId());
+                            map.put("docType", "CHITTA");
                             map.put("date", c.getChittaDate());
                             map.put("docNo", c.getChittaNo());
                             map.put("partyName", c.getFarmerAccount() != null ? c.getFarmerAccount().getAccountName() : "");

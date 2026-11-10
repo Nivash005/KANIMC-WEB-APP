@@ -9709,6 +9709,63 @@ async function loadDaybook() {
     }
 }
 
+
+async function openChittaFromItemRegister(partyName, docNo, chittaId) {
+    try {
+        let chittaObj = null;
+
+        // 1. Search in local chittas cache
+        if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
+            if (chittaId) chittaObj = chittas.find(c => String(c.id) === String(chittaId));
+            if (!chittaObj && docNo) chittaObj = chittas.find(c => String(c.chittaNo) === String(docNo));
+            if (!chittaObj && partyName) {
+                const q = partyName.trim().toLowerCase();
+                chittaObj = chittas.find(c => {
+                    const fn = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
+                    return fn && fn.trim().toLowerCase() === q;
+                });
+            }
+        }
+
+        // 2. If not found in memory, fetch fresh list
+        if (!chittaObj) {
+            try {
+                const res = await fetch('/api/chittas');
+                if (res.ok) {
+                    const list = await res.json();
+                    if (Array.isArray(list)) {
+                        chittas = list;
+                        if (chittaId) chittaObj = list.find(c => String(c.id) === String(chittaId));
+                        if (!chittaObj && docNo) chittaObj = list.find(c => String(c.chittaNo) === String(docNo));
+                        if (!chittaObj && partyName) {
+                            const q = partyName.trim().toLowerCase();
+                            chittaObj = list.find(c => {
+                                const fn = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
+                                return fn && fn.trim().toLowerCase() === q;
+                            });
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error('Error fetching chittas:', e);
+            }
+        }
+
+        if (!chittaObj) {
+            chittaObj = { id: chittaId ? parseInt(chittaId) : null, chittaNo: docNo || '', farmerName: partyName };
+        }
+
+        if (typeof openChittaByRecord === 'function') {
+            await openChittaByRecord(chittaObj);
+        } else {
+            openWin('openingChitta');
+        }
+    } catch(err) {
+        console.error('openChittaFromItemRegister error:', err);
+        openWin('openingChitta');
+    }
+}
+
 async function loadItemRegister() {
     try {
         const fromInput = document.getElementById('itemRegFromDate');
@@ -9777,20 +9834,24 @@ async function loadItemRegister() {
                         rowBg = 'background-color:#ffffff;';
                     }
 
+                    const safePartyName = partyName.replace(/'/g, "\\'");
+                    const safeItemName = itemName.replace(/'/g, "\\'");
+                    const chittaRefId = (r.chittaId || r.id || '');
+
                     const tr = document.createElement('tr');
                     tr.style.cursor = 'pointer';
                     if (rowBg) tr.style.cssText = rowBg + ' cursor:pointer;';
-                    tr.title = 'Click to open Product Master for ' + itemName;
+                    tr.title = 'Click to open Chitta #' + docNo + ' for ' + partyName;
                     tr.onmouseover = function() { if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff')) this.style.backgroundColor = '#e8f4e5'; };
                     tr.onmouseout = function() { if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff')) this.style.backgroundColor = (idx % 2 === 1 ? '#fff2f4' : '#ffffff'); };
-                    tr.onclick = function() { openProductByName(itemName); };
+                    tr.onclick = function() { openChittaFromItemRegister(partyName, docNo, chittaRefId); };
 
                     tr.innerHTML = `
                         <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
                         <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${dtShort}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${docNo}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px;">${partyName}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold;">${itemName}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" title="Click to open Chitta #${docNo}" onclick="openChittaFromItemRegister('${safePartyName}', '${docNo}', '${chittaRefId}'); event.stopPropagation();">${docNo}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold; color:#0055aa; cursor:pointer;" title="Click to open Chitta for ${partyName}" onclick="openChittaFromItemRegister('${safePartyName}', '${docNo}', '${chittaRefId}'); event.stopPropagation();">${partyName}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold; cursor:pointer;" title="Click to open Product Master for ${itemName}" onclick="openProductByName('${safeItemName}'); event.stopPropagation();">${itemName}</td>
                         <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${q.toFixed(3)}</td>
                         <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${rt.toFixed(2)}</td>
                         <td style="border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt.toFixed(2)}</td>
