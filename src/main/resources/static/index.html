@@ -2357,7 +2357,7 @@ Commission % <input id="commRatePct" value="10.00%">
                 </div>
 
                 <label style="margin-left:10px;">Supplier Name</label>
-                <input id="purchaseAccountName" list="accountNamesList" onchange="onPurchaseTraderNameChange()" style="flex:1; min-width:200px; padding:2px 4px; border:1px solid #777; font-size:12px;" class="p-field" data-next="purchasePhone">
+                <input id="purchaseAccountName" list="accountNamesList" onchange="onPurchaseTraderNameChange()" style="flex:1; min-width:200px; padding:2px 4px; border:1px solid #777; font-size:12px;" class="p-field" data-next="pGridItem0">
                 
                 <button onclick="openWin('account')" style="padding:2px 8px; font-size:11px; white-space:nowrap; cursor:pointer;">Account Master</button>
             </div>
@@ -2391,7 +2391,7 @@ Commission % <input id="commRatePct" value="10.00%">
         </div>
 
         <!-- Main Items Grid -->
-        <div style="border:1px solid #777; background:#fff; height:220px; overflow-y:auto;">
+        <div id="purchaseGridContainer" style="border:1px solid #777; background:#fff; height:220px; overflow-y:auto;" onclick="onPurchaseGridBackgroundClicked(event)">
             <table id="purchaseGrid" style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
                 <thead>
                     <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #999;">
@@ -5139,7 +5139,7 @@ document.addEventListener('keydown', function(e) {
         
         // Find if we are inside a visible modal
         const modal = activeEl.closest('.modal');
-        if (!modal || activeEl.closest('#openingChitta')) return;
+        if (!modal || activeEl.closest('#openingChitta') || activeEl.closest('#purchase') || activeEl.closest('#purchaseOpeningBalance')) return;
         
         // Find all focusable elements in this modal (inputs, selects, buttons)
         const focusable = Array.from(modal.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, button'));
@@ -9508,8 +9508,176 @@ let currentPpIndex = -1;
 let currentPurchaseTrader = null;
 let currentActivePurchaseRow = 0;
 
+let purchaseIsEditMode = false;
+
+function setPurchaseEditMode(editing) {
+    purchaseIsEditMode = !!editing;
+    const btnChange = document.getElementById('btnPurchaseChange');
+    if (!btnChange) return;
+    if (purchaseIsEditMode) {
+        btnChange.innerHTML = '<u>S</u>ave';
+        btnChange.style.color = '#0055aa';
+        btnChange.style.fontWeight = 'bold';
+    } else {
+        btnChange.innerHTML = '<u>C</u>hange';
+        btnChange.style.color = '';
+        btnChange.style.fontWeight = 'normal';
+    }
+}
+
+function onPurchaseGridBackgroundClicked(e) {
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+        const btnChange = document.getElementById('btnPurchaseChange');
+        if (btnChange) btnChange.focus();
+    }
+}
+
+function initPurchaseFieldKeyListeners() {
+    const pDate = document.getElementById('purchaseDate');
+    const pAccId = document.getElementById('purchaseAccountId');
+    const pAccName = document.getElementById('purchaseAccountName');
+
+    if (pDate && !pDate._hasPurKey) {
+        pDate._hasPurKey = true;
+        pDate.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('purchaseAccountId')?.focus();
+            }
+        });
+    }
+
+    if (pAccId && !pAccId._hasPurKey) {
+        pAccId._hasPurKey = true;
+        pAccId.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPurchaseTraderCodeChange();
+                const pName = document.getElementById('purchaseAccountName');
+                if (pName && pName.value.trim()) {
+                    const firstItem = document.getElementById('pGridItem0');
+                    if (firstItem) { firstItem.focus(); firstItem.select?.(); }
+                } else if (pName) {
+                    pName.focus();
+                }
+            }
+        });
+    }
+
+    if (pAccName && !pAccName._hasPurKey) {
+        pAccName._hasPurKey = true;
+        pAccName.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPurchaseTraderNameChange();
+                // Move immediately to first item description in grid
+                const firstItem = document.getElementById('pGridItem0');
+                if (firstItem) {
+                    firstItem.focus();
+                    firstItem.select?.();
+                }
+            }
+        });
+    }
+}
+
+function wirePurchaseRowEvents(rowIdx) {
+    const itemInput = document.getElementById('pGridItem' + rowIdx);
+    const partInput = document.getElementById('pGridPart' + rowIdx);
+    const rateInput = document.getElementById('pGridRate' + rowIdx);
+    const weightInput = document.getElementById('pGridWeight' + rowIdx);
+
+    if (itemInput) {
+        itemInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!this.value || !this.value.trim()) {
+                    // Empty item description -> jump straight to Save button!
+                    const btnChange = document.getElementById('btnPurchaseChange');
+                    if (btnChange) btnChange.focus();
+                } else {
+                    const nextPart = document.getElementById('pGridPart' + rowIdx);
+                    if (nextPart) { nextPart.focus(); nextPart.select?.(); }
+                }
+            } else if (e.key === ' ' && (!this.value || !this.value.trim())) {
+                // Spacebar on empty description -> jump straight to Save button!
+                e.preventDefault();
+                e.stopPropagation();
+                this.value = '';
+                const btnChange = document.getElementById('btnPurchaseChange');
+                if (btnChange) btnChange.focus();
+            }
+        });
+
+        itemInput.addEventListener('input', function(e) {
+            if (this.value === ' ' || (this.value && this.value.trim() === '')) {
+                this.value = '';
+                const btnChange = document.getElementById('btnPurchaseChange');
+                if (btnChange) btnChange.focus();
+            }
+        });
+
+        itemInput.addEventListener('click', function(e) {
+            if (this.value && this.value.trim() === '') {
+                this.value = '';
+                const btnChange = document.getElementById('btnPurchaseChange');
+                if (btnChange) btnChange.focus();
+            }
+        });
+    }
+
+    if (partInput) {
+        partInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const nextRate = document.getElementById('pGridRate' + rowIdx);
+                if (nextRate) { nextRate.focus(); nextRate.select?.(); }
+            }
+        });
+    }
+
+    if (rateInput) {
+        rateInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                calcPurchaseRowAmount(rowIdx);
+                calcPurchaseTotals();
+                const nextWeight = document.getElementById('pGridWeight' + rowIdx);
+                if (nextWeight) { nextWeight.focus(); nextWeight.select?.(); }
+            }
+        });
+    }
+
+    if (weightInput) {
+        weightInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                calcPurchaseRowAmount(rowIdx);
+                calcPurchaseTotals();
+                const nextRowIdx = rowIdx + 1;
+                let nextItem = document.getElementById('pGridItem' + nextRowIdx);
+                if (!nextItem) {
+                    addPurchaseGridRow(nextRowIdx);
+                    nextItem = document.getElementById('pGridItem' + nextRowIdx);
+                }
+                highlightPurchaseRow(nextRowIdx);
+                if (nextItem) { nextItem.focus(); nextItem.select?.(); }
+            }
+        });
+    }
+}
+
 function initPurchaseWindow() {
     initPurchaseGrid();
+    initPurchaseFieldKeyListeners();
+    setPurchaseEditMode(false);
     loadPurchases().then(() => {
         if (purchases && purchases.length > 0) {
             displayPurchase(purchases.length - 1);
@@ -9570,6 +9738,8 @@ function addPurchaseGridRow(rowIdx) {
         </td>
     `;
     tbody.appendChild(tr);
+
+    wirePurchaseRowEvents(rowIdx);
 }
 
 function calcPurchaseRowAmount(rowIdx) {
@@ -9644,6 +9814,7 @@ async function loadPurchases() {
 function displayPurchase(idx) {
     if (!purchases || idx < 0 || idx >= purchases.length) return;
     currentPurchaseIndex = idx;
+    setPurchaseEditMode(false); // Mode returns to normal view, Change button shows 'Change'
     const p = purchases[idx];
 
     const titleEl = document.getElementById('purchaseModalTitle');
@@ -9697,6 +9868,7 @@ function displayPurchase(idx) {
 
     highlightPurchaseRow(0);
     calcPurchaseTotals();
+    initPurchaseFieldKeyListeners();
 
     // Audit Info
     const dtParts = dt.split('-');
@@ -9726,6 +9898,10 @@ function newPurchase() {
 
     initPurchaseGrid();
     calcPurchaseTotals();
+    initPurchaseFieldKeyListeners();
+
+    // Toggle Change button to Save button
+    setPurchaseEditMode(true);
 
     const dtParts = todayStr.split('-');
     const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : todayStr;
@@ -9756,10 +9932,10 @@ function newPurchase() {
     document.getElementById('purchaseAccountId').focus();
 }
 
-function topPurchase() { if (purchases && purchases.length > 0) displayPurchase(0); }
-function prevPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex > 0) displayPurchase(currentPurchaseIndex - 1); }
-function nextPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex < purchases.length - 1) displayPurchase(currentPurchaseIndex + 1); }
-function bottomPurchase() { if (purchases && purchases.length > 0) displayPurchase(purchases.length - 1); }
+function topPurchase() { if (purchases && purchases.length > 0) { setPurchaseEditMode(false); displayPurchase(0); } }
+function prevPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex > 0) { setPurchaseEditMode(false); displayPurchase(currentPurchaseIndex - 1); } }
+function nextPurchase() { if (purchases && purchases.length > 0 && currentPurchaseIndex < purchases.length - 1) { setPurchaseEditMode(false); displayPurchase(currentPurchaseIndex + 1); } }
+function bottomPurchase() { if (purchases && purchases.length > 0) { setPurchaseEditMode(false); displayPurchase(purchases.length - 1); } }
 
 function onPurchaseTraderCodeChange() {
     const code = document.getElementById('purchaseAccountId').value.trim();
@@ -9968,6 +10144,8 @@ async function savePurchase() {
         if (res.ok) {
             const saved = await res.json();
             showToast('Purchase Saved Successfully!');
+            // Requirement: after saving again it should change to change button
+            setPurchaseEditMode(false);
             await loadPurchases();
             const idx = purchases.findIndex(p => p.id === saved.id || p.purchaseNo === saved.purchaseNo);
             displayPurchase(idx >= 0 ? idx : purchases.length - 1);
@@ -9993,6 +10171,7 @@ async function deletePurchase() {
         const res = await fetch('/api/purchases/' + p.id, { method: 'DELETE' });
         if (res.ok) {
             showToast('Purchase Deleted');
+            setPurchaseEditMode(false);
             await loadPurchases();
             if (purchases.length > 0) {
                 displayPurchase(Math.max(0, currentPurchaseIndex - 1));
@@ -10008,8 +10187,15 @@ async function deletePurchase() {
 }
 
 function editPurchase() {
-    document.getElementById('purchaseAccountId').focus();
-    showToast('Editing purchase...');
+    // Toggles between Change (Edit) and Save
+    if (!purchaseIsEditMode) {
+        setPurchaseEditMode(true);
+        showToast('Purchase unlocked for editing. Click Save when done.');
+        const firstItem = document.getElementById('pGridItem0');
+        if (firstItem) { firstItem.focus(); firstItem.select?.(); }
+    } else {
+        savePurchase();
+    }
 }
 
 function viewPurchaseInvoice() {
