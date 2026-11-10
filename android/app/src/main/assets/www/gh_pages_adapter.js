@@ -110,21 +110,25 @@
     };
 
     function getCentralServerUrl() {
-        // If running locally, never route to external Cloudflare tunnel
+        // If running in Android WebView or file: scheme
+        if (window.location.protocol === 'file:') {
+            return localStorage.getItem('KANIMC_SERVER_URL') || '';
+        }
+        // If running locally, route to local origin
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return window.location.origin;
+            return (window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
         }
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
         // Clear dead / expired Cloudflare tunnel domains from localStorage
-        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats'))) {
-            cs = 'https://piece-oxygen-vendors-adopt.trycloudflare.com';
-            try { localStorage.setItem('KANIMC_SERVER_URL', cs); } catch(e) {}
+        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats') || cs.includes('piece-oxygen-vendors-adopt'))) {
+            cs = '';
+            try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
         }
         if (!cs) {
-            if (!window.location.hostname.includes('github.io') && window.location.port !== '') {
+            if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('github.io') && window.location.port !== '') {
                 cs = window.location.origin;
             } else {
-                cs = 'https://piece-oxygen-vendors-adopt.trycloudflare.com';
+                cs = '';
             }
         }
         return cs;
@@ -380,7 +384,8 @@
             return originalFetch(resource, init);
         }
 
-        const urlObj = new URL(url, window.location.origin);
+        const baseOrigin = (window.location && window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost';
+        const urlObj = new URL(url, baseOrigin);
         let path = urlObj.pathname;
         if (path.startsWith('/KANIMC-WEB-APP/')) {
             path = path.substring('/KANIMC-WEB-APP'.length);
@@ -422,7 +427,7 @@
                     if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
                         targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
                     } else {
-                        targetUrl = window.location.origin + path + urlObj.search;
+                        targetUrl = ((window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:8080') + path + urlObj.search;
                     }
                 }
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
