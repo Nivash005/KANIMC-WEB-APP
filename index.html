@@ -135,7 +135,7 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 .submenu .dropdown-item { background:#ffffff !important; color:#000000 !important; }
 .submenu .dropdown-item:hover { background:#316ac5 !important; color:#ffffff !important; }
 .has-submenu:hover>.submenu, .has-submenu.open>.submenu { display:block !important; }
-#utility .submenu, #reports .submenu { right:100% !important; left:auto !important; }
+.submenu, #master .submenu, #transaction .submenu, #reports .submenu, #utility .submenu { position:absolute !important; top:0 !important; left:100% !important; right:auto !important; background:#ffffff !important; border:1px solid #8a8a8a !important; min-width:200px !important; display:none; box-shadow:2px 2px 6px rgba(0,0,0,.25) !important; z-index:2000 !important; color:#000000 !important; }
 
 </style>
 </head>
@@ -207,6 +207,14 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="dropdown-item" onclick="openWin('receiptRegister');event.stopPropagation()">Receipt Register</div>
 <div class="dropdown-item" onclick="openWin('cashPaymentRegister');event.stopPropagation()">Cash Payment Register</div>
 <div class="dropdown-item" onclick="openWin('itemRegister');event.stopPropagation()">Item Register</div>
+
+<div class="dropdown-item has-submenu" onclick="toggleSubmenu(event, this)">Purchase ▶
+<div class="submenu">
+<div class="dropdown-item" onclick="openWin('purchaseRegister');event.stopPropagation()">1. Purchase Register</div>
+<div class="dropdown-item" onclick="openWin('purchasePaymentRegister');event.stopPropagation()">2. Payment Register</div>
+<div class="dropdown-item" onclick="openWin('purchasePendingRegister');event.stopPropagation()">3. Pending Register</div>
+</div>
+</div>
 
 <div class="dropdown-item has-submenu" onclick="toggleSubmenu(event, this)">Commission Register ▶
 <div class="submenu">
