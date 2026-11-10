@@ -1441,6 +1441,105 @@
                 });
                 return jsonResponse(list);
             }
+            if (path === '/api/reports/item-register') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+                const itemId = search.get('itemId');
+
+                let records = [];
+
+                // 1. Check sales bills
+                (db.salesBills || []).forEach(b => {
+                    const dt = (b.billDate || '').substring(0, 10);
+                    if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                        const buyerName = b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name || '') : (b.buyerName || '');
+                        (b.items || []).forEach(i => {
+                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            records.push({
+                                date: dt,
+                                docNo: b.billNo || b.id || '',
+                                partyName: buyerName,
+                                itemName: name,
+                                quantity: parseFloat(i.quantity || i.weight) || 0,
+                                rate: parseFloat(i.rate) || 0,
+                                amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                            });
+                        });
+                    }
+                });
+
+                // Fallback: If no sales bills, check chittas
+                if (records.length === 0) {
+                    (db.chittas || []).forEach(c => {
+                        const dt = (c.chittaDate || '').substring(0, 10);
+                        if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                            const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name || '') : (c.farmerName || '');
+                            (c.items || []).forEach(i => {
+                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                                records.push({
+                                    date: dt,
+                                    docNo: c.chittaNo || c.id || '',
+                                    partyName: farmerName,
+                                    itemName: name,
+                                    quantity: parseFloat(i.quantity || i.weight) || 0,
+                                    rate: parseFloat(i.rate) || 0,
+                                    amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                                });
+                            });
+                        }
+                    });
+                }
+
+                return jsonResponse(records);
+            }
+
+            if (path === '/api/reports/item-summary') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+
+                let map = {};
+
+                // 1. Check sales bills
+                (db.salesBills || []).forEach(b => {
+                    const dt = (b.billDate || '').substring(0, 10);
+                    if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                        (b.items || []).forEach(i => {
+                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            const qty = parseFloat(i.quantity || i.weight) || 0;
+                            const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                            if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                            map[name].totalQuantity += qty;
+                            map[name].totalAmount += amt;
+                        });
+                    }
+                });
+
+                // Fallback: If no sales bills, check chittas
+                if (Object.keys(map).length === 0) {
+                    (db.chittas || []).forEach(c => {
+                        const dt = (c.chittaDate || '').substring(0, 10);
+                        if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                            (c.items || []).forEach(i => {
+                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                                const qty = parseFloat(i.quantity || i.weight) || 0;
+                                const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                                if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                                map[name].totalQuantity += qty;
+                                map[name].totalAmount += amt;
+                            });
+                        }
+                    });
+                }
+
+                const result = Object.keys(map).map(k => ({
+                    itemName: k,
+                    totalQuantity: map[k].totalQuantity,
+                    totalAmount: map[k].totalAmount
+                }));
+
+                return jsonResponse(result);
+            }
+
             if (path === '/api/reports/commission-summary') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');

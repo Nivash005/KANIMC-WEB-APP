@@ -1652,41 +1652,61 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 27. ITEM REGISTER ================= -->
 <div class="modal-overlay" id="itemRegister">
-<div class="modal" style="width:1000px; background:#ffffe1;">
-<div class="modal-title">Item Register<span onclick="closeAll()">✖</span></div>
+<div class="modal" style="width:1050px; max-width:98vw; background:#ffffe1; border:2px solid #555; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+<div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to right, #0055aa, #4a90e2); color:#fff; font-weight:bold; padding:4px 8px;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:14px;">📑</span>
+        <span>Item Register</span>
+    </div>
+    <span onclick="closeAll()" style="cursor:pointer; font-size:14px;">✖</span>
+</div>
 <div style="padding:10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="itemRegFromDate" value="2024-04-26" style="width:100px; background:#ccffff;">
-            <label>To</label> <input type="date" id="itemRegToDate" value="2025-04-25" style="width:100px;">
+    <!-- Top Filter Controls -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label style="font-weight:bold;">From</label> 
+            <input type="date" id="itemRegFromDate" style="width:125px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;">
+            
+            <label style="font-weight:bold; margin-left:6px;">To</label> 
+            <input type="date" id="itemRegToDate" style="width:125px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;">
         </div>
-        <div style="display:flex; gap:5px;">
-            <button style="padding:2px 10px;" onclick="loadItemRegister()"><u>O</u>k</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('itemRegister', 'Item Register', true)">Print</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('itemRegister', 'Item Register', false)">View</button>
-            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('itemRegister', 'Item Register')">Excel</button>
-            <button onclick="openAdvancedOptions()" style="padding:2px 10px;"><u>O</u>ptions</button>
-            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px; font-size:12px;" onclick="loadItemRegister()"><u>O</u>k</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="printRegisterTable('itemRegister', 'Item Register', true)"><u>P</u>rint</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="printRegisterTable('itemRegister', 'Item Register', false)"><u>V</u>iew</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="exportRegisterToExcel('itemRegister', 'Item Register')"><u>E</u>xcel</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="openAdvancedOptions()"><u>O</u>ptions</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
     
-    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
-        <table style="width:100%; border-collapse:collapse;">
+    <!-- Table Grid -->
+    <div style="border:1px solid #777; background:#fff; height:420px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
             <thead>
-                <tr style="font-weight:bold;">
-                    <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Sno</th>
-                    <th style="width:100px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Date</th>
-                    <th style="border-bottom:1px solid #ccc;">Amount</th>
+                <tr style="font-weight:bold; background:#e0ded8; position:sticky; top:0; z-index:2; border-bottom:1px solid #999;">
+                    <th style="width:40px; border-right:1px solid #aaa; text-align:center; padding:4px 2px;">Sno</th>
+                    <th style="width:85px; border-right:1px solid #aaa; text-align:center; padding:4px 4px;">Date</th>
+                    <th style="width:50px; border-right:1px solid #aaa; text-align:center; padding:4px 4px;">No</th>
+                    <th style="width:230px; border-right:1px solid #aaa; text-align:left; padding:4px 8px;">Name</th>
+                    <th style="border-right:1px solid #aaa; text-align:left; padding:4px 8px;">Item Name</th>
+                    <th style="width:110px; border-right:1px solid #aaa; text-align:right; padding:4px 8px;">Weight</th>
+                    <th style="width:85px; border-right:1px solid #aaa; text-align:right; padding:4px 8px;">Rate</th>
+                    <th style="width:110px; text-align:right; padding:4px 8px;">Amount</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+            <tbody id="itemRegisterBody">
             </tbody>
         </table>
     </div>
     
-    <div style="display:flex; margin-top:5px; padding-left:145px;">
-        <input type="text" style="width:120px; text-align:right;" readonly>
+    <!-- Bottom Summary Row -->
+    <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; padding-right:10px; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <input type="text" id="itemRegTotalQty" style="width:110px; text-align:right; font-weight:bold; font-size:13px; background:#fff; border:1px solid #777; padding:2px 6px;" readonly value="0.000" title="Total Weight">
+            <input type="text" id="itemRegTotalAmt" style="width:110px; text-align:right; font-weight:bold; font-size:13px; background:#fff; border:1px solid #777; padding:2px 6px;" readonly value="0.00" title="Total Amount">
+        </div>
+        <span style="cursor:pointer; color:#0055aa; font-size:16px;" title="Print / Search Options" onclick="openAdvancedOptions()">🔍</span>
     </div>
 </div>
 </div>
@@ -1834,43 +1854,53 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 35. ITEM SUMMARY ================= -->
 <div class="modal-overlay" id="itemSummaryReport">
-<div class="modal" style="width:900px; background:#ffffe1;">
-<div class="modal-title">Item wise summarry<span onclick="closeAll()">✖</span></div>
+<div class="modal" style="width:960px; max-width:98vw; background:#ffffe1; border:2px solid #555; box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+<div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to right, #0055aa, #4a90e2); color:#fff; font-weight:bold; padding:4px 8px;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:14px;">📦</span>
+        <span>Item wise summarry</span>
+    </div>
+    <span onclick="closeAll()" style="cursor:pointer; font-size:14px;">✖</span>
+</div>
 <div style="padding:10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="itemSumFromDate" value="2024-04-26" style="width:100px;">
-            <label>To</label> <input type="date" id="itemSumToDate" value="2025-04-25" style="width:100px;">
+    <!-- Top Filter Controls -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <label style="font-weight:bold;">From</label> 
+            <input type="date" id="itemSumFromDate" style="width:125px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;">
+            
+            <label style="font-weight:bold; margin-left:6px;">To</label> 
+            <input type="date" id="itemSumToDate" style="width:125px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;">
         </div>
-        <div style="display:flex; gap:5px;">
-            <button style="padding:2px 10px;" onclick="loadItemSummary()"><u>O</u>k</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('itemSummaryReport', 'Item Wise Summary', true)">Print</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('itemSummaryReport', 'Item Wise Summary', false)">View</button>
-            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('itemSummaryReport', 'Item Wise Summary')">Excel</button>
-            <button onclick="openAdvancedOptions()" style="padding:2px 10px;"><u>O</u>ptions</button>
-            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        <div style="display:flex; gap:4px;">
+            <button style="padding:2px 10px; font-size:12px;" onclick="loadItemSummary()"><u>O</u>k</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="printRegisterTable('itemSummaryReport', 'Item wise summarry', true)"><u>P</u>rint</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="printRegisterTable('itemSummaryReport', 'Item wise summarry', false)"><u>V</u>iew</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="exportRegisterToExcel('itemSummaryReport', 'Item wise summarry')"><u>E</u>xcel</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="openAdvancedOptions()"><u>O</u>ptions</button>
+            <button style="padding:2px 10px; font-size:12px;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
     
-    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
-        <table style="width:100%; border-collapse:collapse;">
+    <!-- Table Grid -->
+    <div style="border:1px solid #777; background:#fff; height:420px; overflow-y:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
             <thead>
-                <tr style="font-weight:bold;">
-                    <th style="width:50px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Sno</th>
-                    <th style="width:100px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Date</th>
-                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Total</th>
-                    <th style="width:120px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Commission</th>
-                    <th style="border-bottom:1px solid #ccc;"></th>
+                <tr style="font-weight:bold; background:#e0ded8; position:sticky; top:0; z-index:2; border-bottom:1px solid #999;">
+                    <th style="width:45px; border-right:1px solid #aaa; text-align:center; padding:4px 2px;">Sno</th>
+                    <th style="border-right:1px solid #aaa; text-align:left; padding:4px 8px;">Item Name</th>
+                    <th style="width:220px; text-align:right; padding:4px 8px;">Weight</th>
                 </tr>
             </thead>
-            <tbody id="commRegBody">
+            <tbody id="itemSummaryBody">
             </tbody>
         </table>
     </div>
     
-    <div style="display:flex; gap:5px; margin-top:5px; padding-left:145px;">
-        <input type="text" style="width:100px; text-align:right;" readonly>
-        <input type="text" style="width:100px; text-align:right;" readonly>
+    <!-- Bottom Summary Row -->
+    <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; padding-right:10px; gap:8px;">
+        <input type="text" id="itemSumTotalQty" style="width:140px; text-align:right; font-weight:bold; font-size:13px; background:#fff; border:1px solid #777; padding:2px 6px;" readonly value="0.000" title="Total Weight">
+        <span style="cursor:pointer; color:#0055aa; font-size:16px;" title="Print / Search Options" onclick="openAdvancedOptions()">🔍</span>
     </div>
 </div>
 </div>
@@ -9194,102 +9224,215 @@ async function loadDaybook() {
 
 async function loadItemRegister() {
     try {
+        const fromInput = document.getElementById('itemRegFromDate');
+        const toInput = document.getElementById('itemRegToDate');
+        const today = getTodayDateStr();
+
+        if (fromInput && (!fromInput.value || fromInput.value === '2024-04-26')) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
+                fromInput.value = currentFinancialPeriod.startDate;
+            } else {
+                const yr = new Date().getFullYear();
+                fromInput.value = yr + '-04-01';
+            }
+        }
+        if (toInput && (!toInput.value || toInput.value === '2025-04-25')) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.endDate) {
+                toInput.value = currentFinancialPeriod.endDate;
+            } else {
+                toInput.value = today;
+            }
+        }
+
         let url = '/api/reports/item-register?';
-        const fromDate = document.getElementById('itemRegFromDate')?.value;
-        const toDate = document.getElementById('itemRegToDate')?.value;
-        if (fromDate) url += `startDate=${fromDate}&`;
-        if (toDate) url += `endDate=${toDate}`;
+        const fromDate = fromInput?.value;
+        const toDate = toInput?.value;
+        if (fromDate) url += 'startDate=' + encodeURIComponent(fromDate) + '&';
+        if (toDate) url += 'endDate=' + encodeURIComponent(toDate);
         
         const res = await fetch(url);
-        if(res.ok) {
+        if (res.ok) {
             const data = await res.json();
             const tbody = document.getElementById('itemRegisterBody');
-            if(!tbody) return;
+            if (!tbody) return;
             tbody.innerHTML = '';
             
+            let sumQty = 0;
             let sumAmount = 0;
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:10px; color:#888;">No Item records found</td></tr>';
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#888;">No Item records found</td></tr>';
             } else {
                 data.forEach((r, idx) => {
-                    const amt = parseFloat(r.amount) || 0;
+                    const q = parseFloat(r.quantity) || 0;
+                    const rt = parseFloat(r.rate) || 0;
+                    const amt = parseFloat(r.amount) || (q * rt);
+                    sumQty += q;
                     sumAmount += amt;
-                    const dt = r.date ? (typeof r.date === 'string' ? r.date.substring(0, 10) : new Date(r.date).toLocaleDateString('en-GB')) : '';
-                    const itemName = r.itemName || '';
+
+                    let dtShort = '';
+                    if (r.date) {
+                        const parts = String(r.date).substring(0, 10).split('-');
+                        dtShort = parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0].slice(-2) : r.date;
+                    }
+
+                    const itemName = r.itemName || 'SEDI';
+                    const partyName = r.partyName || '';
+                    const docNo = r.docNo || '';
+
+                    // Match FoxPro row highlights: Row 1 cyan, Row 2 light pink, Row 3 white
+                    let rowBg = '';
+                    if (idx === 0) {
+                        rowBg = 'background-color:#00ffff;';
+                    } else if (idx % 2 === 1) {
+                        rowBg = 'background-color:#fff2f4;';
+                    } else {
+                        rowBg = 'background-color:#ffffff;';
+                    }
+
                     const tr = document.createElement('tr');
                     tr.style.cursor = 'pointer';
-                    tr.title = `Click to open Product Master for ${itemName}`;
-                    tr.onmouseover = () => tr.style.backgroundColor = '#e8f4e5';
-                    tr.onmouseout = () => tr.style.backgroundColor = '';
-                    tr.onclick = () => openProductByName(itemName);
+                    if (rowBg) tr.style.cssText = rowBg + ' cursor:pointer;';
+                    tr.title = 'Click to open Product Master for ' + itemName;
+                    tr.onmouseover = function() { if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff')) this.style.backgroundColor = '#e8f4e5'; };
+                    tr.onmouseout = function() { if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff')) this.style.backgroundColor = (idx % 2 === 1 ? '#fff2f4' : '#ffffff'); };
+                    tr.onclick = function() { openProductByName(itemName); };
 
                     tr.innerHTML = `
-                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${dt}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${r.docNo || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold; cursor:pointer;" onclick="openProductByName('${itemName.replace(/'/g, "\\'")}'); event.stopPropagation();">${itemName}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${r.quantity || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${r.rate || ''}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right; font-weight:bold;">${amt > 0 ? amt.toFixed(2) : ''}</td>
+                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${dtShort}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${docNo}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px;">${partyName}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold;">${itemName}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${q.toFixed(3)}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${rt.toFixed(2)}</td>
+                        <td style="border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt.toFixed(2)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
-            const elTotal = document.getElementById('itemRegTotal');
-            if(elTotal) elTotal.value = sumAmount > 0 ? sumAmount.toFixed(2) : '';
+
+            // Pad with empty rows to fill grid height down to bottom like FoxPro
+            const currentRows = data ? data.length : 0;
+            const padCount = Math.max(0, 18 - currentRows);
+            for (let p = 0; p < padCount; p++) {
+                const tr = document.createElement('tr');
+                tr.style.height = '20px';
+                tr.innerHTML = `
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-bottom:1px solid #ccc;"></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            const elQty = document.getElementById('itemRegTotalQty');
+            const elAmt = document.getElementById('itemRegTotalAmt');
+            if (elQty) elQty.value = sumQty.toFixed(3);
+            if (elAmt) elAmt.value = sumAmount.toFixed(2);
             showToast("Item Register Loaded");
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error('loadItemRegister error:', e); }
 }
 
 async function loadItemSummary() {
     try {
+        const fromInput = document.getElementById('itemSumFromDate');
+        const toInput = document.getElementById('itemSumToDate');
+        const today = getTodayDateStr();
+
+        if (fromInput && (!fromInput.value || fromInput.value === '2024-04-26')) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
+                fromInput.value = currentFinancialPeriod.startDate;
+            } else {
+                const yr = new Date().getFullYear();
+                fromInput.value = yr + '-04-01';
+            }
+        }
+        if (toInput && (!toInput.value || toInput.value === '2025-04-25')) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.endDate) {
+                toInput.value = currentFinancialPeriod.endDate;
+            } else {
+                toInput.value = today;
+            }
+        }
+
         let url = '/api/reports/item-summary?';
-        const fromDate = document.getElementById('itemSumFromDate')?.value;
-        const toDate = document.getElementById('itemSumToDate')?.value;
-        if (fromDate) url += `startDate=${fromDate}&`;
-        if (toDate) url += `endDate=${toDate}`;
+        const fromDate = fromInput?.value;
+        const toDate = toInput?.value;
+        if (fromDate) url += 'startDate=' + encodeURIComponent(fromDate) + '&';
+        if (toDate) url += 'endDate=' + encodeURIComponent(toDate);
         
         const res = await fetch(url);
-        if(res.ok) {
+        if (res.ok) {
             const data = await res.json();
             const tbody = document.getElementById('itemSummaryBody');
-            if(!tbody) return;
+            if (!tbody) return;
             tbody.innerHTML = '';
             
-            let sumQty = 0, sumAmount = 0;
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#888;">No Item summary data found</td></tr>';
+            let sumQty = 0;
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:15px; color:#888;">No Item summary data found</td></tr>';
             } else {
                 data.forEach((r, idx) => {
                     const q = parseFloat(r.totalQuantity) || 0;
-                    const amt = parseFloat(r.totalAmount) || 0;
                     sumQty += q;
-                    sumAmount += amt;
                     const itemName = r.itemName || '';
+
+                    // Match FoxPro Image 1: Row 1 active, Row 2 light pink, Row 3 white
+                    let rowBg = '';
+                    if (idx === 0) {
+                        rowBg = 'background-color:#0078d7; color:#fff;';
+                    } else if (idx % 2 === 1) {
+                        rowBg = 'background-color:#fff2f4;';
+                    } else {
+                        rowBg = 'background-color:#ffffff;';
+                    }
+
                     const tr = document.createElement('tr');
                     tr.style.cursor = 'pointer';
-                    tr.title = `Click to open Product Master for ${itemName}`;
-                    tr.onmouseover = () => tr.style.backgroundColor = '#e8f4e5';
-                    tr.onmouseout = () => tr.style.backgroundColor = '';
-                    tr.onclick = () => openProductByName(itemName);
+                    if (rowBg) tr.style.cssText = rowBg + ' cursor:pointer;';
+                    tr.title = 'Click to open Product Master for ' + itemName;
+                    tr.onmouseover = function() { if (idx !== 0) this.style.backgroundColor = '#e8f4e5'; };
+                    tr.onmouseout = function() { if (idx !== 0) this.style.backgroundColor = (idx % 2 === 1 ? '#fff2f4' : '#ffffff'); };
+                    tr.onclick = function() { openProductByName(itemName); };
+
+                    const weightBg = (idx === 0) ? 'background-color:#70ffff; color:#000; font-weight:bold;' : '';
 
                     tr.innerHTML = `
-                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold; cursor:pointer;" onclick="openProductByName('${itemName.replace(/'/g, "\\'")}'); event.stopPropagation();">${itemName}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${q.toFixed(2)}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right; font-weight:bold;">${amt.toFixed(2)}</td>
+                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold;">${itemName}</td>
+                        <td style="${weightBg} border-bottom:1px solid #ccc; text-align:right; padding:2px 10px;">${q.toFixed(3)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
+
+            // Pad with empty rows to fill grid height down to bottom like FoxPro Image 1
+            const currentRows = data ? data.length : 0;
+            const padCount = Math.max(0, 18 - currentRows);
+            for (let p = 0; p < padCount; p++) {
+                const tr = document.createElement('tr');
+                tr.style.height = '20px';
+                tr.innerHTML = `
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-bottom:1px solid #ccc;"></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
             const elQty = document.getElementById('itemSumTotalQty');
-            const elAmt = document.getElementById('itemSumTotalAmt');
-            if(elQty) elQty.value = sumQty > 0 ? sumQty.toFixed(2) : '';
-            if(elAmt) elAmt.value = sumAmount > 0 ? sumAmount.toFixed(2) : '';
+            if (elQty) elQty.value = sumQty.toFixed(3);
             showToast("Item Summary Loaded");
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error('loadItemSummary error:', e); }
 }
 
 async function loadCommissionRegister() {
