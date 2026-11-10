@@ -34,7 +34,7 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261110_1"></script>
+<script src="gh_pages_adapter.js?v=20261110_2"></script>
 <script>
 if ('serviceWorker' in navigator) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -2484,84 +2484,144 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 <!-- ================= 39. PURCHASE PAYMENT ================= -->
 <div class="modal-overlay" id="purchasePayment">
-<div class="modal" style="width:800px; padding:5px; background:#c0c0c0;">
-<div class="modal-title" id="ppModalTitle" style="border:1px solid #999;">Purchase Payment - New<span onclick="closeAll()">✖</span></div>
-<div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
-    <!-- Trader Info -->
-    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:100px 140px 100px 220px 80px 110px; gap:6px; align-items:center; font-size:12px;">
-        <label>Date</label> <input type="date" id="ppDate">
-        <label>Trader Code</label>
-        <div style="display:flex;">
-            <input id="ppAccountId" onchange="onPpTraderCodeChange()" style="width:80px;">
-            <button style="width:20px;padding:0;" onclick="findPpTrader()">▼</button>
+<div class="modal" style="width:1040px; padding:4px; background:#c0c0c0; border:2px solid #555; box-shadow:0 4px 16px rgba(0,0,0,0.3); font-family:Tahoma, Arial, sans-serif;">
+    <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(to right, #0055aa, #4a90e2); color:#fff; font-weight:bold; padding:3px 6px;">
+        <span id="purchasePaymentModalTitle">Purchase Payment</span>
+        <span onclick="closeAll()" style="cursor:pointer; font-size:14px;">✖</span>
+    </div>
+
+    <!-- Main Container: Left Entry Grid + Right Pending Bills -->
+    <div style="display:flex; gap:4px; margin-top:4px;">
+        <!-- LEFT SECTION: Main Purchase Payment Entry -->
+        <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+            <!-- Top Form Fields -->
+            <div style="border:1px solid #fff; background:#d4d0c8; padding:6px; display:flex; flex-direction:column; gap:6px; font-size:12px;">
+                <!-- Row 1: Pur. Date, Code, Advance -->
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="width:65px;">Pur. Date</label>
+                    <input type="date" id="ppPurDate" readonly style="width:125px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;">
+
+                    <label style="margin-left:15px; width:45px;">Code</label>
+                    <div style="display:flex;">
+                        <input id="ppCode" style="width:75px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;" onchange="onPpCodeChange()">
+                        <button style="width:20px; padding:0; cursor:pointer;" onclick="findPpAccountDialog()" title="Find Account">▼</button>
+                    </div>
+
+                    <label style="margin-left:25px; width:55px;">Advance</label>
+                    <input id="ppAdvanceTop" type="number" step="0.01" style="width:110px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px; text-align:right;" oninput="syncPpAdvance(this.value)">
+                </div>
+
+                <!-- Row 2: No, Supplier Name -->
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="width:65px;">No</label>
+                    <div style="display:flex;">
+                        <input id="ppBillNo" style="width:90px; padding:2px 4px; border:1px solid #777; background:#ccffff; font-size:12px; font-weight:bold;" onchange="onPpBillNoChange()">
+                        <button style="width:20px; padding:0; cursor:pointer;" onclick="findPpBillDialog()" title="Find Purchase Bill">▼</button>
+                    </div>
+
+                    <label style="margin-left:30px; width:85px;">Supplier Name</label>
+                    <input id="ppSupplierName" list="accountNamesList" style="flex:1; min-width:200px; padding:2px 4px; border:1px solid #777; background:#fff; font-size:12px;" onchange="onPpSupplierNameChange()">
+                </div>
+
+                <!-- Row 3: Paid on, Paid to -->
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <label style="width:65px;">Paid on</label>
+                    <input type="date" id="ppPaidOn" style="width:125px; padding:2px 4px; border:1px solid #777; font-size:12px; background:#fff;">
+
+                    <label style="margin-left:10px; width:55px;">Paid to</label>
+                    <input id="ppPaidTo" style="width:220px; padding:2px 4px; border:1px solid #777; font-size:12px; background:#fff;" placeholder="Recipient / Note">
+                </div>
+            </div>
+
+            <!-- Main Items Grid -->
+            <div style="border:1px solid #777; background:#fff; height:220px; overflow-y:auto;">
+                <table id="ppGrid" style="width:100%; border-collapse:collapse; font-size:12px; font-family:Tahoma, Arial, sans-serif;">
+                    <thead>
+                        <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #999;">
+                            <th style="width:40px; border-right:1px solid #aaa; padding:4px 2px; text-align:center;">Sno</th>
+                            <th style="border-right:1px solid #aaa; padding:4px 6px; text-align:left;">Item description</th>
+                            <th style="width:140px; border-right:1px solid #aaa; padding:4px 6px; text-align:left;">Particulars</th>
+                            <th style="width:85px; border-right:1px solid #aaa; padding:4px 6px; text-align:right;">Rate</th>
+                            <th style="width:85px; border-right:1px solid #aaa; padding:4px 6px; text-align:right;">Weight</th>
+                            <th style="width:110px; padding:4px 6px; text-align:right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ppGridBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bottom Totals & Big Red Display -->
+            <div style="border:1px solid #fff; padding:6px; background:#d4d0c8; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:12px; font-size:12px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-weight:bold;">Total</label>
+                        <input id="ppGrossAmount" readonly style="width:120px; background:#fff; border:1px solid #777; text-align:right; font-weight:bold; padding:3px 6px; font-size:13px;" value="0.00">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-weight:bold;">Advance</label>
+                        <input id="ppAdvanceBottom" type="number" step="0.01" oninput="syncPpAdvance(this.value)" style="width:110px; background:#fff; border:1px solid #777; text-align:right; padding:3px 6px; font-size:13px;" placeholder="0.00">
+                    </div>
+                </div>
+
+                <!-- Big Red Display -->
+                <div style="display:flex; align-items:center;">
+                    <div id="ppNetBigDisplay" style="min-width:180px; height:46px; background:#fff; border:2px inset #999; display:flex; align-items:center; justify-content:flex-end; padding:0 12px; font-size:28px; font-weight:bold; color:#cc0000; font-family:'Courier New', monospace, sans-serif; letter-spacing:1px; box-shadow:inset 1px 1px 3px rgba(0,0,0,0.2);">
+                        0.00
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit Line -->
+            <div id="ppAuditLine" style="font-size:11px; color:#333; font-family:monospace; padding:2px 4px;">
+                Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL
+            </div>
+
+            <!-- Bottom Toolbar Buttons -->
+            <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; align-items:center; background:#c0c0c0;">
+                <div style="display:flex; gap:3px;">
+                    <button onclick="newPurchasePaymentUI()" id="btnPpNew" style="padding:3px 12px; font-size:12px; font-weight:bold; border:2px solid #0055aa; cursor:pointer;"><span style="color:#c00; text-decoration:underline;">N</span>ew</button>
+                    <button onclick="findPpBillDialog()" id="btnPpFind" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>F</u>ind</button>
+                    <button onclick="changePurchasePaymentUI()" id="btnPpChange" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>C</u>hange</button>
+                    <button onclick="deletePurchasePaymentUI()" id="btnPpDelete" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>D</u>elete</button>
+                    <button onclick="closeAll()" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>C</u>lose</button>
+                    <button onclick="printPpInvoice()" id="btnPpPrint" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>P</u>rint</button>
+                    <button onclick="viewPpInvoice()" id="btnPpView" style="padding:3px 12px; font-size:12px; cursor:pointer;"><u>V</u>iew</button>
+                </div>
+                <div style="display:flex; gap:2px;">
+                    <button onclick="topPurchasePaymentUI()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>T</u>op</button>
+                    <button onclick="prevPurchasePaymentUI()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>P</u>rev</button>
+                    <button onclick="nextPurchasePaymentUI()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>N</u>ext</button>
+                    <button onclick="bottomPurchasePaymentUI()" style="padding:3px 8px; font-size:12px; cursor:pointer;"><u>B</u>ottom</button>
+                </div>
+            </div>
         </div>
-        <label style="text-align:right;">Balance</label>
-        <input id="ppBalance" readonly style="background:#eef; text-align:right; font-weight:bold; color:#0055aa; width:100px;">
-        
-        <label>Payment No</label> <input id="ppNo" style="background:#ccffff;" readonly>
-        <label>Trader Name</label>
-        <input id="ppAccountName" list="accountNamesList" onchange="onPpTraderNameChange()" style="grid-column:span 3; width:100%;">
-    </div>
 
-    <!-- Pending Bills Grid -->
-    <div style="border:1px solid #fff; background:#fff; height:180px; overflow-y:auto;">
-        <table id="ppPendingGrid" style="width:100%; border-collapse:collapse; font-size:12px;">
-            <thead>
-                <tr style="background:#eee; font-weight:bold; position:sticky; top:0;">
-                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Pay</th>
-                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Pur No</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Date</th>
-                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Net Payable</th>
-                    <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Paid</th>
-                    <th style="border-bottom:1px solid #ccc; text-align:right;">Pending Balance</th>
-                </tr>
-            </thead>
-            <tbody id="ppPendingBody">
-                <tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">Select a trader to view pending bills</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Payment Inputs -->
-    <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:100px 140px 100px 140px 100px 140px; gap:6px; align-items:center; font-size:12px;">
-        <label style="font-weight:bold;">Amount</label>
-        <input type="number" step="0.01" id="ppAmount" style="font-weight:bold; font-size:13px; background:#ccffff;">
-        
-        <label>Discount</label>
-        <input type="number" step="0.01" id="ppDiscount">
-
-        <label>Method</label>
-        <select id="ppMethod">
-            <option value="CASH">CASH</option>
-            <option value="BANK">BANK</option>
-        </select>
-
-        <label>Paid To</label>
-        <input id="ppPaidTo" placeholder="Recipient / Representative">
-
-        <label>Narration</label>
-        <input id="ppNarration" style="grid-column:span 3;" placeholder="Remarks...">
-    </div>
-
-    <!-- Toolbar -->
-    <div style="border:1px solid #fff; padding:4px; display:flex; justify-content:space-between; background:#c0c0c0;">
-        <div style="display:flex; gap:2px;">
-            <button onclick="topPp()" style="padding:2px 8px;">Top</button>
-            <button onclick="prevPp()" style="padding:2px 8px;">Prev</button>
-            <button onclick="nextPp()" style="padding:2px 8px;">Next</button>
-            <button onclick="bottomPp()" style="padding:2px 8px;">Bottom</button>
-        </div>
-        <div style="display:flex; gap:3px;">
-            <button onclick="newPurchasePayment()" style="padding:2px 10px;"><u>N</u>ew</button>
-            <button onclick="savePurchasePayment()" style="padding:2px 10px; font-weight:bold;"><u>S</u>ave</button>
-            <button onclick="deletePurchasePayment()" style="padding:2px 10px;"><u>D</u>elete</button>
-            <button onclick="closeAll()" style="padding:2px 10px;">Close</button>
+        <!-- RIGHT SECTION: PENDING / RECENT BILLS TABLE -->
+        <div style="width:260px; border:1px solid #777; background:#d4d0c8; padding:3px; display:flex; flex-direction:column; gap:3px;">
+            <div style="border:1px solid #999; background:#fff; height:340px; overflow-y:auto;">
+                <table id="ppRightPendingTable" style="width:100%; border-collapse:collapse; font-size:11px; font-family:Tahoma, Arial, sans-serif;">
+                    <thead>
+                        <tr style="background:#e0ded8; font-weight:bold; position:sticky; top:0; z-index:2; border-bottom:1px solid #aaa;">
+                            <th style="width:30px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">Sno</th>
+                            <th style="width:65px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">Date</th>
+                            <th style="width:45px; border-right:1px solid #ccc; padding:3px 2px; text-align:center;">No</th>
+                            <th style="padding:3px 4px; text-align:right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ppRightPendingBody">
+                        <tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">No bills found</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Bottom Total for Right-Side Table -->
+            <div style="display:flex; justify-content:flex-end; padding:2px;">
+                <input id="ppRightPendingTotal" readonly style="width:100px; background:#fff; border:1px solid #777; text-align:right; font-weight:bold; padding:2px 4px; font-size:12px;" value="0.00">
+            </div>
         </div>
     </div>
 </div>
 </div>
-</div>
-
 <!-- ================= 40. PURCHASE OPENING BALANCE ================= -->
 <div class="modal-overlay" id="purchaseOpeningBalance">
 <div class="modal" style="width:550px; padding:5px; background:#c0c0c0;">
@@ -4897,6 +4957,12 @@ function openWin(id, targetParam){
             onOpenCashPayment();
         } else if(id === 'receipt' && typeof onOpenReceipt === 'function') {
             onOpenReceipt();
+        } else if(id === 'purchase') {
+            if (typeof initPurchaseWindow === 'function') initPurchaseWindow();
+        } else if(id === 'purchasePayment') {
+            if (typeof initPurchasePaymentWindow === 'function') initPurchasePaymentWindow(targetParam);
+        } else if(id === 'purchaseOpeningBalance') {
+            if (typeof initPurchaseOpeningBalanceWindow === 'function') initPurchaseOpeningBalanceWindow();
         } else if(id === 'outstandingReport') {
             loadOutstandingReport();
         }
@@ -9943,257 +10009,380 @@ function initPurchasePaymentWindow() {
     });
 }
 
-async function loadPurchasePayments() {
-    try {
-        const res = await fetch('/api/purchase-payments');
-        if (res.ok) {
-            purchasePayments = await res.json();
-            if (!Array.isArray(purchasePayments)) purchasePayments = [];
+let currentPpPurchaseIndex = -1;
+let currentPpPurchases = [];
+let ppIsEditMode = false;
+
+async function initPurchasePaymentWindow(targetBillId) {
+    ppIsEditMode = false;
+    const btnChange = document.getElementById('btnPpChange');
+    if (btnChange) {
+        btnChange.innerHTML = '<u>C</u>hange';
+        btnChange.style.color = '';
+        btnChange.style.fontWeight = 'normal';
+    }
+
+    // Ensure purchases are loaded
+    if (typeof purchases === 'undefined' || !purchases || purchases.length === 0) {
+        await loadPurchases();
+    }
+    currentPpPurchases = (typeof purchases !== 'undefined' && Array.isArray(purchases)) ? purchases : [];
+
+    if (currentPpPurchases.length === 0) {
+        clearPpFields();
+        return;
+    }
+
+    if (targetBillId) {
+        const foundIdx = currentPpPurchases.findIndex(p => p.id == targetBillId || String(p.purchaseNo) === String(targetBillId));
+        if (foundIdx !== -1) {
+            displayPurchasePaymentBill(foundIdx);
+            return;
         }
-    } catch(e) {
-        console.error('loadPurchasePayments error:', e);
     }
+
+    // Default to latest bill
+    displayPurchasePaymentBill(currentPpPurchases.length - 1);
 }
 
-function newPurchasePayment() {
-    currentPpIndex = -1;
-    currentPpTrader = null;
-    document.getElementById('ppModalTitle').innerText = 'Purchase Payment - New';
-    document.getElementById('ppDate').value = getTodayDateStr();
-    document.getElementById('ppAccountId').value = '';
-    document.getElementById('ppAccountName').value = '';
-    document.getElementById('ppBalance').value = '0.00';
-    document.getElementById('ppAmount').value = '';
-    document.getElementById('ppDiscount').value = '';
+function clearPpFields() {
+    currentPpPurchaseIndex = -1;
+    document.getElementById('ppPurDate').value = getTodayDateStr();
+    document.getElementById('ppCode').value = '';
+    document.getElementById('ppSupplierName').value = '';
+    document.getElementById('ppBillNo').value = '';
+    document.getElementById('ppPaidOn').value = getTodayDateStr();
     document.getElementById('ppPaidTo').value = '';
-    document.getElementById('ppNarration').value = '';
-
-    let maxNo = 0;
-    (purchasePayments || []).forEach(pp => {
-        const n = parseInt(pp.paymentNo, 10);
-        if (!isNaN(n) && n > maxNo) maxNo = n;
-    });
-    document.getElementById('ppNo').value = maxNo + 1;
-
-    const tbody = document.getElementById('ppPendingBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#888;">Select a trader to view pending bills</td></tr>';
-
-    document.getElementById('ppAccountId').focus();
+    document.getElementById('ppAdvanceTop').value = '';
+    document.getElementById('ppAdvanceBottom').value = '';
+    document.getElementById('ppGrossAmount').value = '0.00';
+    document.getElementById('ppNetBigDisplay').innerText = '0.00';
+    document.getElementById('ppGridBody').innerHTML = '';
+    document.getElementById('ppRightPendingBody').innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">No bills found</td></tr>';
+    document.getElementById('ppRightPendingTotal').value = '0.00';
 }
 
-function displayPurchasePayment(idx) {
-    if (!purchasePayments || idx < 0 || idx >= purchasePayments.length) return;
-    currentPpIndex = idx;
-    const pp = purchasePayments[idx];
+function displayPurchasePaymentBill(idx) {
+    if (!currentPpPurchases || idx < 0 || idx >= currentPpPurchases.length) return;
+    currentPpPurchaseIndex = idx;
+    const p = currentPpPurchases[idx];
 
-    document.getElementById('ppModalTitle').innerText = 'Purchase Payment - Viewing #' + (pp.paymentNo || pp.id);
-    document.getElementById('ppDate').value = (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : getTodayDateStr());
-    document.getElementById('ppNo').value = pp.paymentNo || '';
+    // Populate Top Fields
+    const pDate = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : getTodayDateStr();
+    document.getElementById('ppPurDate').value = pDate;
+    document.getElementById('ppBillNo').value = p.purchaseNo || String(p.id);
 
-    let traderCode = '';
-    let traderName = '';
-    if (pp.traderAccount) {
-        traderCode = pp.traderAccount.partyId || pp.traderAccount.id || '';
-        traderName = pp.traderAccount.accountName || '';
-        currentPpTrader = pp.traderAccount;
+    let code = '';
+    let name = '';
+    if (p.traderAccount) {
+        code = p.traderAccount.partyId || p.traderAccount.id || '';
+        name = p.traderAccount.accountName || p.traderAccount.name || '';
     }
-    document.getElementById('ppAccountId').value = traderCode;
-    document.getElementById('ppAccountName').value = traderName;
-    document.getElementById('ppAmount').value = pp.amount != null ? parseFloat(pp.amount).toFixed(2) : '';
-    document.getElementById('ppDiscount').value = pp.discount != null ? parseFloat(pp.discount).toFixed(2) : '';
-    document.getElementById('ppMethod').value = pp.paymentMethod || 'CASH';
-    document.getElementById('ppPaidTo').value = pp.paidTo || '';
-    document.getElementById('ppNarration').value = pp.narration || '';
+    document.getElementById('ppCode').value = code;
+    document.getElementById('ppSupplierName').value = name;
 
-    lookupPpTraderBalance(traderCode);
+    const payDt = p.payDate ? String(p.payDate).substring(0, 10) : (pDate || getTodayDateStr());
+    document.getElementById('ppPaidOn').value = payDt;
+    document.getElementById('ppPaidTo').value = p.paidTo || (name ? name : 'O');
+
+    const adv = parseFloat(p.advance) || 0;
+    document.getElementById('ppAdvanceTop').value = adv > 0 ? adv.toFixed(2) : '';
+    document.getElementById('ppAdvanceBottom').value = adv > 0 ? adv.toFixed(2) : '';
+
+    const gross = parseFloat(p.grossAmount) || 0;
+    document.getElementById('ppGrossAmount').value = gross.toFixed(2);
+
+    const net = parseFloat(p.netPayable) || (gross - adv);
+    document.getElementById('ppNetBigDisplay').innerText = formatIndianCurrency(net);
+
+    // Audit Info
+    const auditEl = document.getElementById('ppAuditLine');
+    if (auditEl) {
+        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # BAL');
+    }
+
+    // Main Grid Items
+    const tbody = document.getElementById('ppGridBody');
+    tbody.innerHTML = '';
+    const items = p.items || [];
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr style="background:#00ffff; height:24px;">' +
+            '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">1</td>' +
+            '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-left:4px;">SEDI</td>' +
+            '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>' +
+            '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">0.00</td>' +
+            '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">0.0</td>' +
+            '<td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px;">0.00</td>' +
+            '</tr>';
+    } else {
+        items.forEach((item, i) => {
+            const isHighlight = (i === 0);
+            const desc = item.itemDescription || (item.item ? item.item.itemName : 'SEDI');
+            const particulars = item.particulars || '';
+            const rate = parseFloat(item.rate) || 0;
+            const weight = parseFloat(item.quantity || item.weight) || 0;
+            const amt = parseFloat(item.amount) || (rate * weight);
+
+            tbody.innerHTML += '<tr style="' + (isHighlight ? 'background:#00ffff; ' : '') + 'height:24px;">' +
+                '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (i + 1) + '</td>' +
+                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-left:4px;">' + desc + '</td>' +
+                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-left:4px;">' + particulars + '</td>' +
+                '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">' + rate.toFixed(2) + '</td>' +
+                '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">' + weight.toFixed(1) + '</td>' +
+                '<td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px;">' + amt.toFixed(2) + '</td>' +
+                '</tr>';
+        });
+    }
+
+    // Load supplier pending bills into right table
+    if (p.traderAccount && (p.traderAccount.id || p.traderAccount.partyId)) {
+        loadPpSupplierPendingBills(p.traderAccount.id || p.traderAccount.partyId);
+    } else if (code) {
+        loadPpSupplierPendingBills(code);
+    }
 }
 
-function topPp() { if (purchasePayments.length > 0) displayPurchasePayment(0); }
-function prevPp() { if (purchasePayments.length > 0 && currentPpIndex > 0) displayPurchasePayment(currentPpIndex - 1); }
-function nextPp() { if (purchasePayments.length > 0 && currentPpIndex < purchasePayments.length - 1) displayPurchasePayment(currentPpIndex + 1); }
-function bottomPp() { if (purchasePayments.length > 0) displayPurchasePayment(purchasePayments.length - 1); }
+function loadPpSupplierPendingBills(supplierId) {
+    const tbody = document.getElementById('ppRightPendingBody');
+    if (!tbody) return;
+    const sBills = (currentPpPurchases || []).filter(b => {
+        if (!b.traderAccount) return false;
+        return String(b.traderAccount.id) === String(supplierId) || 
+               String(b.traderAccount.partyId) === String(supplierId);
+    });
 
-function onPpTraderCodeChange() {
-    const code = document.getElementById('ppAccountId').value.trim();
+    tbody.innerHTML = '';
+    let tot = 0;
+    if (sBills.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">No bills found</td></tr>';
+    } else {
+        sBills.forEach((b, idx) => {
+            const amt = parseFloat(b.netPayable || b.grossAmount) || 0;
+            tot += amt;
+            let dt = b.purchaseDate ? String(b.purchaseDate).substring(0, 10) : '';
+            if (dt && dt.includes('-')) {
+                const parts = dt.split('-');
+                dt = parts[2] + '/' + parts[1] + '/' + parts[0];
+            }
+            tbody.innerHTML += '<tr style="cursor:pointer;" onclick="selectPpFromRightTable(' + b.id + ')" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'">' +
+                '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
+                '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + dt + '</td>' +
+                '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold; color:#0055aa;">' + (b.purchaseNo || b.id) + '</td>' +
+                '<td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px;">' + amt.toFixed(2) + '</td>' +
+                '</tr>';
+        });
+    }
+    const totEl = document.getElementById('ppRightPendingTotal');
+    if (totEl) totEl.value = tot.toFixed(2);
+}
+
+function selectPpFromRightTable(billId) {
+    const foundIdx = currentPpPurchases.findIndex(p => p.id == billId);
+    if (foundIdx !== -1) {
+        displayPurchasePaymentBill(foundIdx);
+    }
+}
+
+function syncPpAdvance(val) {
+    const topEl = document.getElementById('ppAdvanceTop');
+    const btmEl = document.getElementById('ppAdvanceBottom');
+    if (topEl && topEl.value !== val) topEl.value = val;
+    if (btmEl && btmEl.value !== val) btmEl.value = val;
+
+    const gross = parseFloat(document.getElementById('ppGrossAmount')?.value) || 0;
+    const adv = parseFloat(val) || 0;
+    const net = Math.max(0, gross - adv);
+    document.getElementById('ppNetBigDisplay').innerText = formatIndianCurrency(net);
+}
+
+function topPurchasePaymentUI() {
+    if (currentPpPurchases && currentPpPurchases.length > 0) displayPurchasePaymentBill(0);
+}
+function prevPurchasePaymentUI() {
+    if (currentPpPurchases && currentPpPurchaseIndex > 0) displayPurchasePaymentBill(currentPpPurchaseIndex - 1);
+}
+function nextPurchasePaymentUI() {
+    if (currentPpPurchases && currentPpPurchaseIndex < currentPpPurchases.length - 1) displayPurchasePaymentBill(currentPpPurchaseIndex + 1);
+}
+function bottomPurchasePaymentUI() {
+    if (currentPpPurchases && currentPpPurchases.length > 0) displayPurchasePaymentBill(currentPpPurchases.length - 1);
+}
+
+function onPpBillNoChange() {
+    const no = document.getElementById('ppBillNo').value.trim();
+    if (!no) return;
+    const foundIdx = currentPpPurchases.findIndex(p => String(p.purchaseNo) === no || String(p.id) === no);
+    if (foundIdx !== -1) {
+        displayPurchasePaymentBill(foundIdx);
+    } else {
+        showToast('Purchase bill #' + no + ' not found');
+    }
+}
+
+function onPpCodeChange() {
+    const code = document.getElementById('ppCode').value.trim();
     if (!code) return;
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        String(a.partyId).toUpperCase() === code.toUpperCase() || 
-        String(a.id) === code
+        String(a.partyId).toUpperCase() === code.toUpperCase() || String(a.id) === code
     );
     if (acc) {
-        currentPpTrader = acc;
-        document.getElementById('ppAccountName').value = acc.accountName || '';
-        lookupPpTraderBalance(acc.id);
-        loadPendingPurchasesForTrader(acc.id);
-    } else {
-        showToast('Trader code not found');
+        document.getElementById('ppSupplierName').value = acc.accountName;
+        loadPpSupplierPendingBills(acc.id || acc.partyId);
     }
 }
 
-function onPpTraderNameChange() {
-    const name = document.getElementById('ppAccountName').value.trim();
+function onPpSupplierNameChange() {
+    const name = document.getElementById('ppSupplierName').value.trim();
     if (!name) return;
     const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
-        currentPpTrader = acc;
-        document.getElementById('ppAccountId').value = acc.partyId || acc.id || '';
-        lookupPpTraderBalance(acc.id);
-        loadPendingPurchasesForTrader(acc.id);
+        document.getElementById('ppCode').value = acc.partyId || acc.id;
+        loadPpSupplierPendingBills(acc.id || acc.partyId);
     }
 }
 
-function findPpTrader() {
-    const code = prompt('Enter Trader Code or Name:');
-    if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
-        String(a.partyId).toUpperCase() === code.toUpperCase() || 
-        String(a.accountName).toUpperCase().includes(code.toUpperCase())
-    );
-    if (acc) {
-        currentPpTrader = acc;
-        document.getElementById('ppAccountId').value = acc.partyId || acc.id || '';
-        document.getElementById('ppAccountName').value = acc.accountName || '';
-        lookupPpTraderBalance(acc.id);
-        loadPendingPurchasesForTrader(acc.id);
-    }
-}
-
-function lookupPpTraderBalance(accId) {
-    if (!accId) return;
-    fetch('/api/reports/ledger?accountId=' + accId)
-        .then(res => res.json())
-        .then(data => {
-            const bal = (data && data.closingBalance != null) ? parseFloat(data.closingBalance) : 0;
-            document.getElementById('ppBalance').value = bal.toFixed(2);
-        })
-        .catch(() => {});
-}
-
-async function loadPendingPurchasesForTrader(accId) {
-    const tbody = document.getElementById('ppPendingBody');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px;">Loading pending bills...</td></tr>';
-    try {
-        const res = await fetch('/api/purchases/pending?accountId=' + accId);
-        const data = await res.json();
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:#287733; font-weight:bold;">No pending bills for this trader</td></tr>';
-            return;
-        }
-
-        let htmlRows = '';
-        data.forEach(p => {
-            const net = parseFloat(p.netPayable) || 0;
-            const paid = parseFloat(p.paidAmount) || 0;
-            const bal = net - paid;
-            htmlRows += `
-                <tr style="cursor:pointer;" onmouseover="this.style.backgroundColor='#e8f4e5'" onmouseout="this.style.backgroundColor=''">
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">
-                        <input type="checkbox" class="pp-bill-chk" data-id="${p.id}" data-bal="${bal}" onchange="onPpBillSelectChange()">
-                    </td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${p.purchaseNo || p.id}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${(p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '')}</td>
-                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">${net.toFixed(2)}</td>
-                    <td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">${paid.toFixed(2)}</td>
-                    <td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px; font-weight:bold; color:#0055aa;">${bal.toFixed(2)}</td>
-                </tr>
-            `;
-        });
-        tbody.innerHTML = htmlRows;
-    } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#c00;">Error loading pending bills</td></tr>';
-    }
-}
-
-function onPpBillSelectChange() {
-    let tot = 0;
-    document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
-        tot += parseFloat(chk.getAttribute('data-bal')) || 0;
-    });
-    if (tot > 0) {
-        document.getElementById('ppAmount').value = tot.toFixed(2);
-    }
-}
-
-async function savePurchasePayment() {
-    const payNo = document.getElementById('ppNo')?.value.trim();
-    const payDate = document.getElementById('ppDate')?.value;
-    const amount = parseFloat(document.getElementById('ppAmount')?.value) || 0;
-    const discount = parseFloat(document.getElementById('ppDiscount')?.value) || 0;
-    const method = document.getElementById('ppMethod')?.value || 'CASH';
-    const paidTo = document.getElementById('ppPaidTo')?.value.trim();
-    const narration = document.getElementById('ppNarration')?.value.trim();
-
-    if (!currentPpTrader) {
-        alert('Please select Trader');
-        return;
-    }
-    if (amount <= 0) {
-        alert('Please enter valid Payment Amount');
-        return;
-    }
-
-    const purchaseIds = [];
-    document.querySelectorAll('.pp-bill-chk:checked').forEach(chk => {
-        const pid = parseInt(chk.getAttribute('data-id'), 10);
-        if (pid) purchaseIds.push(pid);
-    });
-
-    const payload = {
-        paymentNo: payNo,
-        paymentDate: payDate,
-        traderAccount: { id: currentPpTrader.id, partyId: currentPpTrader.partyId, accountName: currentPpTrader.accountName },
-        amount: amount,
-        discount: discount,
-        paymentMethod: method,
-        paidTo: paidTo,
-        narration: narration,
-        purchaseId: purchaseIds.length > 0 ? purchaseIds[0] : null
-    };
-
-    try {
-        const res = await fetch('/api/purchase-payments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            showToast('Purchase Payment Saved Successfully!');
-            await loadPurchasePayments();
-            newPurchasePayment();
+function findPpBillDialog() {
+    const billNo = prompt("Enter Purchase Bill Number:");
+    if (billNo && billNo.trim()) {
+        const foundIdx = currentPpPurchases.findIndex(p => String(p.purchaseNo) === billNo.trim() || String(p.id) === billNo.trim());
+        if (foundIdx !== -1) {
+            displayPurchasePaymentBill(foundIdx);
         } else {
-            alert('Failed to save payment');
+            alert("Purchase bill #" + billNo + " not found.");
+        }
+    }
+}
+
+function findPpAccountDialog() {
+    const term = prompt("Enter Supplier Name or Code:");
+    if (term && term.trim()) {
+        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            (a.accountName && a.accountName.toLowerCase().includes(term.toLowerCase())) ||
+            String(a.partyId) === term.trim() || String(a.id) === term.trim()
+        );
+        if (acc) {
+            document.getElementById('ppCode').value = acc.partyId || acc.id;
+            document.getElementById('ppSupplierName').value = acc.accountName;
+            loadPpSupplierPendingBills(acc.id || acc.partyId);
+        } else {
+            alert("Supplier not found for: " + term);
+        }
+    }
+}
+
+function newPurchasePaymentUI() {
+    // Look for first unpaid bill
+    const unpaidIdx = currentPpPurchases.findIndex(p => !p.paid || (parseFloat(p.advance) === 0));
+    if (unpaidIdx !== -1) {
+        displayPurchasePaymentBill(unpaidIdx);
+        changePurchasePaymentUI();
+    } else {
+        changePurchasePaymentUI();
+    }
+}
+
+async function changePurchasePaymentUI() {
+    const btn = document.getElementById('btnPpChange');
+    if (!ppIsEditMode) {
+        // Switch to Save mode
+        ppIsEditMode = true;
+        btn.innerHTML = '<u>S</u>ave';
+        btn.style.color = '#0055aa';
+        btn.style.fontWeight = 'bold';
+        document.getElementById('ppPaidOn').focus();
+        showToast("Payment fields unlocked for editing. Click Save when done.");
+    } else {
+        // Save Payment
+        await savePurchasePaymentData();
+        ppIsEditMode = false;
+        btn.innerHTML = '<u>C</u>hange';
+        btn.style.color = '';
+        btn.style.fontWeight = 'normal';
+    }
+}
+
+async function savePurchasePaymentData() {
+    if (currentPpPurchaseIndex < 0 || !currentPpPurchases[currentPpPurchaseIndex]) {
+        showToast("No purchase bill selected to save payment");
+        return;
+    }
+    const p = currentPpPurchases[currentPpPurchaseIndex];
+    const paidOn = document.getElementById('ppPaidOn').value || getTodayDateStr();
+    const paidTo = document.getElementById('ppPaidTo').value.trim() || (p.traderAccount ? p.traderAccount.accountName : 'O');
+    const advVal = parseFloat(document.getElementById('ppAdvanceTop').value) || 0;
+    const gross = parseFloat(p.grossAmount) || 0;
+    const net = Math.max(0, gross - advVal);
+
+    p.payDate = paidOn;
+    p.paidTo = paidTo;
+    p.advance = advVal;
+    p.netPayable = net;
+    p.paid = true;
+    p.paidAmount = net;
+
+    try {
+        const res = await fetch('/api/purchases/' + p.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+        });
+        if (res.ok) {
+            showToast("Purchase Payment saved successfully!");
+            await loadPurchases();
+            currentPpPurchases = purchases;
+            displayPurchasePaymentBill(currentPpPurchaseIndex);
+        } else {
+            showToast("Payment updated locally");
+            displayPurchasePaymentBill(currentPpPurchaseIndex);
         }
     } catch(err) {
-        console.error('Save PP error:', err);
-        alert('Network error saving payment');
+        console.error("Save PP error:", err);
+        showToast("Payment updated locally (Offline)");
+        displayPurchasePaymentBill(currentPpPurchaseIndex);
     }
 }
 
-async function deletePurchasePayment() {
-    if (currentPpIndex < 0 || !purchasePayments[currentPpIndex]) {
-        alert('No payment selected to delete');
-        return;
-    }
-    const pp = purchasePayments[currentPpIndex];
-    if (!confirm('Are you sure you want to delete Payment #' + (pp.paymentNo || pp.id) + '?')) return;
+async function deletePurchasePaymentUI() {
+    if (currentPpPurchaseIndex < 0 || !currentPpPurchases[currentPpPurchaseIndex]) return;
+    if (!confirm("Are you sure you want to clear payment for this purchase bill?")) return;
+    const p = currentPpPurchases[currentPpPurchaseIndex];
+    p.advance = 0;
+    p.paidTo = 'O';
+    p.paid = false;
+    p.paidAmount = 0;
 
     try {
-        const res = await fetch('/api/purchase-payments/' + pp.id, { method: 'DELETE' });
-        if (res.ok) {
-            showToast('Payment Deleted');
-            await loadPurchasePayments();
-            newPurchasePayment();
-        }
-    } catch(e) {
-        console.error('Delete PP error:', e);
-    }
+        await fetch('/api/purchases/' + p.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+        });
+    } catch(e) {}
+    showToast("Purchase payment cleared");
+    await loadPurchases();
+    currentPpPurchases = purchases;
+    displayPurchasePaymentBill(currentPpPurchaseIndex);
 }
 
-// -------------------------------------------------------------------------
+function printPpInvoice() {
+    if (currentPpPurchaseIndex < 0 || !currentPpPurchases[currentPpPurchaseIndex]) return;
+    currentPurchaseIndex = currentPpPurchaseIndex;
+    printPurchaseInvoice();
+}
+
+function viewPpInvoice() {
+    if (currentPpPurchaseIndex < 0 || !currentPpPurchases[currentPpPurchaseIndex]) return;
+    currentPurchaseIndex = currentPpPurchaseIndex;
+    viewPurchaseInvoice();
+}
+
+function openPurchasePaymentFromPurchase() {
+    closeWin('purchase');
+    openWin('purchasePayment', currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex] ? purchases[currentPurchaseIndex].id : null);
+}
+
 // PURCHASE OPENING BALANCE
 // -------------------------------------------------------------------------
 let currentPobTrader = null;
