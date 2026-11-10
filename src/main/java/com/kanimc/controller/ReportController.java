@@ -691,32 +691,87 @@ public class ReportController {
             @RequestParam(required = false) Long itemId) {
         
         List<com.kanimc.entity.SalesBillItem> items = salesBillItemRepository.findItemRegister(startDate, endDate, itemId);
-                
-        return items.stream().map(i -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("date", i.getSalesBill().getBillDate());
-            map.put("docNo", i.getSalesBill().getBillNo());
-            map.put("partyName", i.getSalesBill().getBuyerAccount() != null ? i.getSalesBill().getBuyerAccount().getAccountName() : "");
-            map.put("itemName", i.getItem() != null ? i.getItem().getDes() : "");
-            map.put("quantity", i.getQuantity());
-            map.put("rate", i.getRate());
-            map.put("amount", i.getAmount());
-            return map;
-        }).collect(Collectors.toList());
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        if (items != null && !items.isEmpty()) {
+            for (com.kanimc.entity.SalesBillItem i : items) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("date", i.getSalesBill() != null ? i.getSalesBill().getBillDate() : null);
+                map.put("docNo", i.getSalesBill() != null ? i.getSalesBill().getBillNo() : "");
+                map.put("partyName", (i.getSalesBill() != null && i.getSalesBill().getBuyerAccount() != null) ? i.getSalesBill().getBuyerAccount().getAccountName() : "");
+                map.put("itemName", i.getItem() != null ? (i.getItem().getDes() != null ? i.getItem().getDes() : i.getItem().getDest()) : "SEDI");
+                map.put("quantity", i.getQuantity() != null ? i.getQuantity() : BigDecimal.ZERO);
+                map.put("rate", i.getRate() != null ? i.getRate() : BigDecimal.ZERO);
+                map.put("amount", i.getAmount() != null ? i.getAmount() : (i.getQuantity() != null && i.getRate() != null ? i.getQuantity().multiply(i.getRate()) : BigDecimal.ZERO));
+                result.add(map);
+            }
+        } else {
+            // Fallback: If no sales bills, check chittas
+            try {
+                List<Chitta> chittas = chittaRepository.findFiltered(startDate, endDate, null);
+                for (Chitta c : chittas) {
+                    if (c.getItems() != null) {
+                        for (com.kanimc.entity.ChittaItem ci : c.getItems()) {
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("date", c.getChittaDate());
+                            map.put("docNo", c.getChittaNo());
+                            map.put("partyName", c.getFarmerAccount() != null ? c.getFarmerAccount().getAccountName() : "");
+                            map.put("itemName", ci.getItem() != null ? (ci.getItem().getDes() != null ? ci.getItem().getDes() : ci.getItem().getDest()) : "SEDI");
+                            map.put("quantity", ci.getQuantity() != null ? ci.getQuantity() : BigDecimal.ZERO);
+                            map.put("rate", ci.getRate() != null ? ci.getRate() : BigDecimal.ZERO);
+                            map.put("amount", ci.getAmount() != null ? ci.getAmount() : (ci.getQuantity() != null && ci.getRate() != null ? ci.getQuantity().multiply(ci.getRate()) : BigDecimal.ZERO));
+                            result.add(map);
+                        }
+                    }
+                }
+            } catch(Exception ignored) {}
+        }
+        return result;
     }
 
     @GetMapping("/item-summary")
     public List<Map<String, Object>> getItemSummary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
         List<Object[]> rows = salesBillItemRepository.getItemSummary(startDate, endDate);
-        return rows.stream().map(r -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("itemName", r[0] != null ? r[0].toString() : "Unknown");
-            map.put("totalQuantity", r[1] != null ? new BigDecimal(r[1].toString()) : BigDecimal.ZERO);
-            map.put("totalAmount", r[2] != null ? new BigDecimal(r[2].toString()) : BigDecimal.ZERO);
-            return map;
-        }).collect(Collectors.toList());
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        if (rows != null && !rows.isEmpty()) {
+            for (Object[] r : rows) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("itemName", r[0] != null ? r[0].toString() : "Unknown");
+                map.put("totalQuantity", r[1] != null ? new BigDecimal(r[1].toString()) : BigDecimal.ZERO);
+                map.put("totalAmount", r[2] != null ? new BigDecimal(r[2].toString()) : BigDecimal.ZERO);
+                result.add(map);
+            }
+        } else {
+            // Fallback: If no sales bills, aggregate from chitta items
+            try {
+                List<Chitta> chittas = chittaRepository.findFiltered(startDate, endDate, null);
+                Map<String, BigDecimal[]> agg = new TreeMap<>();
+                for (Chitta c : chittas) {
+                    if (c.getItems() != null) {
+                        for (com.kanimc.entity.ChittaItem ci : c.getItems()) {
+                            String name = ci.getItem() != null ? (ci.getItem().getDes() != null ? ci.getItem().getDes() : ci.getItem().getDest()) : "SEDI";
+                            BigDecimal qty = ci.getQuantity() != null ? ci.getQuantity() : BigDecimal.ZERO;
+                            BigDecimal amt = ci.getAmount() != null ? ci.getAmount() : (qty.multiply(ci.getRate() != null ? ci.getRate() : BigDecimal.ZERO));
+                            agg.computeIfAbsent(name, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+                            agg.get(name)[0] = agg.get(name)[0].add(qty);
+                            agg.get(name)[1] = agg.get(name)[1].add(amt);
+                        }
+                    }
+                }
+                for (Map.Entry<String, BigDecimal[]> entry : agg.entrySet()) {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("itemName", entry.getKey());
+                    map.put("totalQuantity", entry.getValue()[0]);
+                    map.put("totalAmount", entry.getValue()[1]);
+                    result.add(map);
+                }
+            } catch(Exception ignored) {}
+        }
+        return result;
     }
 
     @GetMapping("/commission-register")

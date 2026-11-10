@@ -1441,6 +1441,105 @@
                 });
                 return jsonResponse(list);
             }
+            if (path === '/api/reports/item-register') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+                const itemId = search.get('itemId');
+
+                let records = [];
+
+                // 1. Check sales bills
+                (db.salesBills || []).forEach(b => {
+                    const dt = (b.billDate || '').substring(0, 10);
+                    if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                        const buyerName = b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name || '') : (b.buyerName || '');
+                        (b.items || []).forEach(i => {
+                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            records.push({
+                                date: dt,
+                                docNo: b.billNo || b.id || '',
+                                partyName: buyerName,
+                                itemName: name,
+                                quantity: parseFloat(i.quantity || i.weight) || 0,
+                                rate: parseFloat(i.rate) || 0,
+                                amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                            });
+                        });
+                    }
+                });
+
+                // Fallback: If no sales bills, check chittas
+                if (records.length === 0) {
+                    (db.chittas || []).forEach(c => {
+                        const dt = (c.chittaDate || '').substring(0, 10);
+                        if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                            const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name || '') : (c.farmerName || '');
+                            (c.items || []).forEach(i => {
+                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                                records.push({
+                                    date: dt,
+                                    docNo: c.chittaNo || c.id || '',
+                                    partyName: farmerName,
+                                    itemName: name,
+                                    quantity: parseFloat(i.quantity || i.weight) || 0,
+                                    rate: parseFloat(i.rate) || 0,
+                                    amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                                });
+                            });
+                        }
+                    });
+                }
+
+                return jsonResponse(records);
+            }
+
+            if (path === '/api/reports/item-summary') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+
+                let map = {};
+
+                // 1. Check sales bills
+                (db.salesBills || []).forEach(b => {
+                    const dt = (b.billDate || '').substring(0, 10);
+                    if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                        (b.items || []).forEach(i => {
+                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            const qty = parseFloat(i.quantity || i.weight) || 0;
+                            const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                            if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                            map[name].totalQuantity += qty;
+                            map[name].totalAmount += amt;
+                        });
+                    }
+                });
+
+                // Fallback: If no sales bills, check chittas
+                if (Object.keys(map).length === 0) {
+                    (db.chittas || []).forEach(c => {
+                        const dt = (c.chittaDate || '').substring(0, 10);
+                        if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                            (c.items || []).forEach(i => {
+                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                                const qty = parseFloat(i.quantity || i.weight) || 0;
+                                const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                                if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                                map[name].totalQuantity += qty;
+                                map[name].totalAmount += amt;
+                            });
+                        }
+                    });
+                }
+
+                const result = Object.keys(map).map(k => ({
+                    itemName: k,
+                    totalQuantity: map[k].totalQuantity,
+                    totalAmount: map[k].totalAmount
+                }));
+
+                return jsonResponse(result);
+            }
+
             if (path === '/api/reports/commission-summary') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');
@@ -1553,6 +1652,209 @@
                     }
                 });
                 return jsonResponse(list);
+            }
+
+            if (path === '/api/reports/ledger') {
+                const accIdParam = search.get('accountId');
+                const accCodeParam = search.get('accountCode');
+                const accNameParam = search.get('accountName');
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+
+                let acc = null;
+                if (accIdParam) {
+                    acc = (db.accounts || []).find(a => String(a.id) === String(accIdParam));
+                }
+                if (!acc && accCodeParam) {
+                    acc = (db.accounts || []).find(a => String(a.partyId) === String(accCodeParam) || String(a.id) === String(accCodeParam));
+                }
+                if (!acc && accNameParam) {
+                    acc = (db.accounts || []).find(a => a.accountName && a.accountName.toUpperCase() === accNameParam.toUpperCase());
+                }
+                if (!acc && (db.accounts || []).length > 0) {
+                    acc = db.accounts[0];
+                }
+
+                if (!acc) {
+                    return jsonResponse({
+                        accountName: '—',
+                        openingBalance: 0,
+                        transactions: [],
+                        totalDebit: 0,
+                        totalCredit: 0,
+                        closingBalance: 0
+                    });
+                }
+
+                const targetId = acc.id;
+                const targetCode = acc.partyId || acc.id;
+                const isFarmer = Boolean(acc.isFarmer) || 
+                    (acc.accountGroup && acc.accountGroup.groupName && acc.accountGroup.groupName.toUpperCase().includes('FARMER'));
+
+                let rawTxns = [];
+
+                // 1. Chittas
+                (db.chittas || []).forEach(c => {
+                    if (c.farmer && (String(c.farmer.id) === String(targetId) || String(c.farmer.partyId) === String(targetCode))) {
+                        const amt = parseFloat(c.netPayable || c.grossAmount) || 0;
+                        rawTxns.push({
+                            date: (c.chittaDate || '').substring(0, 10),
+                            docCode: 'CH',
+                            docNo: 'CH-' + (c.chittaNo || c.id),
+                            narration: 'CHITTA #' + (c.chittaNo || c.id),
+                            debit: 0,
+                            credit: amt
+                        });
+                    }
+                });
+
+                // 2. Chitta Payments
+                (db.chittaPayments || []).forEach(cp => {
+                    const fId = cp.farmer ? (cp.farmer.id || cp.farmer.partyId) : cp.farmerId;
+                    if (String(fId) === String(targetId) || String(fId) === String(targetCode)) {
+                        const amt = parseFloat(cp.amount) || 0;
+                        rawTxns.push({
+                            date: (cp.paymentDate || cp.payDate || '').substring(0, 10),
+                            docCode: 'PAY',
+                            docNo: 'PAY-' + (cp.id || cp.chittaNo || ''),
+                            narration: 'CHITTA PAYMENT #' + (cp.id || cp.chittaNo || ''),
+                            debit: amt,
+                            credit: 0
+                        });
+                    }
+                });
+
+                // 3. Sales Bills
+                (db.salesBills || []).forEach(b => {
+                    if (b.buyer && (String(b.buyer.id) === String(targetId) || String(b.buyer.partyId) === String(targetCode))) {
+                        const amt = parseFloat(b.netPayable || b.grossAmount) || 0;
+                        rawTxns.push({
+                            date: (b.billDate || '').substring(0, 10),
+                            docCode: 'BL',
+                            docNo: 'BL-' + (b.billNo || b.id),
+                            narration: 'SALES BILL #' + (b.billNo || b.id),
+                            debit: amt,
+                            credit: 0
+                        });
+                    }
+                });
+
+                // 4. Cash Payments
+                (db.cashVouchers || []).forEach(cv => {
+                    const aId = cv.account ? (cv.account.id || cv.account.partyId) : (cv.accountId || cv.accountCode);
+                    if (String(aId) === String(targetId) || String(aId) === String(targetCode)) {
+                        const amt = parseFloat(cv.amount) || 0;
+                        rawTxns.push({
+                            date: (cv.voucherDate || '').substring(0, 10),
+                            docCode: 'CP',
+                            docNo: 'CP-' + (cv.voucherNo || cv.id),
+                            narration: cv.narration || 'CASH PAYMENT',
+                            debit: amt,
+                            credit: 0
+                        });
+                    }
+                });
+
+                // 5. Receipts
+                (db.receiptVouchers || []).forEach(rv => {
+                    const aId = rv.account ? (rv.account.id || rv.account.partyId) : (rv.accountId || rv.accountCode);
+                    if (String(aId) === String(targetId) || String(aId) === String(targetCode)) {
+                        const amt = parseFloat(rv.amount) || 0;
+                        rawTxns.push({
+                            date: (rv.voucherDate || '').substring(0, 10),
+                            docCode: 'RC',
+                            docNo: 'RC-' + (rv.voucherNo || rv.id),
+                            narration: rv.narration || 'RECEIPT VOUCHER',
+                            debit: 0,
+                            credit: amt
+                        });
+                    }
+                });
+
+                // 6. Purchases
+                (db.purchases || []).forEach(p => {
+                    if (p.traderAccount && (String(p.traderAccount.id) === String(targetId) || String(p.traderAccount.partyId) === String(targetCode))) {
+                        const amt = parseFloat(p.netPayable || p.grossAmount) || 0;
+                        rawTxns.push({
+                            date: (p.purchaseDate || '').substring(0, 10),
+                            docCode: 'PUR',
+                            docNo: 'PUR-' + (p.purchaseNo || p.id),
+                            narration: 'PURCHASE #' + (p.purchaseNo || p.id),
+                            debit: 0,
+                            credit: amt
+                        });
+                    }
+                });
+
+                // 7. Purchase Payments
+                (db.purchasePayments || []).forEach(pp => {
+                    const tId = pp.traderAccount ? (pp.traderAccount.id || pp.traderAccount.partyId) : pp.traderAccountId;
+                    if (String(tId) === String(targetId) || String(tId) === String(targetCode)) {
+                        const amt = parseFloat(pp.amount) || 0;
+                        rawTxns.push({
+                            date: (pp.paymentDate || pp.payDate || '').substring(0, 10),
+                            docCode: 'PPAY',
+                            docNo: 'PPAY-' + (pp.id || ''),
+                            narration: 'PURCHASE PAYMENT #' + (pp.id || ''),
+                            debit: amt,
+                            credit: 0
+                        });
+                    }
+                });
+
+                // Sort by date
+                rawTxns.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+                let opening = parseFloat(acc.openingBalance) || 0;
+                if (opening === 0 && db.openingBalances) {
+                    const ob = (db.openingBalances || []).find(o => String(o.accountId) === String(targetId));
+                    if (ob && ob.amount) opening = parseFloat(ob.amount) || 0;
+                }
+
+                if (sDate) {
+                    rawTxns.forEach(t => {
+                        if (t.date && t.date < sDate) {
+                            if (isFarmer) {
+                                opening += (t.credit - t.debit);
+                            } else {
+                                opening += (t.debit - t.credit);
+                            }
+                        }
+                    });
+                }
+
+                let running = opening;
+                let totalDebit = 0;
+                let totalCredit = 0;
+                const rows = [];
+
+                rawTxns.forEach(t => {
+                    if ((!sDate || (t.date && t.date >= sDate)) && (!eDate || (t.date && t.date <= eDate))) {
+                        if (isFarmer) {
+                            running += (t.credit - t.debit);
+                        } else {
+                            running += (t.debit - t.credit);
+                        }
+                        totalDebit += t.debit;
+                        totalCredit += t.credit;
+                        rows.push({
+                            ...t,
+                            balance: running
+                        });
+                    }
+                });
+
+                return jsonResponse({
+                    accountId: acc.id,
+                    accountCode: targetCode,
+                    accountName: acc.accountName,
+                    isFarmer: isFarmer,
+                    openingBalance: opening,
+                    transactions: rows,
+                    totalDebit: totalDebit,
+                    totalCredit: totalCredit,
+                    closingBalance: running
+                });
             }
 
             if (path === '/api/reports/daybook') {
