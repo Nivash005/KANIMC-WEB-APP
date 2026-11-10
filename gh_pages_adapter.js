@@ -112,7 +112,7 @@
     function getCentralServerUrl() {
         // If running in Android WebView or file: scheme
         if (window.location.protocol === 'file:') {
-            return localStorage.getItem('KANIMC_SERVER_URL') || '';
+            return localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.3:8080';
         }
         // If running locally, route to local origin
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {

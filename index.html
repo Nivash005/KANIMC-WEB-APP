@@ -35,6 +35,22 @@
 })();
 </script>
 <script src="seed_data.js"></script>
+<script>
+if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && Array.isArray(window.INITIAL_SEED_DATABASE.accounts)) {
+    window.accounts = window.INITIAL_SEED_DATABASE.accounts;
+}
+function getGlobalAccountsList() {
+    if (typeof accounts !== 'undefined' && Array.isArray(accounts) && accounts.length > 0) {
+        return accounts;
+    }
+    if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && Array.isArray(window.INITIAL_SEED_DATABASE.accounts)) {
+        window.accounts = window.INITIAL_SEED_DATABASE.accounts;
+        if (typeof populateAccountDatalists === 'function') populateAccountDatalists(window.accounts);
+        return window.accounts;
+    }
+    return [];
+}
+</script>
 <script src="gh_pages_adapter.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
@@ -325,12 +341,12 @@ input:focus, select:focus { background: #ffff00; outline: none; }
         
         <label>Code</label>
         <div style="display:flex; gap:10px;">
-            <div style="display:flex; flex:1;"><input id="accPartyId" maxlength="4" value="2494" style="text-transform:uppercase; flex:1;"><button style="width:20px; padding:0;">v</button></div>
+            <div style="display:flex; flex:1;"><input id="accPartyId" maxlength="4" style="text-transform:uppercase; flex:1;" oninput="lookupAccountMasterByCode()" onchange="lookupAccountMasterByCode()"><button style="width:20px; padding:0;" onclick="findAccount(); event.stopPropagation();">v</button></div>
             <label style="width:auto; white-space:nowrap;">Salutation</label>
             <div style="display:flex; width:60px;"><input><button style="width:20px; padding:0;">v</button></div>
         </div>
         
-        <label>Name</label><input id="accName" value="BALAKUMARAN">
+        <label>Name</label><input id="accName" list="accountNamesList" oninput="lookupAccountMasterByName()" onchange="lookupAccountMasterByName()">
         
         <label>Address</label><input id="accAddress">
         <label></label><input>
@@ -1973,7 +1989,7 @@ Commission % <input id="commRatePct" value="10.00%">
         <div style="font-weight:bold; color:#222; margin-bottom:6px;">Desktop Server Wi-Fi Address (Sync with PC)</div>
         <div style="color:#555; margin-bottom:8px;">Enter your desktop PC's IP address to sync over Wi-Fi (leave blank for pure Offline Mode):</div>
         <div style="display:flex; gap:8px; align-items:center;">
-            <input type="text" id="wifiServerUrl" placeholder="http://192.168.1.7:8080" style="font-size:14px; font-weight:bold; color:#0055aa; padding:6px; flex:1; background:#fff; border:1px solid #0055aa; border-radius:3px;">
+            <input type="text" id="wifiServerUrl" placeholder="http://192.168.1.3:8080" value="http://192.168.1.3:8080" style="font-size:14px; font-weight:bold; color:#0055aa; padding:6px; flex:1; background:#fff; border:1px solid #0055aa; border-radius:3px;">
             <button type="button" onclick="saveTabletServerUrl()" style="padding:6px 14px; cursor:pointer; background:#0055aa; color:#fff; border:none; border-radius:3px; font-weight:bold;">Save & Connect</button>
         </div>
     </div>
@@ -4260,7 +4276,7 @@ function onFarmerCodeChange() {
         document.getElementById('farmerAccountId').value = code;
     }
     const q = code.toLowerCase();
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
         (a.partyId && String(a.partyId).toLowerCase() === q) ||
         (String(a.id).toLowerCase() === q) ||
@@ -5075,7 +5091,9 @@ function openWin(id, targetParam){
         if(firstInput) firstInput.focus(); 
         
         // Modal logic dispatch
-        if(id === 'company' && typeof loadCompanyMaster === 'function') {
+        if(id === 'account') {
+            if (typeof loadFirstAccount === 'function') loadFirstAccount();
+        } else if(id === 'company' && typeof loadCompanyMaster === 'function') {
             loadCompanyMaster();
         } else if(id === 'groupList' && typeof loadGroupListTable === 'function') {
             loadGroupListTable();
@@ -5692,7 +5710,7 @@ function saveTabletServerUrl() {
     if (typeof forceSyncNow === 'function') forceSyncNow();
 }
 window.addEventListener('load', () => {
-    const existing = localStorage.getItem('KANIMC_SERVER_URL');
+    const existing = localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.3:8080';
     const inp = document.getElementById('wifiServerUrl');
     if (inp && existing) inp.value = existing;
 });
@@ -5802,15 +5820,8 @@ async function checkSyncStatus(force = false) {
             window.processOfflineSyncQueue();
         }
 
-        if (!force && lastSyncVersion === null) {
-            lastSyncVersion = status.version;
-            lastSyncChittaCount = status.chittaCount;
-            lastSyncPaidCount = status.paidCount;
-            lastSyncAccountCount = status.accountCount;
-            return;
-        }
-
-        const changed = force ||
+        const isFirstSync = (lastSyncVersion === null);
+        const changed = force || isFirstSync ||
                         (status.version !== lastSyncVersion) ||
                         (status.chittaCount !== lastSyncChittaCount) ||
                         (status.paidCount !== lastSyncPaidCount) ||
@@ -6195,7 +6206,7 @@ function onCpFarmerCodeChange() {
     const code = (document.getElementById('cpPayFarmerCode')?.value || '').trim();
     if(!code) return;
     const q = code.toLowerCase();
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
         (a.partyId && String(a.partyId).toLowerCase() === q) ||
         (String(a.id).toLowerCase() === q) ||
@@ -6214,9 +6225,9 @@ function onCpFarmerNameChange() {
     const name = (document.getElementById('cpPayFarmerName')?.value || '').trim();
     if(!name) return;
     const q = name.toLowerCase();
-    let acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase() === q);
+    let acc = getGlobalAccountsList().find(a => (a.accountName || '').trim().toLowerCase() === q);
     if (!acc) {
-        acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
+        acc = getGlobalAccountsList().find(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
     }
     if(acc) {
         if(document.getElementById('cpPayFarmerCode')) document.getElementById('cpPayFarmerCode').value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(acc) : (acc.partyId || acc.id || '');
@@ -7291,6 +7302,36 @@ async function fetchAccounts(loadFirst = false) {
             accounts = window.INITIAL_SEED_DATABASE.accounts || [];
             populateAccountDatalists(accounts);
         }
+    }
+}
+
+
+function lookupAccountMasterByCode() {
+    const code = (document.getElementById('accPartyId')?.value || '').trim();
+    if (!code) return;
+    const accList = getGlobalAccountsList();
+    const q = code.toLowerCase();
+    const idx = accList.findIndex(a => 
+        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
+        (a.partyId && String(a.partyId).toLowerCase() === q) ||
+        (String(a.id).toLowerCase() === q)
+    );
+    if (idx >= 0) {
+        displayAccount(idx);
+    }
+}
+
+function lookupAccountMasterByName() {
+    const name = (document.getElementById('accName')?.value || '').trim();
+    if (!name) return;
+    const accList = getGlobalAccountsList();
+    const q = name.toLowerCase();
+    let idx = accList.findIndex(a => (a.accountName || '').trim().toLowerCase() === q);
+    if (idx < 0) {
+        idx = accList.findIndex(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
+    }
+    if (idx >= 0) {
+        displayAccount(idx);
     }
 }
 
@@ -8717,7 +8758,7 @@ function initLedgerWindow() {
 function onLedgerAccountCodeChange() {
     const code = document.getElementById('ledgerAccountCode')?.value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || 
         String(a.id) === code
     );
@@ -8733,7 +8774,7 @@ function onLedgerAccountCodeChange() {
 function onLedgerAccountNameChange() {
     const name = document.getElementById('ledgerAccountName')?.value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -8747,7 +8788,7 @@ function findLedgerAccountDialog() {
     const term = prompt('Enter Account Name or Code:');
     if (term && term.trim()) {
         const t = term.trim().toLowerCase();
-        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        const acc = getGlobalAccountsList().find(a => 
             (a.accountName && a.accountName.toLowerCase().includes(t)) ||
             (a.partyId && String(a.partyId).toLowerCase() === t) ||
             String(a.id) === t
@@ -8775,7 +8816,7 @@ async function loadLedger() {
         const toDate = document.getElementById('ledgerRegToDate')?.value || '';
 
         if (!accId && (accCode || accName)) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 (accCode && (String(a.partyId).toUpperCase() === accCode.toUpperCase() || String(a.id) === accCode)) ||
                 (accName && a.accountName && a.accountName.toUpperCase() === accName.toUpperCase())
             );
@@ -10936,7 +10977,7 @@ function bottomPurchase() { if (purchases && purchases.length > 0) { setPurchase
 function onPurchaseTraderCodeChange() {
     const code = document.getElementById('purchaseAccountId').value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || 
         String(a.id) === code
     );
@@ -10953,7 +10994,7 @@ function onPurchaseTraderCodeChange() {
 function onPurchaseTraderNameChange() {
     const name = document.getElementById('purchaseAccountName').value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -10978,7 +11019,7 @@ async function loadRightPendingBills(accIdOrCode, currentPurId = null) {
         });
 
         if (traderPurchases.length === 0) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 String(a.partyId) === String(accIdOrCode) || String(a.id) === String(accIdOrCode)
             );
             const apiAccId = acc ? acc.id : accIdOrCode;
@@ -11067,7 +11108,7 @@ async function savePurchase() {
 
     let traderAcc = currentPurchaseTrader;
     if (!traderAcc) {
-        traderAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        traderAcc = getGlobalAccountsList().find(a => 
             (a.accountName || '').toUpperCase() === traderName.toUpperCase()
         );
     }
@@ -11257,7 +11298,7 @@ function printPurchaseInvoice(autoPrint = true) {
 function findPurchaseTrader() {
     const code = prompt('Enter Supplier Code or Name:');
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() ||
         String(a.accountName).toUpperCase().includes(code.toUpperCase())
     );
@@ -11511,7 +11552,7 @@ function onPpBillNoChange() {
 function onPpCodeChange() {
     const code = document.getElementById('ppCode').value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || String(a.id) === code
     );
     if (acc) {
@@ -11523,7 +11564,7 @@ function onPpCodeChange() {
 function onPpSupplierNameChange() {
     const name = document.getElementById('ppSupplierName').value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -11547,7 +11588,7 @@ function findPpBillDialog() {
 function findPpAccountDialog() {
     const term = prompt("Enter Supplier Name or Code:");
     if (term && term.trim()) {
-        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        const acc = getGlobalAccountsList().find(a => 
             (a.accountName && a.accountName.toLowerCase().includes(term.toLowerCase())) ||
             String(a.partyId) === term.trim() || String(a.id) === term.trim()
         );
@@ -11870,7 +11911,7 @@ function onPobBillNoChange() {
 function onPobCodeChange() {
     const code = document.getElementById('pobCode').value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || String(a.id) === code
     );
     if (acc) {
@@ -11883,7 +11924,7 @@ function onPobCodeChange() {
 function onPobSupplierNameChange() {
     const name = document.getElementById('pobSupplierName').value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -11908,7 +11949,7 @@ function findPobBillDialog() {
 function findPobAccountDialog() {
     const term = prompt("Enter Supplier Name or Code:");
     if (term && term.trim()) {
-        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        const acc = getGlobalAccountsList().find(a => 
             (a.accountName && a.accountName.toLowerCase().includes(term.toLowerCase())) ||
             String(a.partyId) === term.trim() || String(a.id) === term.trim()
         );
@@ -11979,12 +12020,12 @@ async function savePurchaseOpeningBalanceData() {
 
     let targetAcc = null;
     if (code) {
-        targetAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        targetAcc = getGlobalAccountsList().find(a => 
             String(a.partyId).toLowerCase() === code.toLowerCase() || String(a.id) === code
         );
     }
     if (!targetAcc && supplierName) {
-        targetAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        targetAcc = getGlobalAccountsList().find(a => 
             a.accountName && a.accountName.toLowerCase() === supplierName.toLowerCase()
         );
     }
@@ -12118,7 +12159,7 @@ async function loadPurchasePaymentRegister() {
         if (toDate) url += 'endDate=' + toDate + '&';
 
         if (traderName) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 (a.accountName || '').toUpperCase() === traderName.toUpperCase()
             );
             if (acc) url += 'accountId=' + acc.id;
@@ -12185,7 +12226,7 @@ async function loadPurchasePendingRegister() {
         const traderName = document.getElementById('ppndAccountName')?.value.trim();
 
         if (traderName) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 (a.accountName || '').toUpperCase() === traderName.toUpperCase()
             );
             if (acc) url += 'accountId=' + acc.id;
