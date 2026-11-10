@@ -117,14 +117,14 @@
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
         // Clear dead / expired Cloudflare tunnel domains from localStorage
         if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats'))) {
-            cs = 'https://senator-carmen-someone-lopez.trycloudflare.com';
+            cs = 'https://piece-oxygen-vendors-adopt.trycloudflare.com';
             try { localStorage.setItem('KANIMC_SERVER_URL', cs); } catch(e) {}
         }
         if (!cs) {
             if (!window.location.hostname.includes('github.io') && window.location.port !== '') {
                 cs = window.location.origin;
             } else {
-                cs = 'https://senator-carmen-someone-lopez.trycloudflare.com';
+                cs = 'https://piece-oxygen-vendors-adopt.trycloudflare.com';
             }
         }
         return cs;
