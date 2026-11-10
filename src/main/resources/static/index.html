@@ -2126,8 +2126,8 @@ Commission % <input id="commRatePct" value="10.00%">
             <thead>
                 <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
                     <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">S.No</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Code</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Account Name</th>
                     <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Amount</th>
                     <th style="border-bottom:1px solid #ccc; padding:4px;">Narration</th>
@@ -2168,8 +2168,8 @@ Commission % <input id="commRatePct" value="10.00%">
             <thead>
                 <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
                     <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">S.No</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Code</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
                     <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Account Name</th>
                     <th style="width:110px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Amount</th>
                     <th style="border-bottom:1px solid #ccc; padding:4px;">Narration</th>
@@ -4683,6 +4683,7 @@ function applyPeriodDateDefaults(forceReset) {
         { from: 'chittaRegFromDate', to: 'chittaRegToDate' },
         { from: 'chittaPayRegFromDate', to: 'chittaPayRegToDate' },
         { from: 'billRegFromDate', to: 'billRegToDate' },
+        { from: 'daybookFromDate', to: 'daybookToDate' },
         { from: 'cashRegFromDate', to: 'cashRegToDate' },
         { from: 'receiptRegFromDate', to: 'receiptRegToDate' },
         { from: 'ledgerRegFromDate', to: 'ledgerRegToDate' },
@@ -8448,29 +8449,42 @@ async function loadCashPaymentRegister() {
                 const amt = parseFloat(v.amount) || 0;
                 total += amt;
                 let accName = '';
+                let accCode = '';
                 if (v.account) {
                     accName = v.account.accountName || v.account.name || '';
-                    if (!accName && v.account.id && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-                        const found = accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
-                        if (found) accName = found.accountName;
+                    accCode = v.account.partyId || v.account.id || '';
+                }
+                if (!accCode && v.accountCode) accCode = v.accountCode;
+                if (!accCode && v.accountId) accCode = v.accountId;
+                if (!accName && v.accountName) accName = v.accountName;
+                if ((!accName || accName === 'undefined') && (accCode || (v.account && v.account.id))) {
+                    const targetCode = accCode || v.account.id;
+                    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                        const found = accounts.find(a => String(a.id) === String(targetCode) || String(a.partyId) === String(targetCode));
+                        if (found) {
+                            accName = found.accountName;
+                            if (!accCode) accCode = found.partyId || found.id;
+                        }
                     }
                 }
-                if (!accName && v.accountName) {
-                    accName = v.accountName;
-                }
-                if (!accName && v.accountId && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-                    const found = accounts.find(a => a.id == v.accountId || String(a.partyId) == String(v.accountId));
-                    if (found) accName = found.accountName;
-                }
                 if (!accName || accName === 'undefined') accName = '—';
-                const dtStr = v.voucherDate ? String(v.voucherDate).substring(0, 10) : '';
+                
+                let dtStr = '';
+                if (v.voucherDate) {
+                    const parts = String(v.voucherDate).substring(0, 10).split('-');
+                    if (parts.length === 3) {
+                        dtStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+                    } else {
+                        dtStr = v.voucherDate;
+                    }
+                }
 
                 rowsHtml.push(
                     '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
                     'onclick="openCashPaymentByRecord(cashVouchers[' + idx + '], ' + idx + ')">' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + accCode + '</td>' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + dtStr + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (v.voucherNo || '') + '</td>' +
                     '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + accName + '</td>' +
                     '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold; color:#a00;">' + amt.toFixed(2) + '</td>' +
                     '<td style="border-bottom:1px solid #ccc;">' + (v.narration || '') + '</td>' +
@@ -8478,8 +8492,10 @@ async function loadCashPaymentRegister() {
                 );
             }
             tbody.innerHTML = rowsHtml.join('');
-            const sumEl = document.getElementById('cashRegSumTotal');
-            if (sumEl) sumEl.value = total > 0 ? total.toFixed(2) : '';
+            const sumEl = document.getElementById('cashRegTotalAmount');
+            if (sumEl) sumEl.innerText = total > 0 ? total.toFixed(2) : '0.00';
+            const cntEl = document.getElementById('cashRegTotalCount');
+            if (cntEl) cntEl.innerText = data.length;
             showToast('Cash Payment Register: ' + data.length + ' records loaded');
         }).catch(err => {
             console.error(err);
@@ -8514,29 +8530,42 @@ function loadReceiptRegister() {
                 const amt = parseFloat(v.amount) || 0;
                 total += amt;
                 let accName = '';
+                let accCode = '';
                 if (v.account) {
                     accName = v.account.accountName || v.account.name || '';
-                    if (!accName && v.account.id && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-                        const found = accounts.find(a => a.id == v.account.id || String(a.partyId) == String(v.account.id));
-                        if (found) accName = found.accountName;
+                    accCode = v.account.partyId || v.account.id || '';
+                }
+                if (!accCode && v.accountCode) accCode = v.accountCode;
+                if (!accCode && v.accountId) accCode = v.accountId;
+                if (!accName && v.accountName) accName = v.accountName;
+                if ((!accName || accName === 'undefined') && (accCode || (v.account && v.account.id))) {
+                    const targetCode = accCode || v.account.id;
+                    if (typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
+                        const found = accounts.find(a => String(a.id) === String(targetCode) || String(a.partyId) === String(targetCode));
+                        if (found) {
+                            accName = found.accountName;
+                            if (!accCode) accCode = found.partyId || found.id;
+                        }
                     }
                 }
-                if (!accName && v.accountName) {
-                    accName = v.accountName;
-                }
-                if (!accName && v.accountId && typeof accounts !== 'undefined' && accounts && accounts.length > 0) {
-                    const found = accounts.find(a => a.id == v.accountId || String(a.partyId) == String(v.accountId));
-                    if (found) accName = found.accountName;
-                }
                 if (!accName || accName === 'undefined') accName = '—';
-                const dtStr = v.voucherDate ? String(v.voucherDate).substring(0, 10) : '';
+                
+                let dtStr = '';
+                if (v.voucherDate) {
+                    const parts = String(v.voucherDate).substring(0, 10).split('-');
+                    if (parts.length === 3) {
+                        dtStr = parts[2] + '/' + parts[1] + '/' + parts[0];
+                    } else {
+                        dtStr = v.voucherDate;
+                    }
+                }
 
                 rowsHtml.push(
                     '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
                     'onclick="openReceiptByRecord(receiptVouchers[' + idx + '], ' + idx + ')">' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + accCode + '</td>' +
                     '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + dtStr + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (v.voucherNo || '') + '</td>' +
                     '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + accName + '</td>' +
                     '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold; color:#008800;">' + amt.toFixed(2) + '</td>' +
                     '<td style="border-bottom:1px solid #ccc;">' + (v.narration || '') + '</td>' +
@@ -8544,8 +8573,10 @@ function loadReceiptRegister() {
                 );
             }
             tbody.innerHTML = rowsHtml.join('');
-            const sumEl = document.getElementById('receiptRegSumTotal');
-            if (sumEl) sumEl.value = total > 0 ? total.toFixed(2) : '';
+            const sumEl = document.getElementById('receiptRegTotalAmount');
+            if (sumEl) sumEl.innerText = total > 0 ? total.toFixed(2) : '0.00';
+            const cntEl = document.getElementById('receiptRegTotalCount');
+            if (cntEl) cntEl.innerText = data.length;
             showToast('Receipt Register: ' + data.length + ' records loaded');
         }).catch(err => {
             console.error(err);
@@ -8553,459 +8584,6 @@ function loadReceiptRegister() {
         });
     } catch(e) { console.error(e); }
 }
-
-async function loadLedger() {
-    try {
-        const accId = document.getElementById('ledgerAccountId')?.value || document.getElementById('advAccountId')?.value;
-        if (!accId) {
-            showToast("Please enter an Account ID");
-            return;
-        }
-
-        let url = `/api/reports/ledger?accountId=${accId}`;
-        const fromDate = document.getElementById('advFromDate')?.value || document.getElementById('ledgerRegFromDate')?.value;
-        const toDate = document.getElementById('advToDate')?.value || document.getElementById('ledgerRegToDate')?.value;
-        
-        if (fromDate) url += `&startDate=${fromDate}`;
-        if (toDate) url += `&endDate=${toDate}`;
-        
-        const res = await fetch(url);
-        if(res.ok) {
-            const data = await res.json();
-            const tbody = document.getElementById('ledgerReportTbody') || document.querySelector('#ledgerReport table tbody');
-            if (tbody) {
-                tbody.innerHTML = '';
-                let totalDebit = 0, totalCredit = 0;
-                const rows = Array.isArray(data) ? data : (data.transactions || []);
-                rows.forEach((row, idx) => {
-                    const d = parseFloat(row.debit) || 0;
-                    const c = parseFloat(row.credit) || 0;
-                    totalDebit += d;
-                    totalCredit += c;
-                    const tr = document.createElement('tr');
-                    tr.style.cursor = 'pointer';
-                    tr.title = 'Click to open voucher';
-                    tr.onmouseover = () => tr.style.backgroundColor = '#e8f4e5';
-                    tr.onmouseout = () => tr.style.backgroundColor = '';
-                    tr.onclick = () => openLedgerVoucher(row);
-
-                    tr.innerHTML = `
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${idx + 1}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${row.date || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; cursor:pointer;" onclick="openLedgerVoucher(row); event.stopPropagation();">${row.particulars || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${d > 0 ? d.toFixed(2) : ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${c > 0 ? c.toFixed(2) : ''}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right;">${row.balance || ''}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-            showToast("Ledger Loaded");
-        }
-    } catch(e) { console.error(e); }
-}
-
-async function loadChittaRegister() {
-    const tbody = document.getElementById('chittaRegisterBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading Chitta records...</td></tr>';
-    try {
-        let url = '/api/reports/chitta-register?';
-        const fromDate = document.getElementById('advFromDate')?.value || document.getElementById('chittaRegFromDate')?.value;
-        const toDate = document.getElementById('advToDate')?.value || document.getElementById('chittaRegToDate')?.value;
-        const accId = document.getElementById('advAccountId')?.value;
-        
-        if (fromDate) url += 'startDate=' + fromDate + '&';
-        if (toDate) url += 'endDate=' + toDate + '&';
-        if (accId) url += 'accountId=' + accId;
-        
-        const res = await fetch(url);
-        if(res.ok) {
-            const data = await res.json();
-            if(!tbody) return;
-            if(!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No Chitta records found</td></tr>';
-                return;
-            }
-            data.sort((a, b) => {
-                const da = String(a.chittaDate || '').substring(0, 10);
-                const db = String(b.chittaDate || '').substring(0, 10);
-                if (da !== db) return da.localeCompare(db);
-                return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
-            });
-            let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
-            const rowsHtml = [];
-            for (let idx = 0; idx < data.length; idx++) {
-                const c = data[idx];
-                const gross = parseFloat(c.grossAmount) || 0;
-                const comm = parseFloat(c.commissionDeduction || c.commission) || 0;
-                const adv = parseFloat(c.advanceAmount || c.advance) || 0;
-                const frt = parseFloat(c.freightAmount || c.freight) || 0;
-                const net = parseFloat(c.netPayable) || 0;
-
-                sumTotal = Math.round((sumTotal + gross) * 100) / 100;
-                sumComm = Math.round((sumComm + comm) * 100) / 100;
-                sumAdv = Math.round((sumAdv + adv) * 100) / 100;
-                sumFreight = Math.round((sumFreight + frt) * 100) / 100;
-                sumNet = Math.round((sumNet + net) * 100) / 100;
-                
-                let chittaWeight = parseFloat(c.weight) || 0;
-                if (!chittaWeight && c.items) {
-                    c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
-                }
-                sumWeight = Math.round((sumWeight + chittaWeight) * 100) / 100;
-
-                const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
-                const chittaDateStr = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
-                const payDateStr = c.payDate ? String(c.payDate).substring(0, 10) : (c.paid ? 'PAID' : '');
-            const safeNo = (c.chittaNo || '').replace(/'/g, "\\'");
-                const safeId = (c.id || '');
-
-                rowsHtml.push(
-                    '<tr style="cursor:pointer;" title="Click to open Chitta #' + safeNo + '" ' +
-                    'onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
-                    'onclick="openChittaByRecordId(\'' + safeId + '\', \'' + safeNo + '\')">' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">' + chittaDateStr + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (c.chittaNo || '') + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;" title="Open Chitta for ' + farmerName + '">' + farmerName + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (chittaWeight > 0 ? chittaWeight.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (gross > 0 ? gross.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (comm > 0 ? comm.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (adv > 0 ? adv.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (frt > 0 ? frt.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold;">' + (net !== 0 ? net.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:center; border-bottom:1px solid #ccc;">' + payDateStr + '</td>' +
-                    '</tr>'
-                );
-            }
-            tbody.innerHTML = rowsHtml.join('');
-
-            const sumWeightEl = document.getElementById('chittaRegSumWeight');
-            if (sumWeightEl) sumWeightEl.value = sumWeight > 0 ? sumWeight.toFixed(2) : '';
-            const sumTotalEl = document.getElementById('chittaRegSumTotal');
-            if (sumTotalEl) sumTotalEl.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
-            const sumCommEl = document.getElementById('chittaRegSumComm');
-            if (sumCommEl) sumCommEl.value = sumComm > 0 ? sumComm.toFixed(2) : '';
-            const sumAdvEl = document.getElementById('chittaRegSumAdv');
-            if (sumAdvEl) sumAdvEl.value = sumAdv > 0 ? sumAdv.toFixed(2) : '';
-            const sumNetEl = document.getElementById('chittaRegSumNet');
-            if (sumNetEl) sumNetEl.value = sumNet !== 0 ? sumNet.toFixed(2) : '';
-            
-            showToast('Chitta Register: ' + data.length + ' records loaded');
-        }
-    } catch(e) {
-        console.error(e);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#c00;">Error loading register: ' + e.message + '</td></tr>';
-    }
-}
-
-// Fetch on load
-fetchAccounts();
-fetchChittas();
-fetchBills();
-fetchCashPayments();
-fetchReceipts();
-if(typeof loadFinancialPeriods === "function") loadFinancialPeriods();
-
-function openAdvancedOptions() {
-    const adv = document.getElementById('advancedOption');
-    if (!adv) return;
-    
-    let curFrom = '';
-    let curTo = '';
-    
-    if (document.getElementById('chittaRegister') && document.getElementById('chittaRegister').style.display !== 'none') {
-        curFrom = document.getElementById('chittaRegFromDate')?.value || '';
-        curTo = document.getElementById('chittaRegToDate')?.value || '';
-    } else if (document.getElementById('chittaPendingRegister') && document.getElementById('chittaPendingRegister').style.display !== 'none') {
-        curTo = document.getElementById('chittaPendingRegDate')?.value || '';
-    } else if (document.getElementById('chittaPaymentRegister') && document.getElementById('chittaPaymentRegister').style.display !== 'none') {
-        curFrom = document.getElementById('chittaPaymentRegFromDate')?.value || '';
-        curTo = document.getElementById('chittaPaymentRegToDate')?.value || '';
-    } else if (document.getElementById('billRegister') && document.getElementById('billRegister').style.display !== 'none') {
-        curFrom = document.getElementById('billRegFromDate')?.value || '';
-        curTo = document.getElementById('billRegToDate')?.value || '';
-    } else if (document.getElementById('cashPaymentRegister') && document.getElementById('cashPaymentRegister').style.display !== 'none') {
-        curFrom = document.getElementById('cashRegFromDate')?.value || '';
-        curTo = document.getElementById('cashRegToDate')?.value || '';
-    } else if (document.getElementById('receiptRegister') && document.getElementById('receiptRegister').style.display !== 'none') {
-        curFrom = document.getElementById('receiptRegFromDate')?.value || '';
-        curTo = document.getElementById('receiptRegToDate')?.value || '';
-    }
-    
-    const fromInput = document.getElementById('advFromDate');
-    const toInput = document.getElementById('advToDate');
-    if (fromInput && curFrom) fromInput.value = curFrom;
-    if (toInput && curTo) toInput.value = curTo;
-    
-    adv.style.display = 'flex';
-}
-
-function clearAdvancedOptions() {
-    if (document.getElementById('advAccountId')) document.getElementById('advAccountId').value = '';
-    if (document.getElementById('advAccountName')) document.getElementById('advAccountName').value = '';
-    if (document.getElementById('advFromDate')) document.getElementById('advFromDate').value = '';
-    if (document.getElementById('advToDate')) document.getElementById('advToDate').value = '';
-}
-
-function applyAdvancedOptions() {
-    const adv = document.getElementById('advancedOption');
-    if (adv) adv.style.display = 'none';
-
-    const fromVal = document.getElementById('advFromDate')?.value || '';
-    const toVal = document.getElementById('advToDate')?.value || '';
-    const fCode = document.getElementById('advAccountId')?.value || '';
-    const fName = document.getElementById('advAccountName')?.value || '';
-    
-    if (fName && !fCode && typeof accounts !== 'undefined') {
-        const found = accounts.find(a => (a.accountName || '').toLowerCase() === fName.toLowerCase());
-        if (found) {
-            document.getElementById('advAccountId').value = found.partyId || found.id;
-        }
-    }
-
-    if (document.getElementById('chittaRegister') && document.getElementById('chittaRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('chittaRegFromDate')) document.getElementById('chittaRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('chittaRegToDate')) document.getElementById('chittaRegToDate').value = toVal;
-        loadChittaRegister();
-    } else if (document.getElementById('chittaPendingRegister') && document.getElementById('chittaPendingRegister').style.display !== 'none') {
-        if (toVal && document.getElementById('chittaPendingRegDate')) document.getElementById('chittaPendingRegDate').value = toVal;
-        loadChittaPendingRegister();
-    } else if (document.getElementById('chittaPaymentRegister') && document.getElementById('chittaPaymentRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('chittaPaymentRegFromDate')) document.getElementById('chittaPaymentRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('chittaPaymentRegToDate')) document.getElementById('chittaPaymentRegToDate').value = toVal;
-        loadChittaPaymentRegister();
-    } else if (document.getElementById('billRegister') && document.getElementById('billRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('billRegFromDate')) document.getElementById('billRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('billRegToDate')) document.getElementById('billRegToDate').value = toVal;
-        loadBillRegister();
-    } else if (document.getElementById('cashPaymentRegister') && document.getElementById('cashPaymentRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('cashRegFromDate')) document.getElementById('cashRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('cashRegToDate')) document.getElementById('cashRegToDate').value = toVal;
-        loadCashPaymentRegister();
-    } else if (document.getElementById('receiptRegister') && document.getElementById('receiptRegister').style.display !== 'none') {
-        if (fromVal && document.getElementById('receiptRegFromDate')) document.getElementById('receiptRegFromDate').value = fromVal;
-        if (toVal && document.getElementById('receiptRegToDate')) document.getElementById('receiptRegToDate').value = toVal;
-        loadReceiptRegister();
-    } else if (document.getElementById('ledger') && document.getElementById('ledger').style.display !== 'none') {
-        loadLedger();
-    }
-}
-
-    function loadOutstandingReport() {
-        const fromDate = document.getElementById('outstandingFrom').value;
-        const toDate = document.getElementById('outstandingTo').value;
-        
-        let url = '/api/reports/outstanding';
-        const params = new URLSearchParams();
-        if (fromDate) params.append('startDate', fromDate);
-        if (toDate) params.append('endDate', toDate);
-        
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                const tbody = document.getElementById('outstandingReportTbody');
-                tbody.innerHTML = '';
-                
-                let totalDebit = 0;
-                let totalCredit = 0;
-                let sno = 1;
-
-                data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    
-                    let debitStr = '';
-                    let creditStr = '';
-                    
-                    let deb = parseFloat(item.debit) || 0;
-                    let crd = parseFloat(item.credit) || 0;
-                    if (deb === 0 && crd === 0) {
-                        if (item.closingBalance > 0) {
-                            deb = parseFloat(item.closingBalance);
-                        } else if (item.closingBalance < 0) {
-                            crd = Math.abs(parseFloat(item.closingBalance));
-                        }
-                    }
-                    totalDebit = Math.round((totalDebit + deb) * 100) / 100;
-                    totalCredit = Math.round((totalCredit + crd) * 100) / 100;
-                    debitStr = deb > 0 ? deb.toFixed(2) : '';
-                    creditStr = crd > 0 ? crd.toFixed(2) : '';
-                    
-                    tr.innerHTML = `
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${sno++}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${item.accountName || ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${debitStr}</td>
-                        <td style="border-bottom:1px solid #ccc; text-align:right;">${creditStr}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-                
-                document.getElementById('outstandingTotalDebit').innerText = totalDebit.toFixed(2);
-                document.getElementById('outstandingTotalCredit').innerText = totalCredit.toFixed(2);
-            })
-            .catch(err => console.error('Error fetching outstanding report:', err));
-    }
-
-    async function loadChittaPendingRegister() {
-    const tbody = document.getElementById('chittaPendingRegisterBody') || document.querySelector('#chittaPendingRegister table tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading pending records...</td></tr>';
-    try {
-        let url = '/api/reports/chitta-pending-register?';
-        const asOfDate = document.getElementById('advToDate')?.value || document.getElementById('chittaPendingRegDate')?.value;
-        const accId = document.getElementById('advAccountId')?.value;
-        if (asOfDate) url += 'asOfDate=' + asOfDate + '&';
-        if (accId) url += 'accountId=' + accId;
-
-        fetch(url).then(res => res.json()).then(data => {
-            if (!tbody) return;
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#888;">No pending chittas found</td></tr>';
-                return;
-            }
-            let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
-            const rowsHtml = [];
-            for (let idx = 0; idx < data.length; idx++) {
-                const c = data[idx];
-                const gross = parseFloat(c.grossAmount) || 0;
-                const comm = parseFloat(c.commissionDeduction || c.commission) || 0;
-                const adv = parseFloat(c.advanceAmount || c.advance) || 0;
-                const frt = parseFloat(c.freightAmount || c.freight) || 0;
-                const net = parseFloat(c.netPayable) || 0;
-
-                sumTotal += gross;
-                sumComm += comm;
-                sumAdv += adv;
-                sumFreight += frt;
-                sumNet += net;
-
-                let chittaWeight = parseFloat(c.weight) || 0;
-                if (!chittaWeight && c.items) {
-                    c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
-                }
-                sumWeight += chittaWeight;
-
-                const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
-                const chittaDateStr = c.chittaDate ? String(c.chittaDate).substring(0, 10) : '';
-                const safeNo = (c.chittaNo || '').replace(/'/g, "\\'");
-                const safeId = (c.id || '');
-
-                rowsHtml.push(
-                    '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
-                    'onclick="openChittaByRecordId(\'' + safeId + '\', \'' + safeNo + '\')">' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (c.chittaNo || '') + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + farmerName + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (chittaWeight > 0 ? chittaWeight.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (gross > 0 ? gross.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (comm > 0 ? comm.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (adv > 0 ? adv.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (frt > 0 ? frt.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; font-weight:bold;">' + (net !== 0 ? net.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + chittaDateStr + '</td>' +
-                    '<td style="text-align:center; border-bottom:1px solid #ccc; color:#c00; font-weight:bold;">PENDING</td>' +
-                    '</tr>'
-                );
-            }
-            tbody.innerHTML = rowsHtml.join('');
-            showToast('Pending Register: ' + data.length + ' records loaded');
-        }).catch(err => {
-            console.error(err);
-            if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:15px; color:#c00;">Error loading register</td></tr>';
-        });
-    } catch(e) { console.error(e); }
-}
-
-async function loadChittaPaymentRegister() {
-        try {
-            let url = '/api/reports/chitta-payment-register?';
-            const fromDate = document.getElementById('advFromDate')?.value || document.getElementById('chittaPaymentRegFromDate')?.value;
-            const toDate = document.getElementById('advToDate')?.value || document.getElementById('chittaPaymentRegToDate')?.value;
-            const accId = document.getElementById('advAccountId')?.value;
-            
-            if (fromDate) url += `startDate=${fromDate}&`;
-            if (toDate) url += `endDate=${toDate}&`;
-            if (accId) url += `accountId=${accId}`;
-
-            const res = await fetch(url);
-            if(res.ok) {
-                const data = await res.json();
-                const tbody = document.getElementById('chittaPaymentRegisterBody') || document.querySelector('#chittaPaymentRegister table tbody');
-                if(!tbody) return;
-                tbody.innerHTML = '';
-                
-                let sumTotal = 0, sumComm = 0, sumWeight = 0, sumAdv = 0, sumFreight = 0, sumNet = 0;
-                
-                if (data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:15px; color:#888;">No payment records found</td></tr>';
-                } else {
-                    data.forEach((c, idx) => {
-                        const gross = parseFloat(c.grossAmount) || parseFloat(c.amount) || 0;
-                        const comm = parseFloat(c.commission) || 0;
-                        const adv = parseFloat(c.advance) || 0;
-                        const frt = parseFloat(c.freight) || 0;
-                        const net = parseFloat(c.netPayable || c.total || c.amount) || 0;
-                        const wt = parseFloat(c.weight) || 0;
-
-                        sumTotal += gross;
-                        sumComm += comm;
-                        sumAdv += adv;
-                        sumFreight += frt;
-                        sumNet += net;
-                        sumWeight += wt;
-
-                        const payDateStr = c.payDate ? new Date(c.payDate).toLocaleDateString('en-GB') : (c.date ? new Date(c.date).toLocaleDateString('en-GB') : '');
-                        const chittaDateStr = c.chittaDate ? new Date(c.chittaDate).toLocaleDateString('en-GB') : '';
-                        const farmerName = c.farmerName || c.paidTo || (c.farmerAccount ? c.farmerAccount.accountName : '');
-
-                        const tr = document.createElement('tr');
-                        tr.style.cursor = 'pointer';
-                        tr.title = `Click to open Chitta #${c.chittaNo || ''}`;
-                        tr.onmouseover = () => tr.style.backgroundColor = '#e8f4e5';
-                        tr.onmouseout = () => tr.style.backgroundColor = '';
-                        tr.onclick = () => openChittaByRecord(c);
-
-                        tr.innerHTML = `
-                            <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">${idx + 1}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${payDateStr}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">${chittaDateStr}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; color:#0055aa; font-weight:bold; cursor:pointer;" onclick="openChittaByRecordId('${c.id || ''}', '${c.chittaNo || ''}'); event.stopPropagation();">${c.chittaNo || ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold; cursor:pointer;" onclick="openChittaByRecordId('${c.id || ''}', '${c.chittaNo || ''}'); event.stopPropagation();" title="Open Chitta for ${farmerName}">${farmerName}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${wt > 0 ? wt.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${gross > 0 ? gross.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${comm > 0 ? comm.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${adv > 0 ? adv.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">${frt > 0 ? frt.toFixed(2) : ''}</td>
-                            <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; font-weight:bold;">${net !== 0 ? net.toFixed(2) : ''}</td>
-                            <td style="border-bottom:1px solid #ccc;">${c.paidTo || ''}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                }
-
-                const elWt = document.getElementById('chittaPaySumWeight');
-                const elTot = document.getElementById('chittaPaySumTotal');
-                const elComm = document.getElementById('chittaPaySumComm');
-                const elAdv = document.getElementById('chittaPaySumAdv');
-                const elNet = document.getElementById('chittaPaySumNet');
-                if(elWt) elWt.value = sumWeight > 0 ? sumWeight.toFixed(2) : '';
-                if(elTot) elTot.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
-                if(elComm) elComm.value = sumComm > 0 ? sumComm.toFixed(2) : '';
-                if(elAdv) elAdv.value = sumAdv > 0 ? sumAdv.toFixed(2) : '';
-                if(elNet) elNet.value = sumNet !== 0 ? sumNet.toFixed(2) : '';
-
-                showToast("Chitta Payment Register Loaded");
-            }
-        } catch(err) {
-            console.error('Error fetching chitta payment register:', err);
-        }
-    }
-
-
-
 
 // --- SECONDARY REPORT LOADERS ---
 async function loadBillRegister() {
@@ -9093,8 +8671,9 @@ async function loadDaybook() {
     try {
         let fromDate = document.getElementById('daybookFromDate')?.value || document.getElementById('daybookDate')?.value;
         let toDate = document.getElementById('daybookToDate')?.value;
-        const curDate = new Date().toISOString().substring(0, 10);
-        if (!fromDate) fromDate = curDate;
+        if (!fromDate) {
+            fromDate = '2026-11-09';
+        }
         if (!toDate) toDate = fromDate;
         
         const fEl = document.getElementById('daybookFromDate');
@@ -9118,7 +8697,7 @@ async function loadDaybook() {
         let totalDebit = 0;
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr style="background:#00e5e5; font-weight:bold;">' +
+            tbody.innerHTML = '<tr style="background:#00ffff; font-weight:bold;">' +
                 '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:3px 4px;">&nbsp;</td>' +
                 '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 8px;">OPENING BALANCE</td>' +
                 '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">0.00</td>' +
@@ -9135,10 +8714,10 @@ async function loadDaybook() {
 
                 if (isOp) {
                     rowsHtml.push(
-                        '<tr style="background:#00e5e5; font-weight:bold;">' +
+                        '<tr style="background:#00ffff; font-weight:bold;">' +
                         '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:3px 4px;">&nbsp;</td>' +
                         '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 8px;">OPENING BALANCE</td>' +
-                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">' + (cr > 0 ? cr.toFixed(2) : '0.00') + '</td>' +
+                        '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">' + cr.toFixed(2) + '</td>' +
                         '<td style="border-bottom:1px solid #ccc; text-align:right; padding:3px 8px;">&nbsp;</td>' +
                         '</tr>'
                     );

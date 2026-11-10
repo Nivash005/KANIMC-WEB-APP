@@ -375,8 +375,15 @@ public class ReportController {
         }
 
         BigDecimal opening = BigDecimal.ZERO;
-        if (cashAccount != null && cashAccount.getOpeningBalance() != null) {
-            opening = cashAccount.getOpeningBalance();
+        if (cashAccount != null) {
+            if (cashAccount.getOpeningBalance() != null && cashAccount.getOpeningBalance().compareTo(BigDecimal.ZERO) != 0) {
+                opening = cashAccount.getOpeningBalance();
+            } else {
+                var obList = openingBalanceRepository.findByAccountId(cashAccount.getId());
+                if (obList != null && !obList.isEmpty() && obList.get(0).getAmount() != null) {
+                    opening = obList.get(0).getAmount();
+                }
+            }
         }
 
         List<com.kanimc.entity.ReceiptVoucher> allReceipts = receiptVoucherRepository.findAll();
@@ -397,10 +404,27 @@ public class ReportController {
         for (var c : allChittas) {
             LocalDate cDate = c.getPayDate() != null ? c.getPayDate() : c.getChittaDate();
             if (cDate != null && cDate.isBefore(sDate)) {
-                if (Boolean.TRUE.equals(c.getPaid()) || (c.getPaymentMethod() != null && "CASH".equalsIgnoreCase(c.getPaymentMethod()))) {
+                if (Boolean.TRUE.equals(c.getPaid()) || (c.getPaymentMethod() != null && "CASH".equalsIgnoreCase(c.getPaymentMethod())) || c.getPayDate() != null) {
                     BigDecimal amt = c.getNetPayable() != null ? c.getNetPayable() : (c.getGrossAmount() != null ? c.getGrossAmount() : BigDecimal.ZERO);
                     opening = opening.subtract(amt);
                 }
+            }
+        }
+
+        List<com.kanimc.entity.Purchase> allPurchases = purchaseRepository.findAll();
+        for (var p : allPurchases) {
+            LocalDate pDate = p.getPayDate() != null ? p.getPayDate() : p.getPurchaseDate();
+            if (pDate != null && pDate.isBefore(sDate)) {
+                BigDecimal amt = p.getNetPayable() != null ? p.getNetPayable() : (p.getGrossAmount() != null ? p.getGrossAmount() : BigDecimal.ZERO);
+                opening = opening.subtract(amt);
+            }
+        }
+
+        List<com.kanimc.entity.PurchasePayment> allPPs = purchasePaymentRepository.findAll();
+        for (var pp : allPPs) {
+            if (pp.getPaymentDate() != null && pp.getPaymentDate().isBefore(sDate)) {
+                BigDecimal amt = pp.getAmount() != null ? pp.getAmount() : BigDecimal.ZERO;
+                opening = opening.subtract(amt);
             }
         }
 
@@ -415,11 +439,12 @@ public class ReportController {
         opRow.put("isOpening", true);
         result.add(opRow);
 
+        // 1. CHITTA PAYMENT
         Map<LocalDate, BigDecimal> chittaPayByDate = new TreeMap<>();
         for (var c : allChittas) {
             LocalDate cDate = c.getPayDate() != null ? c.getPayDate() : c.getChittaDate();
             if (cDate != null && !cDate.isBefore(sDate) && !cDate.isAfter(eDate)) {
-                if (Boolean.TRUE.equals(c.getPaid()) || (c.getPaymentMethod() != null && "CASH".equalsIgnoreCase(c.getPaymentMethod()))) {
+                if (Boolean.TRUE.equals(c.getPaid()) || (c.getPaymentMethod() != null && "CASH".equalsIgnoreCase(c.getPaymentMethod())) || c.getPayDate() != null) {
                     BigDecimal amt = c.getNetPayable() != null ? c.getNetPayable() : (c.getGrossAmount() != null ? c.getGrossAmount() : BigDecimal.ZERO);
                     chittaPayByDate.put(cDate, chittaPayByDate.getOrDefault(cDate, BigDecimal.ZERO).add(amt));
                 }
@@ -438,20 +463,35 @@ public class ReportController {
             }
         }
 
-        for (var v : allCashVouchers) {
-            if (v.getVoucherDate() != null && !v.getVoucherDate().isBefore(sDate) && !v.getVoucherDate().isAfter(eDate)) {
+        // 2. PURCHASE A/C
+        Map<LocalDate, BigDecimal> purchaseByDate = new TreeMap<>();
+        for (var p : allPurchases) {
+            LocalDate pDate = p.getPayDate() != null ? p.getPayDate() : p.getPurchaseDate();
+            if (pDate != null && !pDate.isBefore(sDate) && !pDate.isAfter(eDate)) {
+                BigDecimal amt = p.getNetPayable() != null ? p.getNetPayable() : (p.getGrossAmount() != null ? p.getGrossAmount() : BigDecimal.ZERO);
+                purchaseByDate.put(pDate, purchaseByDate.getOrDefault(pDate, BigDecimal.ZERO).add(amt));
+            }
+        }
+        for (var pp : allPPs) {
+            if (pp.getPaymentDate() != null && !pp.getPaymentDate().isBefore(sDate) && !pp.getPaymentDate().isAfter(eDate)) {
+                BigDecimal amt = pp.getAmount() != null ? pp.getAmount() : BigDecimal.ZERO;
+                purchaseByDate.put(pp.getPaymentDate(), purchaseByDate.getOrDefault(pp.getPaymentDate(), BigDecimal.ZERO).add(amt));
+            }
+        }
+
+        for (Map.Entry<LocalDate, BigDecimal> entry : purchaseByDate.entrySet()) {
+            if (entry.getValue().compareTo(BigDecimal.ZERO) > 0) {
                 Map<String, Object> row = new LinkedHashMap<>();
-                row.put("date", v.getVoucherDate().toString());
-                String pName = v.getAccount() != null && v.getAccount().getAccountName() != null ? v.getAccount().getAccountName() : "CASH PAYMENT";
-                row.put("name", pName);
-                row.put("accountName", pName);
+                row.put("date", entry.getKey().toString());
+                row.put("name", "PURCHASE A/C");
+                row.put("accountName", "PURCHASE A/C");
                 row.put("credit", BigDecimal.ZERO);
-                row.put("debit", v.getAmount() != null ? v.getAmount() : BigDecimal.ZERO);
-                row.put("narration", v.getNarration());
+                row.put("debit", entry.getValue());
                 result.add(row);
             }
         }
 
+        // 3. Receipts
         for (var r : allReceipts) {
             if (r.getVoucherDate() != null && !r.getVoucherDate().isBefore(sDate) && !r.getVoucherDate().isAfter(eDate)) {
                 Map<String, Object> row = new LinkedHashMap<>();
@@ -462,6 +502,21 @@ public class ReportController {
                 row.put("credit", r.getAmount() != null ? r.getAmount() : BigDecimal.ZERO);
                 row.put("debit", BigDecimal.ZERO);
                 row.put("narration", r.getNarration());
+                result.add(row);
+            }
+        }
+
+        // 4. Cash Payments
+        for (var v : allCashVouchers) {
+            if (v.getVoucherDate() != null && !v.getVoucherDate().isBefore(sDate) && !v.getVoucherDate().isAfter(eDate)) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("date", v.getVoucherDate().toString());
+                String pName = v.getAccount() != null && v.getAccount().getAccountName() != null ? v.getAccount().getAccountName() : "CASH PAYMENT";
+                row.put("name", pName);
+                row.put("accountName", pName);
+                row.put("credit", BigDecimal.ZERO);
+                row.put("debit", v.getAmount() != null ? v.getAmount() : BigDecimal.ZERO);
+                row.put("narration", v.getNarration());
                 result.add(row);
             }
         }
