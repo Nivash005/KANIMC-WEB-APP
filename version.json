@@ -1,7 +1,7 @@
 {
-  "versionCode": 2,
-  "versionName": "1.0.1",
+  "versionCode": 3,
+  "versionName": "1.0.2",
   "apkUrl": "https://github.com/Nivash005/KANIMC-WEB-APP/releases/download/v1.0.0-tablet/kanimc-tablet.apk",
-  "releaseNotes": "Purchase Register updated with FoxPro layout, auto-sum calculations, and online in-app auto-update system.",
+  "releaseNotes": "Updated UI with Toolbar shortcuts for Purchase Register, Item Register, and Item Summary, FoxPro exact Purchase Register grid layout, and online updater.",
   "publishDate": "2026-11-11"
 }
