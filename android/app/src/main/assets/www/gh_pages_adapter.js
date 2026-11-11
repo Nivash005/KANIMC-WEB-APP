@@ -335,7 +335,34 @@
             db.settings = seed.settings || {};
             db.chittas = db.chittas || [];
             db.salesBills = db.salesBills || [];
-            db.purchases = db.purchases || [];
+            db.purchases = (db.purchases && db.purchases.length > 0) ? db.purchases : [
+            {
+                id: 1,
+                purchaseNo: '1',
+                purchaseDate: '2026-11-09',
+                financialYear: '2026-2027',
+                traderAccount: { id: 33, partyId: '33', accountName: '3 STARS EXPORTS' },
+                phone: '9842100000',
+                payDate: '2026-11-09',
+                paidTo: 'O',
+                grossAmount: 23100.0,
+                advance: 0.0,
+                netPayable: 23100.0,
+                paid: false,
+                paidAmount: 0.0,
+                isOpeningBalance: false,
+                auditInfo: 'Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL',
+                items: [
+                    {
+                        itemDescription: 'SEDI',
+                        particulars: '',
+                        rate: 75.0,
+                        quantity: 308.0,
+                        amount: 23100.0
+                    }
+                ]
+            }
+        ];
             db.purchasePayments = db.purchasePayments || [];
             db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
             db.cashVouchers = db.cashVouchers || [];
@@ -400,7 +427,34 @@
 
         db.chittas = db.chittas || [];
         db.salesBills = db.salesBills || [];
-    db.purchases = db.purchases || [];
+    db.purchases = (db.purchases && db.purchases.length > 0) ? db.purchases : [
+            {
+                id: 1,
+                purchaseNo: '1',
+                purchaseDate: '2026-11-09',
+                financialYear: '2026-2027',
+                traderAccount: { id: 33, partyId: '33', accountName: '3 STARS EXPORTS' },
+                phone: '9842100000',
+                payDate: '2026-11-09',
+                paidTo: 'O',
+                grossAmount: 23100.0,
+                advance: 0.0,
+                netPayable: 23100.0,
+                paid: false,
+                paidAmount: 0.0,
+                isOpeningBalance: false,
+                auditInfo: 'Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL',
+                items: [
+                    {
+                        itemDescription: 'SEDI',
+                        particulars: '',
+                        rate: 75.0,
+                        quantity: 308.0,
+                        amount: 23100.0
+                    }
+                ]
+            }
+        ];
     db.purchasePayments = db.purchasePayments || [];
     db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
         db.cashVouchers = db.cashVouchers || [];
@@ -935,7 +989,34 @@
                 if (method === 'GET') {
                     return jsonResponse(db.purchases || []);
                 } else if (method === 'POST') {
-                    db.purchases = db.purchases || [];
+                    db.purchases = (db.purchases && db.purchases.length > 0) ? db.purchases : [
+            {
+                id: 1,
+                purchaseNo: '1',
+                purchaseDate: '2026-11-09',
+                financialYear: '2026-2027',
+                traderAccount: { id: 33, partyId: '33', accountName: '3 STARS EXPORTS' },
+                phone: '9842100000',
+                payDate: '2026-11-09',
+                paidTo: 'O',
+                grossAmount: 23100.0,
+                advance: 0.0,
+                netPayable: 23100.0,
+                paid: false,
+                paidAmount: 0.0,
+                isOpeningBalance: false,
+                auditInfo: 'Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL',
+                items: [
+                    {
+                        itemDescription: 'SEDI',
+                        particulars: '',
+                        rate: 75.0,
+                        quantity: 308.0,
+                        amount: 23100.0
+                    }
+                ]
+            }
+        ];
                     const newP = {
                         id: db.purchases.length > 0 ? Math.max(...db.purchases.map(p => p.id || 0)) + 1 : 1,
                         ...reqBody,

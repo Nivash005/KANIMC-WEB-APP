@@ -101,8 +101,8 @@ body{margin:0;background:#e9ffff}
 .has-submenu:hover>.submenu{display:block}
 
 /* ================= TOOLBAR ================= */
-.toolbar{display:flex;gap:25px;padding:10px 12px;background:#f8f8f8;border-bottom:1px solid #c0c0c0}
-.tool{width:120px;text-align:center;font-size:12px;cursor:pointer}
+.toolbar{display:flex;gap:20px;padding:10px 12px;background:#f8f8f8;border-bottom:1px solid #c0c0c0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tool{min-width:85px;width:auto;text-align:center;font-size:12px;cursor:pointer;flex-shrink:0}
 .tool-icon{width:32px;height:32px;margin:0 auto 5px;background:#e0e0e0;border:1px solid #999;border-radius:4px;display:flex;align-items:center;justify-content:center}
 
 /* ================= CONTENT ================= */
@@ -11483,6 +11483,7 @@ async function savePurchase() {
         if (res.ok) {
             const saved = await res.json();
             showToast('Purchase Saved Successfully!');
+            refreshOpenPurchaseRegistersSilently();
             // Requirement: after saving again it should change to change button
             setPurchaseEditMode(false);
             await loadPurchases();
@@ -11510,6 +11511,7 @@ async function deletePurchase() {
         const res = await fetch('/api/purchases/' + p.id, { method: 'DELETE' });
         if (res.ok) {
             showToast('Purchase Deleted');
+            refreshOpenPurchaseRegistersSilently();
             setPurchaseEditMode(false);
             await loadPurchases();
             if (purchases.length > 0) {
@@ -11635,6 +11637,26 @@ function findPurchaseDialog() {
 // -------------------------------------------------------------------------
 let currentPpTrader = null;
 
+
+function refreshOpenPurchaseRegistersSilently() {
+    try {
+        const pr = document.getElementById('purchaseRegister');
+        if (pr && pr.style.display !== 'none' && typeof loadPurchaseRegister === 'function') {
+            loadPurchaseRegister();
+        }
+        const ppr = document.getElementById('purchasePaymentRegister');
+        if (ppr && ppr.style.display !== 'none' && typeof loadPurchasePaymentRegister === 'function') {
+            loadPurchasePaymentRegister();
+        }
+        const ppr2 = document.getElementById('purchasePendingRegister');
+        if (ppr2 && ppr2.style.display !== 'none' && typeof loadPurchasePendingRegister === 'function') {
+            loadPurchasePendingRegister();
+        }
+    } catch(e) {
+        console.warn('Silent register refresh:', e);
+    }
+}
+
 function initPurchasePaymentWindow() {
     loadPurchasePayments().then(() => {
         newPurchasePayment();
@@ -11646,6 +11668,7 @@ let currentPpPurchases = [];
 let ppIsEditMode = false;
 
 async function initPurchasePaymentWindow(targetBillId) {
+    initPurchasePaymentFieldKeyListeners();
     ppIsEditMode = false;
     const btnChange = document.getElementById('btnPpChange');
     if (btnChange) {
@@ -11960,19 +11983,43 @@ async function savePurchasePaymentData() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(p)
         });
+
+        // Also record to /api/purchase-payments
+        try {
+            await fetch('/api/purchase-payments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    paymentNo: 'PP-' + (p.purchaseNo || p.id),
+                    paymentDate: paidOn,
+                    amount: net,
+                    traderAccount: p.traderAccount,
+                    purchase: { id: p.id },
+                    discount: 0,
+                    paymentMethod: 'CASH',
+                    narration: 'Paid to ' + paidTo + ' for bill #' + (p.purchaseNo || p.id)
+                })
+            });
+        } catch(pe) {
+            console.warn('Purchase payment record warning:', pe);
+        }
+
         if (res.ok) {
             showToast("Purchase Payment saved successfully!");
             await loadPurchases();
             currentPpPurchases = purchases;
             displayPurchasePaymentBill(currentPpPurchaseIndex);
+            refreshOpenPurchaseRegistersSilently();
         } else {
             showToast("Payment updated locally");
             displayPurchasePaymentBill(currentPpPurchaseIndex);
+            refreshOpenPurchaseRegistersSilently();
         }
     } catch(err) {
         console.error("Save PP error:", err);
         showToast("Payment updated locally (Offline)");
         displayPurchasePaymentBill(currentPpPurchaseIndex);
+        refreshOpenPurchaseRegistersSilently();
     }
 }
 
@@ -11996,6 +12043,7 @@ async function deletePurchasePaymentUI() {
     await loadPurchases();
     currentPpPurchases = purchases;
     displayPurchasePaymentBill(currentPpPurchaseIndex);
+    refreshOpenPurchaseRegistersSilently();
 }
 
 function printPpInvoice() {
@@ -12015,19 +12063,331 @@ function openPurchasePaymentFromPurchase() {
     openWin('purchasePayment', currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex] ? purchases[currentPurchaseIndex].id : null);
 }
 
-// PURCHASE OPENING BALANCE
+function initPurchasePaymentFieldKeyListeners() {
+    const dt = document.getElementById('ppPaidOn');
+    const to = document.getElementById('ppPaidTo');
+    const adv = document.getElementById('ppAdvanceTop');
+    const no = document.getElementById('ppBillNo');
+    const code = document.getElementById('ppCode');
+    const sName = document.getElementById('ppSupplierName');
+
+    if (dt && !dt._hasPpKey) {
+        dt._hasPpKey = true;
+        dt.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('ppPaidTo')?.focus();
+            }
+        });
+    }
+    if (to && !to._hasPpKey) {
+        to._hasPpKey = true;
+        to.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const advEl = document.getElementById('ppAdvanceTop');
+                if (advEl) { advEl.focus(); advEl.select?.(); }
+            }
+        });
+    }
+    if (adv && !adv._hasPpKey) {
+        adv._hasPpKey = true;
+        adv.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const btnChange = document.getElementById('btnPpChange');
+                if (btnChange) btnChange.focus();
+            }
+        });
+    }
+    if (no && !no._hasPpKey) {
+        no._hasPpKey = true;
+        no.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPpBillNoChange();
+            }
+        });
+    }
+    if (code && !code._hasPpKey) {
+        code._hasPpKey = true;
+        code.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPpCodeChange();
+            }
+        });
+    }
+    if (sName && !sName._hasPpKey) {
+        sName._hasPpKey = true;
+        sName.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPpSupplierNameChange();
+            }
+        });
+    }
+}
+
+// ================= 40. PURCHASE OPENING BALANCE =================
 let currentPobPurchaseIndex = -1;
 let currentPobPurchases = [];
 let pobIsEditMode = false;
+let currentActivePobRow = 0;
+
+function initPobGrid() {
+    const tbody = document.getElementById('pobGridBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+        addPobGridRow(i);
+    }
+    highlightPobRow(0);
+}
+
+function highlightPobRow(rowIdx) {
+    currentActivePobRow = rowIdx;
+    const tbody = document.getElementById('pobGridBody');
+    if (!tbody) return;
+    for (let i = 0; i < tbody.children.length; i++) {
+        const tr = tbody.children[i];
+        if (i === rowIdx) {
+            tr.style.backgroundColor = '#00ffff';
+        } else {
+            tr.style.backgroundColor = '';
+        }
+    }
+}
+
+function addPobGridRow(rowIdx) {
+    const tbody = document.getElementById('pobGridBody');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.id = 'pobGridRow' + rowIdx;
+    tr.style.cursor = 'pointer';
+    tr.onclick = function() { highlightPobRow(rowIdx); };
+
+    tr.innerHTML = `
+        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${rowIdx + 1}</td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="text" id="pobGridItem${rowIdx}" class="pob-field" list="itemMasterList" style="border:none; width:100%; outline:none; background:transparent; font-size:12px;" onfocus="highlightPobRow(${rowIdx})" onchange="onPobItemSelect(${rowIdx})">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="text" id="pobGridPart${rowIdx}" class="pob-field" style="border:none; width:100%; outline:none; background:transparent; font-size:12px;" onfocus="highlightPobRow(${rowIdx})">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="number" step="0.01" id="pobGridRate${rowIdx}" class="pob-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent; font-size:12px;" onfocus="highlightPobRow(${rowIdx})" oninput="calcPobRowAmount(${rowIdx}); calcPobTotals();">
+        </td>
+        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">
+            <input type="number" step="0.01" id="pobGridWeight${rowIdx}" class="pob-field" style="border:none; width:100%; text-align:right; outline:none; background:transparent; font-size:12px;" onfocus="highlightPobRow(${rowIdx})" oninput="calcPobRowAmount(${rowIdx}); calcPobTotals();">
+        </td>
+        <td style="border-bottom:1px solid #ccc; text-align:right; padding:2px 6px;">
+            <input type="text" id="pobGridAmt${rowIdx}" readonly style="border:none; width:100%; text-align:right; font-weight:bold; background:transparent; font-size:12px;" value="0.00">
+        </td>
+    `;
+    tbody.appendChild(tr);
+    wirePobRowEvents(rowIdx);
+}
+
+function onPobItemSelect(rowIdx) {
+    const tbody = document.getElementById('pobGridBody');
+    if (tbody && rowIdx === tbody.children.length - 1) {
+        addPobGridRow(rowIdx + 1);
+    }
+}
+
+function calcPobRowAmount(rowIdx) {
+    const rate = parseFloat(document.getElementById('pobGridRate' + rowIdx)?.value) || 0;
+    const weight = parseFloat(document.getElementById('pobGridWeight' + rowIdx)?.value) || 0;
+    const amt = rate * weight;
+    const amtEl = document.getElementById('pobGridAmt' + rowIdx);
+    if (amtEl) amtEl.value = amt > 0 ? amt.toFixed(2) : '0.00';
+}
+
+function calcPobTotals() {
+    let gross = 0;
+    const tbody = document.getElementById('pobGridBody');
+    const rowCount = tbody ? tbody.children.length : 0;
+    for (let i = 0; i < rowCount; i++) {
+        const amtEl = document.getElementById('pobGridAmt' + i);
+        if (amtEl) {
+            gross += parseFloat(amtEl.value) || 0;
+        }
+    }
+    const advance = parseFloat(document.getElementById('pobAdvance')?.value) || 0;
+    const net = Math.max(0, gross - advance);
+
+    const grossEl = document.getElementById('pobGrossAmount');
+    if (grossEl) grossEl.value = gross.toFixed(2);
+
+    const bigEl = document.getElementById('pobNetBigDisplay');
+    if (bigEl) {
+        const displayVal = net > 0 ? net : (gross > 0 ? gross : 0);
+        bigEl.innerText = formatIndianCurrency(displayVal);
+    }
+}
+
+function wirePobRowEvents(rowIdx) {
+    const itemInput = document.getElementById('pobGridItem' + rowIdx);
+    const partInput = document.getElementById('pobGridPart' + rowIdx);
+    const rateInput = document.getElementById('pobGridRate' + rowIdx);
+    const weightInput = document.getElementById('pobGridWeight' + rowIdx);
+
+    if (itemInput) {
+        itemInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!this.value || !this.value.trim()) {
+                    // Empty item description -> jump straight to Save button!
+                    const btnChange = document.getElementById('btnPobChange');
+                    if (btnChange) btnChange.focus();
+                } else {
+                    const nextPart = document.getElementById('pobGridPart' + rowIdx);
+                    if (nextPart) { nextPart.focus(); nextPart.select?.(); }
+                }
+            } else if (e.key === ' ' && (!this.value || !this.value.trim())) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.value = '';
+                const btnChange = document.getElementById('btnPobChange');
+                if (btnChange) btnChange.focus();
+            }
+        });
+    }
+
+    if (partInput) {
+        partInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const nextRate = document.getElementById('pobGridRate' + rowIdx);
+                if (nextRate) { nextRate.focus(); nextRate.select?.(); }
+            }
+        });
+    }
+
+    if (rateInput) {
+        rateInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                calcPobRowAmount(rowIdx);
+                calcPobTotals();
+                const nextWeight = document.getElementById('pobGridWeight' + rowIdx);
+                if (nextWeight) { nextWeight.focus(); nextWeight.select?.(); }
+            }
+        });
+    }
+
+    if (weightInput) {
+        weightInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                calcPobRowAmount(rowIdx);
+                calcPobTotals();
+                const nextRowIdx = rowIdx + 1;
+                let nextItem = document.getElementById('pobGridItem' + nextRowIdx);
+                if (!nextItem) {
+                    addPobGridRow(nextRowIdx);
+                    nextItem = document.getElementById('pobGridItem' + nextRowIdx);
+                }
+                highlightPobRow(nextRowIdx);
+                if (nextItem) { nextItem.focus(); nextItem.select?.(); }
+            }
+        });
+    }
+}
+
+function initPobFieldKeyListeners() {
+    const pDate = document.getElementById('pobDate');
+    const pCode = document.getElementById('pobCode');
+    const pName = document.getElementById('pobSupplierName');
+    const pAdv = document.getElementById('pobAdvance');
+
+    if (pDate && !pDate._hasPobKey) {
+        pDate._hasPobKey = true;
+        pDate.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('pobCode')?.focus();
+            }
+        });
+    }
+
+    if (pCode && !pCode._hasPobKey) {
+        pCode._hasPobKey = true;
+        pCode.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPobCodeChange();
+                const sName = document.getElementById('pobSupplierName');
+                if (sName && sName.value.trim()) {
+                    const firstItem = document.getElementById('pobGridItem0');
+                    if (firstItem) { firstItem.focus(); firstItem.select?.(); }
+                } else if (sName) {
+                    sName.focus();
+                }
+            }
+        });
+    }
+
+    if (pName && !pName._hasPobKey) {
+        pName._hasPobKey = true;
+        pName.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                onPobSupplierNameChange();
+                const firstItem = document.getElementById('pobGridItem0');
+                if (firstItem) { firstItem.focus(); firstItem.select?.(); }
+            }
+        });
+    }
+
+    if (pAdv && !pAdv._hasPobKey) {
+        pAdv._hasPobKey = true;
+        pAdv.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                calcPobTotals();
+                const btnChange = document.getElementById('btnPobChange');
+                if (btnChange) btnChange.focus();
+            }
+        });
+    }
+}
+
+function setPobEditMode(isEdit) {
+    pobIsEditMode = !!isEdit;
+    const btn = document.getElementById('btnPobChange');
+    if (btn) {
+        if (pobIsEditMode) {
+            btn.innerHTML = '<u>S</u>ave';
+            btn.style.color = '#0055aa';
+            btn.style.fontWeight = 'bold';
+        } else {
+            btn.innerHTML = '<u>C</u>hange';
+            btn.style.color = '';
+            btn.style.fontWeight = 'normal';
+        }
+    }
+}
 
 async function initPurchaseOpeningBalanceWindow() {
-    pobIsEditMode = false;
-    const btnChange = document.getElementById('btnPobChange');
-    if (btnChange) {
-        btnChange.innerHTML = '<u>C</u>hange';
-        btnChange.style.color = '';
-        btnChange.style.fontWeight = 'normal';
-    }
+    setPobEditMode(false);
+    initPobGrid();
+    initPobFieldKeyListeners();
 
     if (typeof purchases === 'undefined' || !purchases || purchases.length === 0) {
         await loadPurchases();
@@ -12050,11 +12410,11 @@ function clearPobFields() {
     document.getElementById('pobBillNo').value = '';
     document.getElementById('pobPhone').value = '';
     document.getElementById('pobPaidOn').value = getTodayDateStr();
-    document.getElementById('pobPaidTo').value = '';
+    document.getElementById('pobPaidTo').value = 'O';
     document.getElementById('pobAdvance').value = '';
     document.getElementById('pobGrossAmount').value = '0.00';
     document.getElementById('pobNetBigDisplay').innerText = '0.00';
-    document.getElementById('pobGridBody').innerHTML = '';
+    initPobGrid();
     document.getElementById('pobRightPendingBody').innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">No bills found</td></tr>';
     document.getElementById('pobRightPendingTotal').value = '0.00';
 }
@@ -12095,41 +12455,40 @@ function displayPobBill(idx) {
 
     const auditEl = document.getElementById('pobAuditLine');
     if (auditEl) {
-        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # BAL');
+        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # OPBAL');
     }
 
     // Grid Items
-    const tbody = document.getElementById('pobGridBody');
-    tbody.innerHTML = '';
+    initPobGrid();
     const items = p.items || [];
-    if (items.length === 0) {
-        tbody.innerHTML = '<tr style="background:#00ffff; height:24px;">' +
-            '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">1</td>' +
-            '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-left:4px;">SEDI</td>' +
-            '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>' +
-            '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">0.00</td>' +
-            '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">0.0</td>' +
-            '<td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px;">0.00</td>' +
-            '</tr>';
-    } else {
+    if (items.length > 0) {
+        const tbody = document.getElementById('pobGridBody');
+        while (tbody.children.length < items.length) {
+            addPobGridRow(tbody.children.length);
+        }
         items.forEach((item, i) => {
-            const isHighlight = (i === 0);
             const desc = item.itemDescription || (item.item ? item.item.itemName : 'SEDI');
-            const particulars = item.particulars || '';
+            const part = item.particulars || '';
             const rate = parseFloat(item.rate) || 0;
             const weight = parseFloat(item.quantity || item.weight) || 0;
             const amt = parseFloat(item.amount) || (rate * weight);
 
-            tbody.innerHTML += '<tr style="' + (isHighlight ? 'background:#00ffff; ' : '') + 'height:24px;">' +
-                '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (i + 1) + '</td>' +
-                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-left:4px;">' + desc + '</td>' +
-                '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-left:4px;">' + particulars + '</td>' +
-                '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">' + rate.toFixed(2) + '</td>' +
-                '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding-right:4px;">' + weight.toFixed(1) + '</td>' +
-                '<td style="text-align:right; border-bottom:1px solid #ccc; padding-right:4px;">' + amt.toFixed(2) + '</td>' +
-                '</tr>';
+            const elItem = document.getElementById('pobGridItem' + i);
+            const elPart = document.getElementById('pobGridPart' + i);
+            const elRate = document.getElementById('pobGridRate' + i);
+            const elWt = document.getElementById('pobGridWeight' + i);
+            const elAmt = document.getElementById('pobGridAmt' + i);
+
+            if (elItem) elItem.value = desc;
+            if (elPart) elPart.value = part;
+            if (elRate) elRate.value = rate > 0 ? rate.toFixed(2) : '';
+            if (elWt) elWt.value = weight > 0 ? weight.toFixed(1) : '';
+            if (elAmt) elAmt.value = amt > 0 ? amt.toFixed(2) : '0.00';
         });
+        // Extra empty row for additions
+        addPobGridRow(items.length);
     }
+    highlightPobRow(0);
 
     if (p.traderAccount && (p.traderAccount.id || p.traderAccount.partyId)) {
         loadPobSupplierPendingBills(p.traderAccount.id || p.traderAccount.partyId);
@@ -12179,13 +12538,6 @@ function selectPobFromRightTable(billId) {
     }
 }
 
-function calcPobTotals() {
-    const gross = parseFloat(document.getElementById('pobGrossAmount')?.value) || 0;
-    const adv = parseFloat(document.getElementById('pobAdvance')?.value) || 0;
-    const net = Math.max(0, gross - adv);
-    document.getElementById('pobNetBigDisplay').innerText = formatIndianCurrency(net);
-}
-
 function topPobUI() {
     if (currentPobPurchases && currentPobPurchases.length > 0) displayPobBill(0);
 }
@@ -12206,7 +12558,7 @@ function onPobBillNoChange() {
     if (foundIdx !== -1) {
         displayPobBill(foundIdx);
     } else {
-        showToast('Purchase bill #' + no + ' not found');
+        showToast('Purchase opening bill #' + no + ' not found');
     }
 }
 
@@ -12268,14 +12620,7 @@ function findPobAccountDialog() {
 
 async function newPurchaseOpeningBalanceUI() {
     clearPobFields();
-    pobIsEditMode = true;
-    const btn = document.getElementById('btnPobChange');
-    if (btn) {
-        btn.innerHTML = '<u>S</u>ave';
-        btn.style.color = '#0055aa';
-        btn.style.fontWeight = 'bold';
-    }
-    // Fetch next bill number
+    setPobEditMode(true);
     try {
         const res = await fetch('/api/purchases/next-no');
         if (res.ok) {
@@ -12288,23 +12633,17 @@ async function newPurchaseOpeningBalanceUI() {
         document.getElementById('pobBillNo').value = (currentPobPurchases.length + 1);
     }
     document.getElementById('pobCode').focus();
-    showToast("New Purchase Opening Balance started");
+    showToast("New Purchase Opening Balance started. Enter supplier & items.");
 }
 
 async function changePurchaseOpeningBalanceUI() {
-    const btn = document.getElementById('btnPobChange');
     if (!pobIsEditMode) {
-        pobIsEditMode = true;
-        btn.innerHTML = '<u>S</u>ave';
-        btn.style.color = '#0055aa';
-        btn.style.fontWeight = 'bold';
+        setPobEditMode(true);
+        const firstItem = document.getElementById('pobGridItem0');
+        if (firstItem) { firstItem.focus(); firstItem.select?.(); }
         showToast("Opening bill unlocked for editing. Click Save when done.");
     } else {
         await savePurchaseOpeningBalanceData();
-        pobIsEditMode = false;
-        btn.innerHTML = '<u>C</u>hange';
-        btn.style.color = '';
-        btn.style.fontWeight = 'normal';
     }
 }
 
@@ -12315,10 +12654,13 @@ async function savePurchaseOpeningBalanceData() {
     const supplierName = document.getElementById('pobSupplierName').value.trim();
     const phone = document.getElementById('pobPhone').value.trim();
     const paidOn = document.getElementById('pobPaidOn').value || billDate;
-    const paidTo = document.getElementById('pobPaidTo').value.trim() || 'O';
+    const paidTo = document.getElementById('pobPaidTo').value.trim() || (supplierName ? supplierName : 'O');
     const advVal = parseFloat(document.getElementById('pobAdvance').value) || 0;
-    const gross = parseFloat(document.getElementById('pobGrossAmount').value) || 0;
-    const net = Math.max(0, gross - advVal);
+
+    if (!supplierName && !code) {
+        alert('Please enter or select a Supplier Name or Code');
+        return;
+    }
 
     let targetAcc = null;
     if (code) {
@@ -12332,6 +12674,35 @@ async function savePurchaseOpeningBalanceData() {
         );
     }
 
+    const items = [];
+    const tbody = document.getElementById('pobGridBody');
+    const rowCount = tbody ? tbody.children.length : 0;
+    for (let i = 0; i < rowCount; i++) {
+        const desc = document.getElementById('pobGridItem' + i)?.value.trim();
+        const part = document.getElementById('pobGridPart' + i)?.value.trim();
+        const rate = parseFloat(document.getElementById('pobGridRate' + i)?.value) || 0;
+        const wt = parseFloat(document.getElementById('pobGridWeight' + i)?.value) || 0;
+        const amt = parseFloat(document.getElementById('pobGridAmt' + i)?.value) || (rate * wt);
+        if (desc || amt > 0 || wt > 0) {
+            items.push({
+                itemDescription: desc || 'SEDI',
+                particulars: part || '',
+                rate: rate,
+                quantity: wt,
+                amount: amt > 0 ? amt : (rate * wt)
+            });
+        }
+    }
+
+    if (items.length === 0) {
+        alert('Please enter at least one item line with rate and weight');
+        return;
+    }
+
+    let gross = 0;
+    items.forEach(it => { gross += it.amount; });
+    const net = Math.max(0, gross - advVal);
+
     const payload = {
         purchaseNo: billNo,
         purchaseDate: billDate,
@@ -12344,44 +12715,11 @@ async function savePurchaseOpeningBalanceData() {
         netPayable: net,
         paid: (advVal >= gross && gross > 0),
         paidAmount: advVal,
+        isOpeningBalance: true,
         auditInfo: 'Created by :ADMIN*' + billDate.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # OPBAL',
-        traderAccount: targetAcc ? { id: targetAcc.id, partyId: targetAcc.partyId, accountName: targetAcc.accountName } : null,
-        items: []
+        traderAccount: targetAcc ? { id: targetAcc.id, partyId: targetAcc.partyId, accountName: targetAcc.accountName } : { id: 1, partyId: code || '1', accountName: supplierName },
+        items: items
     };
-
-    // Extract items from table
-    const rows = document.querySelectorAll('#pobGridBody tr');
-    rows.forEach(tr => {
-        const tds = tr.querySelectorAll('td');
-        if (tds.length >= 6) {
-            const desc = tds[1].innerText.trim();
-            const part = tds[2].innerText.trim();
-            const rate = parseFloat(tds[3].innerText) || 0;
-            const wt = parseFloat(tds[4].innerText) || 0;
-            const amt = parseFloat(tds[5].innerText) || (rate * wt);
-            if (desc || amt > 0) {
-                payload.items.push({
-                    itemDescription: desc || 'SEDI',
-                    particulars: part,
-                    rate: rate,
-                    quantity: wt,
-                    amount: amt
-                });
-            }
-        }
-    });
-
-    if (payload.items.length === 0) {
-        payload.items.push({
-            itemDescription: 'SEDI',
-            particulars: '',
-            rate: 75.0,
-            quantity: 308.0,
-            amount: 23100.0
-        });
-        payload.grossAmount = 23100.0;
-        payload.netPayable = 23100.0;
-    }
 
     try {
         const isEdit = (currentPobPurchaseIndex >= 0 && currentPobPurchases[currentPobPurchaseIndex]);
@@ -12394,18 +12732,43 @@ async function savePurchaseOpeningBalanceData() {
             body: JSON.stringify(payload)
         });
 
+        // Also record to /api/purchase-opening-balances
+        try {
+            await fetch('/api/purchase-opening-balances', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    openingNo: billNo,
+                    openingDate: billDate,
+                    traderAccount: payload.traderAccount,
+                    grossAmount: gross,
+                    advance: advVal,
+                    netPayable: net,
+                    narration: 'Purchase Opening Balance #' + billNo
+                })
+            });
+        } catch(oe) {
+            console.warn('Opening balance record warning:', oe);
+        }
+
         if (res.ok) {
             showToast("Purchase Opening Balance saved successfully!");
+            setPobEditMode(false);
             await loadPurchases();
             currentPobPurchases = purchases;
             const newIdx = currentPobPurchases.findIndex(p => String(p.purchaseNo) === billNo);
             displayPobBill(newIdx !== -1 ? newIdx : currentPobPurchases.length - 1);
+            refreshOpenPurchaseRegistersSilently();
         } else {
             showToast("Opening balance updated locally");
+            setPobEditMode(false);
+            refreshOpenPurchaseRegistersSilently();
         }
     } catch(e) {
         console.error("Save POB error:", e);
         showToast("Opening balance saved locally (Offline)");
+        setPobEditMode(false);
+        refreshOpenPurchaseRegistersSilently();
     }
 }
 
@@ -12420,6 +12783,7 @@ async function deletePurchaseOpeningBalanceUI() {
     currentPobPurchases = purchases;
     if (currentPobPurchases.length > 0) displayPobBill(currentPobPurchases.length - 1);
     else clearPobFields();
+    refreshOpenPurchaseRegistersSilently();
 }
 
 function printPobInvoice() {
@@ -12438,6 +12802,7 @@ function openPpFromPob() {
     closeWin('purchaseOpeningBalance');
     openWin('purchasePayment', currentPobPurchaseIndex >= 0 && currentPobPurchases[currentPobPurchaseIndex] ? currentPobPurchases[currentPobPurchaseIndex].id : null);
 }
+
 
 // ================= 42. PURCHASE PAYMENT REGISTER (FOXPRO LAYOUT) =================
 let selectedPurchasePaymentRegIndex = 0;
