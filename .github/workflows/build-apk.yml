@@ -12,6 +12,7 @@ on:
       - 'seed_data.js'
       - 'modal_logic.js'
       - 'data/**'
+      - 'version.json'
   workflow_dispatch:
 
 permissions:
@@ -46,6 +47,7 @@ jobs:
           cp gh_pages_adapter.js android/app/src/main/assets/www/gh_pages_adapter.js
           cp seed_data.js android/app/src/main/assets/www/seed_data.js
           cp modal_logic.js android/app/src/main/assets/www/modal_logic.js
+          cp version.json android/app/src/main/assets/www/version.json || true
           echo "Assets bundled into APK:"
           ls -la android/app/src/main/assets/www/
 
@@ -79,7 +81,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: v1.0.0-tablet
-          name: "📱 KANIMC Tablet APK v1.0.0"
+          name: "📱 KANIMC Tablet APK (v1.0.1 Latest)"
           body: |
             ## 📱 KANIMC Tablet Application (Android APK)
             

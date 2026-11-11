@@ -265,6 +265,7 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="dropdown-item" onclick="openWin('accountUpdation');event.stopPropagation()">Updation</div>
 <div class="dropdown-item" onclick="openWin('accountMapping');event.stopPropagation()">Account Mapping</div>
 <div class="dropdown-item" onclick="openWin('accountPeriod');event.stopPropagation()">Account Period</div>
+<div class="dropdown-item" onclick="checkAppUpdateOnline();event.stopPropagation()" style="border-top:1px solid #ccc; font-weight:bold; color:#0055aa;">🔄 Check for Updates</div>
 </div>
 </div>
 
@@ -289,7 +290,8 @@ input:focus, select:focus { background: #ffff00; outline: none; }
             🟢 Single DB: Connected | Auto-Sync ON
         </span>
     </div>
-    <div style="display:flex; align-items:center; gap:12px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span onclick="checkAppUpdateOnline()" style="color:#0078d7; cursor:pointer; font-size:11px; font-weight:bold; padding:2px 7px; background:#e8f0fe; border-radius:3px; border:1px solid #c2d7ff;" title="Check for APK updates">🔄 Update</span>
         <span onclick="openMultiDeviceModal()" style="color:#0055aa; text-decoration:underline; cursor:pointer; font-weight:bold;" title="Connect other devices on Wi-Fi or Internet">📱 Connect Devices</span>
         <div id="userInfo">ADMIN | 2023 - 2024</div>
     </div>
@@ -12508,6 +12510,27 @@ async function loadPurchasePendingRegister() {
         document.getElementById('ppndTotBal').innerText = totBal.toFixed(2);
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#c00;">Error loading pending register</td></tr>';
+    }
+}
+
+// ================= ONLINE APK AUTO-UPDATE =================
+function checkAppUpdateOnline() {
+    if (window.AndroidTablet && typeof window.AndroidTablet.checkForUpdates === 'function') {
+        window.AndroidTablet.checkForUpdates(false);
+    } else {
+        fetch('https://raw.githubusercontent.com/Nivash005/KANIMC-WEB-APP/main/version.json?t=' + Date.now())
+            .then(res => res.json())
+            .then(v => {
+                const msg = `KANIMC Tablet Online Update\n\nLatest Version: v${v.versionName || '1.0.1'} (Build ${v.versionCode || 2})\nPublished: ${v.publishDate || ''}\n\nWhat's New:\n${v.releaseNotes || 'Bug fixes and performance improvements'}\n\nDownload the new APK now?`;
+                if (confirm(msg)) {
+                    window.open(v.apkUrl || 'https://github.com/Nivash005/KANIMC-WEB-APP/releases', '_blank');
+                }
+            })
+            .catch(() => {
+                if (confirm("Could not check update online. Open GitHub Releases page?")) {
+                    window.open('https://github.com/Nivash005/KANIMC-WEB-APP/releases', '_blank');
+                }
+            });
     }
 }
 

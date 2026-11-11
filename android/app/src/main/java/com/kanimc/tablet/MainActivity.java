@@ -2,43 +2,58 @@ package com.kanimc.tablet;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.View;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
-import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "KANIMC_Tablet";
+    private static final String VERSION_CHECK_URL = "https://raw.githubusercontent.com/Nivash005/KANIMC-WEB-APP/main/version.json";
+    private static final String FALLBACK_APK_URL = "https://github.com/Nivash005/KANIMC-WEB-APP/releases/download/v1.0.0-tablet/kanimc-tablet.apk";
+
     private WebView webView;
+    private File pendingInstallApk = null;
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override
@@ -158,6 +173,241 @@ public class MainActivity extends AppCompatActivity {
 
         // Load offline-first local bundle
         webView.loadUrl("file:///android_asset/www/index.html");
+
+        // Perform silent background update check after 3 seconds
+        new Handler(Looper.getMainLooper()).postDelayed(() -> checkOnlineUpdate(true), 3500);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pendingInstallApk != null && pendingInstallApk.exists()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (getPackageManager().canRequestPackageInstalls()) {
+                    File apk = pendingInstallApk;
+                    pendingInstallApk = null;
+                    launchInstallIntent(apk);
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // ================= ONLINE APK AUTO-UPDATE SYSTEM =========================
+    // =========================================================================
+
+    public void checkOnlineUpdate(final boolean silent) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                int localCode = getAppVersionCode();
+                String localName = getAppVersionName();
+
+                HttpURLConnection conn = getRedirectedConnection(VERSION_CHECK_URL);
+                if (conn.getResponseCode() != 200) {
+                    if (!silent) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Could not check for updates (server unreachable)", Toast.LENGTH_SHORT).show());
+                    }
+                    return;
+                }
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                reader.close();
+                conn.disconnect();
+
+                JSONObject json = new JSONObject(sb.toString());
+                int remoteCode = json.optInt("versionCode", 1);
+                final String remoteName = json.optString("versionName", "1.0.0");
+                final String apkUrl = json.optString("apkUrl", FALLBACK_APK_URL);
+                final String notes = json.optString("releaseNotes", "New performance enhancements and bug fixes.");
+
+                if (remoteCode > localCode) {
+                    // Update available! Show Dialog
+                    runOnUiThread(() -> {
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle("Update Available (v" + remoteName + ")")
+                                .setMessage("A new version of KANIMC Tablet is available!\n\n"
+                                        + "What's New:\n" + notes + "\n\n"
+                                        + "Current: v" + localName + "  ➜  Latest: v" + remoteName)
+                                .setPositiveButton("Update Now", (dialog, which) -> downloadAndInstallApk(apkUrl, remoteName))
+                                .setNegativeButton("Later", null)
+                                .setCancelable(false)
+                                .create()
+                                .show();
+                    });
+                } else {
+                    if (!silent) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "You are using the latest version (v" + localName + ")", Toast.LENGTH_SHORT).show());
+                    }
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Update check failed", e);
+                if (!silent) {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Update check failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
+    }
+
+    public void downloadAndInstallApk(final String apkUrl, final String versionName) {
+        final ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Downloading KANIMC Update (v" + versionName + ")");
+        progressDialog.setMessage("Please wait while the update is downloading...");
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog.setMax(100);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            File outputFile = null;
+            try {
+                HttpURLConnection conn = getRedirectedConnection(apkUrl);
+                int fileLength = conn.getContentLength();
+
+                File cacheDir = getExternalCacheDir() != null ? getExternalCacheDir() : getCacheDir();
+                outputFile = new File(cacheDir, "kanimc-tablet-update.apk");
+                if (outputFile.exists()) outputFile.delete();
+
+                InputStream input = conn.getInputStream();
+                FileOutputStream output = new FileOutputStream(outputFile);
+
+                byte[] buffer = new byte[8192];
+                long total = 0;
+                int count;
+                int lastPercent = 0;
+
+                while ((count = input.read(buffer)) != -1) {
+                    total += count;
+                    output.write(buffer, 0, count);
+                    if (fileLength > 0) {
+                        int percent = (int) (total * 100 / fileLength);
+                        if (percent != lastPercent) {
+                            lastPercent = percent;
+                            final int current = percent;
+                            runOnUiThread(() -> progressDialog.setProgress(current));
+                        }
+                    }
+                }
+
+                output.flush();
+                output.close();
+                input.close();
+                conn.disconnect();
+
+                final File finalFile = outputFile;
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    installApk(finalFile);
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Download APK failed", e);
+                final String err = e.getMessage();
+                runOnUiThread(() -> {
+                    progressDialog.dismiss();
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Update Download Failed")
+                            .setMessage("Error downloading update: " + err + "\n\nYou can also download directly from GitHub Releases.")
+                            .setPositiveButton("Open Browser", (d, w) -> {
+                                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(FALLBACK_APK_URL));
+                                startActivity(intent);
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                });
+            }
+        });
+    }
+
+    private void installApk(File apkFile) {
+        if (apkFile == null || !apkFile.exists()) {
+            Toast.makeText(this, "Update package not found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // On Android 8.0+ (Oreo), verify unknown sources install permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!getPackageManager().canRequestPackageInstalls()) {
+                pendingInstallApk = apkFile;
+                new AlertDialog.Builder(this)
+                        .setTitle("Permission Needed")
+                        .setMessage("To install the update, please enable 'Allow from this source' for KANIMC Tablet.")
+                        .setPositiveButton("Settings", (dialog, which) -> {
+                            Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                            settingsIntent.setData(Uri.parse("package:" + getPackageName()));
+                            startActivity(settingsIntent);
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .setCancelable(false)
+                        .show();
+                return;
+            }
+        }
+
+        launchInstallIntent(apkFile);
+    }
+
+    private void launchInstallIntent(File apkFile) {
+        try {
+            Uri apkUri;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);
+            } else {
+                apkUri = Uri.fromFile(apkFile);
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Launch install failed", e);
+            Toast.makeText(this, "Could not start installer: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private HttpURLConnection getRedirectedConnection(String urlStr) throws Exception {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setInstanceFollowRedirects(true);
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(20000);
+        conn.setRequestProperty("User-Agent", "KANIMC-Tablet-App");
+        int status = conn.getResponseCode();
+        if (status == HttpURLConnection.HTTP_MOVED_TEMP || status == HttpURLConnection.HTTP_MOVED_PERM || status == HttpURLConnection.HTTP_SEE_OTHER) {
+            String newUrl = conn.getHeaderField("Location");
+            conn.disconnect();
+            return getRedirectedConnection(newUrl);
+        }
+        return conn;
+    }
+
+    private int getAppVersionCode() {
+        try {
+            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return (int) pInfo.getLongVersionCode();
+            } else {
+                return pInfo.versionCode;
+            }
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+
+    private String getAppVersionName() {
+        try {
+            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return pInfo.versionName != null ? pInfo.versionName : "1.0.0";
+        } catch (Exception e) {
+            return "1.0.0";
+        }
     }
 
     @Override
@@ -191,6 +441,26 @@ public class MainActivity extends AppCompatActivity {
 
         public TabletAppBridge(Context context) {
             this.context = context;
+        }
+
+        @JavascriptInterface
+        public void checkForUpdates(final boolean silent) {
+            runOnUiThread(() -> checkOnlineUpdate(silent));
+        }
+
+        @JavascriptInterface
+        public void triggerUpdate(final String url, final String versionName) {
+            runOnUiThread(() -> downloadAndInstallApk(url != null ? url : FALLBACK_APK_URL, versionName != null ? versionName : "Latest"));
+        }
+
+        @JavascriptInterface
+        public String getAppVersion() {
+            return getAppVersionName() + " (Build " + getAppVersionCode() + ")";
+        }
+
+        @JavascriptInterface
+        public boolean isTabletApp() {
+            return true;
         }
 
         @JavascriptInterface
