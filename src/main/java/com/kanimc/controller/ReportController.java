@@ -1145,8 +1145,12 @@ public class ReportController {
     public List<Map<String, Object>> getPurchaseRegister(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long accountId) {
+            @RequestParam(required = false) Long accountId,
+            @RequestParam(required = false) Boolean pendingOnly) {
         List<com.kanimc.entity.Purchase> list = purchaseRepository.findFiltered(startDate, endDate, accountId);
+        if (Boolean.TRUE.equals(pendingOnly)) {
+            list = list.stream().filter(p -> !Boolean.TRUE.equals(p.getPaid())).collect(Collectors.toList());
+        }
         return list.stream().map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
@@ -1155,12 +1159,15 @@ public class ReportController {
             map.put("traderName", p.getTraderAccount() != null ? p.getTraderAccount().getAccountName() : "Unknown");
             map.put("traderAccount", p.getTraderAccount());
             map.put("grossAmount", p.getGrossAmount() != null ? p.getGrossAmount() : BigDecimal.ZERO);
+            map.put("advance", p.getAdvance() != null ? p.getAdvance() : BigDecimal.ZERO);
             map.put("freight", p.getFreightCharges() != null ? p.getFreightCharges() : BigDecimal.ZERO);
             map.put("packing", p.getPackingCharges() != null ? p.getPackingCharges() : BigDecimal.ZERO);
             map.put("other", p.getOtherCharges() != null ? p.getOtherCharges() : BigDecimal.ZERO);
             map.put("discount", p.getDiscount() != null ? p.getDiscount() : BigDecimal.ZERO);
             map.put("netPayable", p.getNetPayable() != null ? p.getNetPayable() : BigDecimal.ZERO);
             map.put("paid", Boolean.TRUE.equals(p.getPaid()));
+            map.put("paidOn", p.getPayDate() != null ? p.getPayDate().toString() : "");
+            map.put("paidTo", p.getPaidTo() != null ? p.getPaidTo() : "");
             
             BigDecimal weight = BigDecimal.ZERO;
             BigDecimal bags = BigDecimal.ZERO;

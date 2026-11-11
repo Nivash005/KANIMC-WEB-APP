@@ -2855,56 +2855,83 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 <!-- ================= 41. PURCHASE REGISTER ================= -->
 <div class="modal-overlay" id="purchaseRegister">
-<div class="modal" style="width:1000px; background:#ffffe1; border:2px solid #555;">
-<div class="modal-title">Purchase Register<span onclick="closeAll()">✖</span></div>
-<div style="padding:10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+<div class="modal" style="width:1080px; max-width:98vw; background:#f0ece9; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
+<div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#f0ece9,#dcd8d4); border-bottom:1px solid #9c9c9c; font-weight:bold; font-size:13px; padding:4px 8px; color:#000;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span style="display:inline-block; width:14px; height:14px; background:linear-gradient(45deg, #0055aa, #ffff00, #ff0000); border:1px solid #333;"></span>
+        <span>Purchase Register</span>
+    </div>
+    <div style="display:flex; gap:3px;">
+        <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">_</button>
+        <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">□</button>
+        <button type="button" onclick="closeAll()" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
+    </div>
+</div>
+<div style="padding:8px 10px 6px 10px;">
+    <!-- Top Filter Bar matching FoxPro Image -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
         <div style="display:flex; gap:8px; align-items:center;">
-            <label>From</label> <input type="date" id="prFromDate" style="width:120px;">
-            <label>To</label> <input type="date" id="prToDate" style="width:120px;">
-            <label>Trader</label>
-            <input id="prAccountName" list="accountNamesList" placeholder="All Traders" style="width:180px;">
-            <input type="hidden" id="prAccountId">
+            <label style="font-weight:bold;">From</label> 
+            <div style="display:flex; align-items:center;">
+                <input type="date" id="prFromDate" style="width:115px; padding:2px 4px; border:1px solid #777; font-size:12px; background:#ccffff; color:#0055aa; font-weight:bold;">
+                <button type="button" style="padding:0 4px; height:22px; border:1px solid #777; border-left:none; background:#e0dedb; cursor:pointer;" onclick="document.getElementById('prFromDate').showPicker?.()">▾</button>
+            </div>
+            
+            <label style="font-weight:bold; margin-left:4px;">To</label> 
+            <div style="display:flex; align-items:center;">
+                <input type="date" id="prToDate" style="width:115px; padding:2px 4px; border:1px solid #777; font-size:12px; background:#fff; font-weight:bold;">
+                <button type="button" style="padding:0 4px; height:22px; border:1px solid #777; border-left:none; background:#e0dedb; cursor:pointer;" onclick="document.getElementById('prToDate').showPicker?.()">▾</button>
+            </div>
+            
+            <label style="display:flex; align-items:center; gap:5px; font-weight:bold; cursor:pointer; margin-left:8px; user-select:none;">
+                <input type="checkbox" id="prShowPendingOnly" style="cursor:pointer;" onchange="loadPurchaseRegister()">
+                <span>Show Pending Details Only</span>
+            </label>
         </div>
-        <div style="display:flex; gap:4px;">
-            <button style="padding:2px 10px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', true)">Print</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', false)">View</button>
-            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchaseRegister', 'Purchase Register')">Excel</button>
-            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        
+        <div style="display:flex; gap:3px;">
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchaseRegisterReport(true)"><u>P</u>rint</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchaseRegisterReport(false)"><u>V</u>iew</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="exportPurchaseRegisterExcel()"><u>E</u>xcel</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:55px;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
-    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
-        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+
+    <!-- Table Grid matching FoxPro Image (Exact Column Widths & Layout) -->
+    <div id="purchaseRegisterTableContainer" style="border:1px solid #777; background:#fff; height:430px; overflow-y:scroll; overflow-x:auto;">
+        <table id="purchaseRegisterTable" style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
             <thead>
-                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
-                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
-                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pur No</th>
-                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
-                    <th style="width:60px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Bags</th>
-                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Weight</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Gross</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Freight</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Pack/Oth</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Discount</th>
-                    <th style="width:100px; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Net Payable</th>
+                <tr style="font-weight:bold; background:#e0dedb; position:sticky; top:0; z-index:2; height:24px; border-bottom:1px solid #888;">
+                    <th style="width:45px; border-right:1px solid #ccc; text-align:center; padding:2px;">Sno</th>
+                    <th style="width:85px; border-right:1px solid #ccc; text-align:center; padding:2px;">Date</th>
+                    <th style="width:55px; border-right:1px solid #ccc; text-align:center; padding:2px;">No</th>
+                    <th style="width:230px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Name</th>
+                    <th style="width:90px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Qty</th>
+                    <th style="width:100px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Amount</th>
+                    <th style="width:95px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Advance</th>
+                    <th style="width:100px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Total</th>
+                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Paid On</th>
+                    <th style="width:110px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Paid to</th>
                 </tr>
             </thead>
             <tbody id="purchaseRegisterBody"></tbody>
-            <tfoot>
-                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
-                    <td colspan="4" style="text-align:right; padding:4px; border-top:2px solid #555;">Totals:</td>
-                    <td id="prTotBags" style="text-align:right; padding:4px; border-top:2px solid #555;">0</td>
-                    <td id="prTotWeight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotGross" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotFreight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotPack" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotDisc" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotNet" style="text-align:right; padding:4px; border-top:2px solid #555; color:#0055aa;">0.00</td>
-                </tr>
-            </tfoot>
         </table>
+    </div>
+
+    <!-- Bottom Totals Area Aligned under Qty, Amount, Advance, Total columns matching FoxPro Image -->
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px 2px 4px;">
+        <div style="flex:1;"></div>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="prSumQty" readonly style="width:90px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+            <input type="text" id="prSumAmount" readonly style="width:100px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+            <input type="text" id="prSumAdvance" readonly style="width:95px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+            <input type="text" id="prSumTotal" readonly style="width:100px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+        </div>
+        <div style="width:200px; display:flex; justify-content:flex-end; align-items:center;">
+            <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
+        </div>
     </div>
 </div>
 </div>
@@ -5155,6 +5182,8 @@ function openWin(id, targetParam){
             onOpenCashPayment();
         } else if(id === 'receipt' && typeof onOpenReceipt === 'function') {
             onOpenReceipt();
+        } else if(id === 'purchaseRegister') {
+            loadPurchaseRegister();
         } else if(id === 'purchase') {
             if (typeof initPurchaseWindow === 'function') initPurchaseWindow();
         } else if(id === 'purchasePayment') {
@@ -5855,6 +5884,10 @@ async function checkSyncStatus(force = false) {
 
 function refreshOpenRegistersSilently() {
     try {
+        const purReg = document.getElementById('purchaseRegister');
+        if (purReg && purReg.style.display !== 'none' && typeof loadPurchaseRegister === 'function') {
+            loadPurchaseRegister();
+        }
         const chittaReg = document.getElementById('chittaRegister');
         if (chittaReg && chittaReg.style.display !== 'none' && typeof loadChittaRegister === 'function') {
             loadChittaRegister();
@@ -10068,6 +10101,205 @@ async function loadItemSummary() {
             showToast("Item Summary Loaded");
         }
     } catch(e) { console.error('loadItemSummary error:', e); }
+}
+
+
+// =========================================================================
+// ================= PURCHASE REGISTER LOGIC (VFP9 EXACT) ==================
+// =========================================================================
+let selectedPurchaseRegIndex = 0;
+
+async function loadPurchaseRegister() {
+    try {
+        const fromInput = document.getElementById('prFromDate');
+        const toInput = document.getElementById('prToDate');
+        const pendingCheckbox = document.getElementById('prShowPendingOnly');
+        const today = getTodayDateStr();
+
+        if (fromInput && !fromInput.value) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
+                fromInput.value = currentFinancialPeriod.startDate;
+            } else {
+                fromInput.value = today;
+            }
+        }
+        if (toInput && !toInput.value) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.endDate) {
+                toInput.value = currentFinancialPeriod.endDate;
+            } else {
+                toInput.value = today;
+            }
+        }
+
+        const tbody = document.getElementById('purchaseRegisterBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading Purchase records...</td></tr>';
+        }
+
+        let url = '/api/reports/purchase-register?';
+        const fromDate = fromInput?.value;
+        const toDate = toInput?.value;
+        const pendingOnly = pendingCheckbox ? pendingCheckbox.checked : false;
+
+        if (fromDate) url += 'startDate=' + encodeURIComponent(fromDate) + '&';
+        if (toDate) url += 'endDate=' + encodeURIComponent(toDate) + '&';
+        if (pendingOnly) url += 'pendingOnly=true&';
+
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let sumQty = 0;
+            let sumAmount = 0;
+            let sumAdvance = 0;
+            let sumTotal = 0;
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#888;">No Purchase records found</td></tr>';
+            } else {
+                data.sort((a, b) => {
+                    const da = String(a.purchaseDate || '').substring(0, 10);
+                    const db = String(b.purchaseDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.purchaseNo, 10) || 0) - (parseInt(b.purchaseNo, 10) || 0);
+                });
+
+                data.forEach((r, idx) => {
+                    const q = parseFloat(r.weight || r.quantity) || 0;
+                    const amt = parseFloat(r.grossAmount) || 0;
+                    const adv = parseFloat(r.advance) || 0;
+                    const tot = parseFloat(r.netPayable) || (amt - adv);
+
+                    sumQty += q;
+                    sumAmount += amt;
+                    sumAdvance += adv;
+                    sumTotal += tot;
+
+                    let dtShort = '';
+                    if (r.purchaseDate) {
+                        const parts = String(r.purchaseDate).substring(0, 10).split('-');
+                        dtShort = parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : r.purchaseDate;
+                    }
+
+                    let paidOnShort = '';
+                    if (r.paidOn) {
+                        const pparts = String(r.paidOn).substring(0, 10).split('-');
+                        paidOnShort = pparts.length === 3 ? pparts[2] + '/' + pparts[1] + '/' + pparts[0] : r.paidOn;
+                    }
+
+                    const purNo = r.purchaseNo || String(r.id || '');
+                    const traderName = r.traderName || (r.traderAccount ? r.traderAccount.accountName : '');
+                    const paidTo = r.paidTo || '';
+
+                    const tr = document.createElement('tr');
+                    tr.id = 'prRow_' + idx;
+                    tr.style.cursor = 'pointer';
+                    tr.style.height = '20px';
+                    // Active row 0 highlighted in cyan (#00ffff), matching FoxPro image
+                    if (idx === 0) {
+                        tr.style.backgroundColor = '#00ffff';
+                    } else {
+                        tr.style.backgroundColor = '#ffffff';
+                    }
+
+                    tr.title = 'Click to select / Double click to open Purchase #' + purNo;
+                    tr.onclick = function() { selectPurchaseRegRow(idx); };
+                    tr.ondblclick = function() { openPurchaseFromRegister(purNo, r.id); };
+
+                    tr.innerHTML = `
+                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${dtShort}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" title="Click to open Purchase #${purNo}" onclick="openPurchaseFromRegister('${purNo}', '${r.id}'); event.stopPropagation();">${purNo}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${traderName}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${q > 0 ? q.toFixed(3) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px; font-weight:bold;">${tot > 0 ? tot.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${paidOnShort}</td>
+                        <td style="border-bottom:1px solid #ccc; padding:2px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${paidTo}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Pad with empty rows to fill grid height down to bottom like FoxPro
+            const currentRows = data ? data.length : 0;
+            const padCount = Math.max(0, 18 - currentRows);
+            for (let p = 0; p < padCount; p++) {
+                const tr = document.createElement('tr');
+                tr.style.height = '20px';
+                tr.innerHTML = `
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-bottom:1px solid #ccc;"></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // Populate bottom 4 boxes
+            const elQty = document.getElementById('prSumQty');
+            const elAmt = document.getElementById('prSumAmount');
+            const elAdv = document.getElementById('prSumAdvance');
+            const elTot = document.getElementById('prSumTotal');
+
+            if (elQty) elQty.value = sumQty > 0 ? sumQty.toFixed(3) : '';
+            if (elAmt) elAmt.value = sumAmount > 0 ? sumAmount.toFixed(2) : '';
+            if (elAdv) elAdv.value = sumAdvance > 0 ? sumAdvance.toFixed(2) : '';
+            if (elTot) elTot.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
+
+            showToast("Purchase Register Loaded");
+        }
+    } catch(e) {
+        console.error('loadPurchaseRegister error:', e);
+    }
+}
+
+function selectPurchaseRegRow(idx) {
+    selectedPurchaseRegIndex = idx;
+    const rows = document.querySelectorAll('#purchaseRegisterBody tr');
+    rows.forEach((r, i) => {
+        if (i === idx) {
+            r.style.backgroundColor = '#00ffff';
+        } else {
+            r.style.backgroundColor = '#ffffff';
+        }
+    });
+}
+
+async function openPurchaseFromRegister(purchaseNo, purchaseId) {
+    try {
+        openWin('purchase');
+        if (typeof purchases === 'undefined' || !purchases || purchases.length === 0) {
+            if (typeof fetchPurchases === 'function') await fetchPurchases();
+        }
+        if (typeof purchases !== 'undefined' && purchases && purchases.length > 0) {
+            let idx = -1;
+            if (purchaseId) idx = purchases.findIndex(p => String(p.id) === String(purchaseId));
+            if (idx < 0 && purchaseNo) idx = purchases.findIndex(p => String(p.purchaseNo) === String(purchaseNo));
+            if (idx >= 0) {
+                displayPurchase(idx);
+            }
+        }
+    } catch(e) {
+        console.error('openPurchaseFromRegister error:', e);
+    }
+}
+
+function printPurchaseRegisterReport(autoPrint = false) {
+    printRegisterTable('purchaseRegister', 'Purchase Register', autoPrint);
+}
+
+function exportPurchaseRegisterExcel() {
+    exportRegisterToExcel('purchaseRegister', 'Purchase Register');
 }
 
 async function loadCommissionRegister() {

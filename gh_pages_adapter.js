@@ -1023,31 +1023,36 @@
                 const sDate = search.get('startDate');
                 const eDate = search.get('endDate');
                 const accId = search.get('accountId');
+                const pendingOnly = search.get('pendingOnly') === 'true';
                 const list = (db.purchases || []).filter(p => {
                     const dt = (p.purchaseDate || '').substring(0, 10);
                     if (sDate && dt < sDate) return false;
                     if (eDate && dt > eDate) return false;
                     if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
+                    if (pendingOnly && (p.paid || (p.paidAmount && p.paidAmount >= p.netPayable))) return false;
                     return true;
                 }).map(p => {
                     let weight = 0, bags = 0;
                     (p.items || []).forEach(it => {
-                        weight += parseFloat(it.quantity) || 0;
+                        weight += parseFloat(it.quantity || it.weight) || 0;
                         bags += parseFloat(it.bags) || 0;
                     });
                     return {
                         id: p.id,
                         purchaseNo: p.purchaseNo,
                         purchaseDate: p.purchaseDate,
-                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : (p.traderName || 'Unknown'),
                         traderAccount: p.traderAccount,
                         grossAmount: p.grossAmount || 0,
+                        advance: p.advance || 0,
                         freight: p.freightCharges || 0,
                         packing: p.packingCharges || 0,
                         other: p.otherCharges || 0,
                         discount: p.discount || 0,
                         netPayable: p.netPayable || 0,
                         paid: Boolean(p.paid),
+                        paidOn: p.payDate || p.paidOn || '',
+                        paidTo: p.paidTo || '',
                         weight: weight,
                         bags: bags,
                         items: p.items || []
