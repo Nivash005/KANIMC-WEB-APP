@@ -34,7 +34,24 @@
     }
 })();
 </script>
-<script src="gh_pages_adapter.js?v=20261110_2"></script>
+<script src="seed_data.js"></script>
+<script>
+if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && Array.isArray(window.INITIAL_SEED_DATABASE.accounts)) {
+    window.accounts = window.INITIAL_SEED_DATABASE.accounts;
+}
+function getGlobalAccountsList() {
+    if (typeof accounts !== 'undefined' && Array.isArray(accounts) && accounts.length > 0) {
+        return accounts;
+    }
+    if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && Array.isArray(window.INITIAL_SEED_DATABASE.accounts)) {
+        window.accounts = window.INITIAL_SEED_DATABASE.accounts;
+        if (typeof populateAccountDatalists === 'function') populateAccountDatalists(window.accounts);
+        return window.accounts;
+    }
+    return [];
+}
+</script>
+<script src="gh_pages_adapter.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -248,6 +265,7 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="dropdown-item" onclick="openWin('accountUpdation');event.stopPropagation()">Updation</div>
 <div class="dropdown-item" onclick="openWin('accountMapping');event.stopPropagation()">Account Mapping</div>
 <div class="dropdown-item" onclick="openWin('accountPeriod');event.stopPropagation()">Account Period</div>
+<div class="dropdown-item" onclick="checkAppUpdateOnline();event.stopPropagation()" style="border-top:1px solid #ccc; font-weight:bold; color:#0055aa;">🔄 Check for Updates</div>
 </div>
 </div>
 
@@ -263,6 +281,9 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="tool" onclick="openWin('chittaRegister');event.stopPropagation()"><div class="tool-icon">📑</div>Chitta Register</div>
 <div class="tool" onclick="openWin('chittaPaymentRegister');event.stopPropagation()"><div class="tool-icon">🧾</div>Chitta Payment Register</div>
 <div class="tool" onclick="openWin('chittaPendingRegister');event.stopPropagation()"><div class="tool-icon">⏳</div>Chitta Pending Register</div>
+<div class="tool" onclick="openWin('purchaseRegister');event.stopPropagation()"><div class="tool-icon">🛒</div>Purchase Register</div>
+<div class="tool" onclick="openWin('itemRegister');event.stopPropagation()"><div class="tool-icon">📊</div>Item Register</div>
+<div class="tool" onclick="openWin('itemSummaryReport');event.stopPropagation()"><div class="tool-icon">📦</div>Item Summary</div>
 </div>
 <div class="workspace" style="position:relative;"></div>
 <div class="status-bar">
@@ -272,7 +293,8 @@ input:focus, select:focus { background: #ffff00; outline: none; }
             🟢 Single DB: Connected | Auto-Sync ON
         </span>
     </div>
-    <div style="display:flex; align-items:center; gap:12px;">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span onclick="checkAppUpdateOnline()" style="color:#0078d7; cursor:pointer; font-size:11px; font-weight:bold; padding:2px 7px; background:#e8f0fe; border-radius:3px; border:1px solid #c2d7ff;" title="Check for APK updates">🔄 Update</span>
         <span onclick="openMultiDeviceModal()" style="color:#0055aa; text-decoration:underline; cursor:pointer; font-weight:bold;" title="Connect other devices on Wi-Fi or Internet">📱 Connect Devices</span>
         <div id="userInfo">ADMIN | 2023 - 2024</div>
     </div>
@@ -324,12 +346,12 @@ input:focus, select:focus { background: #ffff00; outline: none; }
         
         <label>Code</label>
         <div style="display:flex; gap:10px;">
-            <div style="display:flex; flex:1;"><input id="accPartyId" maxlength="4" value="2494" style="text-transform:uppercase; flex:1;"><button style="width:20px; padding:0;">v</button></div>
+            <div style="display:flex; flex:1;"><input id="accPartyId" maxlength="4" style="text-transform:uppercase; flex:1;" oninput="lookupAccountMasterByCode()" onchange="lookupAccountMasterByCode()"><button style="width:20px; padding:0;" onclick="findAccount(); event.stopPropagation();">v</button></div>
             <label style="width:auto; white-space:nowrap;">Salutation</label>
             <div style="display:flex; width:60px;"><input><button style="width:20px; padding:0;">v</button></div>
         </div>
         
-        <label>Name</label><input id="accName" value="BALAKUMARAN">
+        <label>Name</label><input id="accName" list="accountNamesList" oninput="lookupAccountMasterByName()" onchange="lookupAccountMasterByName()">
         
         <label>Address</label><input id="accAddress">
         <label></label><input>
@@ -1969,11 +1991,11 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 
     <div style="border:1px solid #ccc; background:#fff; padding:12px; border-radius:4px;">
-        <div style="font-weight:bold; color:#222; margin-bottom:6px;">Option 1: Connect via Local Wi-Fi / LAN (Fastest & Zero Lag)</div>
-        <div style="color:#555; margin-bottom:8px;">Open this address in any phone or laptop browser on the same Wi-Fi router:</div>
+        <div style="font-weight:bold; color:#222; margin-bottom:6px;">Desktop Server Wi-Fi Address (Sync with PC)</div>
+        <div style="color:#555; margin-bottom:8px;">Enter your desktop PC's IP address to sync over Wi-Fi (leave blank for pure Offline Mode):</div>
         <div style="display:flex; gap:8px; align-items:center;">
-            <input type="text" id="wifiServerUrl" readonly value="http://192.168.1.7:8080/" style="font-size:14px; font-weight:bold; color:#0055aa; padding:6px; flex:1; background:#f9f9f9; border:1px solid #ccc;">
-            <button type="button" onclick="copyWifiUrl()" style="padding:6px 14px; cursor:pointer;">Copy URL</button>
+            <input type="text" id="wifiServerUrl" placeholder="http://192.168.1.3:8080" value="http://192.168.1.3:8080" style="font-size:14px; font-weight:bold; color:#0055aa; padding:6px; flex:1; background:#fff; border:1px solid #0055aa; border-radius:3px;">
+            <button type="button" onclick="saveTabletServerUrl()" style="padding:6px 14px; cursor:pointer; background:#0055aa; color:#fff; border:none; border-radius:3px; font-weight:bold;">Save & Connect</button>
         </div>
     </div>
 
@@ -2838,56 +2860,83 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 <!-- ================= 41. PURCHASE REGISTER ================= -->
 <div class="modal-overlay" id="purchaseRegister">
-<div class="modal" style="width:1000px; background:#ffffe1; border:2px solid #555;">
-<div class="modal-title">Purchase Register<span onclick="closeAll()">✖</span></div>
-<div style="padding:10px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+<div class="modal" style="width:1080px; max-width:98vw; background:#f0ece9; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
+<div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#f0ece9,#dcd8d4); border-bottom:1px solid #9c9c9c; font-weight:bold; font-size:13px; padding:4px 8px; color:#000;">
+    <div style="display:flex; align-items:center; gap:6px;">
+        <span style="display:inline-block; width:14px; height:14px; background:linear-gradient(45deg, #0055aa, #ffff00, #ff0000); border:1px solid #333;"></span>
+        <span>Purchase Register</span>
+    </div>
+    <div style="display:flex; gap:3px;">
+        <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">_</button>
+        <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">□</button>
+        <button type="button" onclick="closeAll()" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
+    </div>
+</div>
+<div style="padding:8px 10px 6px 10px;">
+    <!-- Top Filter Bar matching FoxPro Image -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
         <div style="display:flex; gap:8px; align-items:center;">
-            <label>From</label> <input type="date" id="prFromDate" style="width:120px;">
-            <label>To</label> <input type="date" id="prToDate" style="width:120px;">
-            <label>Trader</label>
-            <input id="prAccountName" list="accountNamesList" placeholder="All Traders" style="width:180px;">
-            <input type="hidden" id="prAccountId">
+            <label style="font-weight:bold;">From</label> 
+            <div style="display:flex; align-items:center;">
+                <input type="date" id="prFromDate" style="width:115px; padding:2px 4px; border:1px solid #777; font-size:12px; background:#ccffff; color:#0055aa; font-weight:bold;">
+                <button type="button" style="padding:0 4px; height:22px; border:1px solid #777; border-left:none; background:#e0dedb; cursor:pointer;" onclick="document.getElementById('prFromDate').showPicker?.()">▾</button>
+            </div>
+            
+            <label style="font-weight:bold; margin-left:4px;">To</label> 
+            <div style="display:flex; align-items:center;">
+                <input type="date" id="prToDate" style="width:115px; padding:2px 4px; border:1px solid #777; font-size:12px; background:#fff; font-weight:bold;">
+                <button type="button" style="padding:0 4px; height:22px; border:1px solid #777; border-left:none; background:#e0dedb; cursor:pointer;" onclick="document.getElementById('prToDate').showPicker?.()">▾</button>
+            </div>
+            
+            <label style="display:flex; align-items:center; gap:5px; font-weight:bold; cursor:pointer; margin-left:8px; user-select:none;">
+                <input type="checkbox" id="prShowPendingOnly" style="cursor:pointer;" onchange="loadPurchaseRegister()">
+                <span>Show Pending Details Only</span>
+            </label>
         </div>
-        <div style="display:flex; gap:4px;">
-            <button style="padding:2px 10px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', true)">Print</button>
-            <button style="padding:2px 10px;" onclick="printRegisterTable('purchaseRegister', 'Purchase Register', false)">View</button>
-            <button style="padding:2px 10px;" onclick="exportRegisterToExcel('purchaseRegister', 'Purchase Register')">Excel</button>
-            <button onclick="closeAll()" style="padding:2px 10px;"><u>C</u>lose</button>
+        
+        <div style="display:flex; gap:3px;">
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchaseRegisterReport(true)"><u>P</u>rint</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchaseRegisterReport(false)"><u>V</u>iew</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="exportPurchaseRegisterExcel()"><u>E</u>xcel</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:55px;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
+            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
-    <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
-        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+
+    <!-- Table Grid matching FoxPro Image (Exact Column Widths & Layout) -->
+    <div id="purchaseRegisterTableContainer" style="border:1px solid #777; background:#fff; height:430px; overflow-y:scroll; overflow-x:auto;">
+        <table id="purchaseRegisterTable" style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
             <thead>
-                <tr style="font-weight:bold; background:#eee; position:sticky; top:0;">
-                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Sno</th>
-                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Date</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Pur No</th>
-                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:4px;">Trader Name</th>
-                    <th style="width:60px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Bags</th>
-                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Weight</th>
-                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Gross</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Freight</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Pack/Oth</th>
-                    <th style="width:70px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Discount</th>
-                    <th style="width:100px; border-bottom:1px solid #ccc; text-align:right; padding:4px;">Net Payable</th>
+                <tr style="font-weight:bold; background:#e0dedb; position:sticky; top:0; z-index:2; height:24px; border-bottom:1px solid #888;">
+                    <th style="width:45px; border-right:1px solid #ccc; text-align:center; padding:2px;">Sno</th>
+                    <th style="width:85px; border-right:1px solid #ccc; text-align:center; padding:2px;">Date</th>
+                    <th style="width:55px; border-right:1px solid #ccc; text-align:center; padding:2px;">No</th>
+                    <th style="width:230px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Name</th>
+                    <th style="width:90px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Qty</th>
+                    <th style="width:100px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Amount</th>
+                    <th style="width:95px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Advance</th>
+                    <th style="width:100px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Total</th>
+                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Paid On</th>
+                    <th style="width:110px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Paid to</th>
                 </tr>
             </thead>
             <tbody id="purchaseRegisterBody"></tbody>
-            <tfoot>
-                <tr style="font-weight:bold; background:#e6e6e6; position:sticky; bottom:0;">
-                    <td colspan="4" style="text-align:right; padding:4px; border-top:2px solid #555;">Totals:</td>
-                    <td id="prTotBags" style="text-align:right; padding:4px; border-top:2px solid #555;">0</td>
-                    <td id="prTotWeight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotGross" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotFreight" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotPack" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotDisc" style="text-align:right; padding:4px; border-top:2px solid #555;">0.00</td>
-                    <td id="prTotNet" style="text-align:right; padding:4px; border-top:2px solid #555; color:#0055aa;">0.00</td>
-                </tr>
-            </tfoot>
         </table>
+    </div>
+
+    <!-- Bottom Totals Area Aligned under Qty, Amount, Advance, Total columns matching FoxPro Image -->
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px 2px 4px;">
+        <div style="flex:1;"></div>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="prSumQty" readonly style="width:90px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+            <input type="text" id="prSumAmount" readonly style="width:100px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+            <input type="text" id="prSumAdvance" readonly style="width:95px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+            <input type="text" id="prSumTotal" readonly style="width:100px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
+        </div>
+        <div style="width:200px; display:flex; justify-content:flex-end; align-items:center;">
+            <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
+        </div>
     </div>
 </div>
 </div>
@@ -3032,7 +3081,7 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 <iframe id="vfpPrintIframe" style="position:fixed; right:100%; bottom:100%; width:0; height:0; border:0;"></iframe>
 
-<script src="modal_logic.js?v=20261027c"></script>
+<script src="modal_logic.js"></script>
 <script>
 
 // =========================================================================
@@ -4259,7 +4308,7 @@ function onFarmerCodeChange() {
         document.getElementById('farmerAccountId').value = code;
     }
     const q = code.toLowerCase();
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
         (a.partyId && String(a.partyId).toLowerCase() === q) ||
         (String(a.id).toLowerCase() === q) ||
@@ -5074,7 +5123,9 @@ function openWin(id, targetParam){
         if(firstInput) firstInput.focus(); 
         
         // Modal logic dispatch
-        if(id === 'company' && typeof loadCompanyMaster === 'function') {
+        if(id === 'account') {
+            if (typeof loadFirstAccount === 'function') loadFirstAccount();
+        } else if(id === 'company' && typeof loadCompanyMaster === 'function') {
             loadCompanyMaster();
         } else if(id === 'groupList' && typeof loadGroupListTable === 'function') {
             loadGroupListTable();
@@ -5136,6 +5187,8 @@ function openWin(id, targetParam){
             onOpenCashPayment();
         } else if(id === 'receipt' && typeof onOpenReceipt === 'function') {
             onOpenReceipt();
+        } else if(id === 'purchaseRegister') {
+            loadPurchaseRegister();
         } else if(id === 'purchase') {
             if (typeof initPurchaseWindow === 'function') initPurchaseWindow();
         } else if(id === 'purchasePayment') {
@@ -5341,6 +5394,8 @@ function login() {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('app').style.filter = 'none';
     document.getElementById('app').style.pointerEvents = 'auto';
+    if (typeof fetchAccounts === 'function') fetchAccounts(false);
+    if (typeof fetchItems === 'function') fetchItems();
     showToast(`Logged in as ${currentUser}`);
 }
 
@@ -5480,7 +5535,8 @@ async function fetchItems() {
 
 // Call fetchItems when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    fetchItems();
+    if (typeof fetchAccounts === 'function') fetchAccounts(false);
+    if (typeof fetchItems === 'function') fetchItems();
 });
 
 // --- CHITTA LOGIC ---
@@ -5671,6 +5727,28 @@ function closeMultiDeviceModal() {
     if (m) m.style.display = 'none';
 }
 
+
+function saveTabletServerUrl() {
+    let url = (document.getElementById('wifiServerUrl')?.value || '').trim();
+    if (!url) {
+        localStorage.removeItem('KANIMC_SERVER_URL');
+        showToast('Saved: Pure Offline Mode');
+        return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+    }
+    url = url.replace(/\/+$/, '');
+    localStorage.setItem('KANIMC_SERVER_URL', url);
+    showToast('Saved Server: ' + url);
+    if (typeof forceSyncNow === 'function') forceSyncNow();
+}
+window.addEventListener('load', () => {
+    const existing = localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.3:8080';
+    const inp = document.getElementById('wifiServerUrl');
+    if (inp && existing) inp.value = existing;
+});
+
 function copyWifiUrl() {
     const url = document.getElementById('wifiServerUrl')?.value;
     if (url && navigator.clipboard) {
@@ -5776,15 +5854,8 @@ async function checkSyncStatus(force = false) {
             window.processOfflineSyncQueue();
         }
 
-        if (!force && lastSyncVersion === null) {
-            lastSyncVersion = status.version;
-            lastSyncChittaCount = status.chittaCount;
-            lastSyncPaidCount = status.paidCount;
-            lastSyncAccountCount = status.accountCount;
-            return;
-        }
-
-        const changed = force ||
+        const isFirstSync = (lastSyncVersion === null);
+        const changed = force || isFirstSync ||
                         (status.version !== lastSyncVersion) ||
                         (status.chittaCount !== lastSyncChittaCount) ||
                         (status.paidCount !== lastSyncPaidCount) ||
@@ -5818,6 +5889,10 @@ async function checkSyncStatus(force = false) {
 
 function refreshOpenRegistersSilently() {
     try {
+        const purReg = document.getElementById('purchaseRegister');
+        if (purReg && purReg.style.display !== 'none' && typeof loadPurchaseRegister === 'function') {
+            loadPurchaseRegister();
+        }
         const chittaReg = document.getElementById('chittaRegister');
         if (chittaReg && chittaReg.style.display !== 'none' && typeof loadChittaRegister === 'function') {
             loadChittaRegister();
@@ -6169,7 +6244,7 @@ function onCpFarmerCodeChange() {
     const code = (document.getElementById('cpPayFarmerCode')?.value || '').trim();
     if(!code) return;
     const q = code.toLowerCase();
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
         (a.partyId && String(a.partyId).toLowerCase() === q) ||
         (String(a.id).toLowerCase() === q) ||
@@ -6188,9 +6263,9 @@ function onCpFarmerNameChange() {
     const name = (document.getElementById('cpPayFarmerName')?.value || '').trim();
     if(!name) return;
     const q = name.toLowerCase();
-    let acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase() === q);
+    let acc = getGlobalAccountsList().find(a => (a.accountName || '').trim().toLowerCase() === q);
     if (!acc) {
-        acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
+        acc = getGlobalAccountsList().find(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
     }
     if(acc) {
         if(document.getElementById('cpPayFarmerCode')) document.getElementById('cpPayFarmerCode').value = typeof getDisplayFarmerCode === 'function' ? getDisplayFarmerCode(acc) : (acc.partyId || acc.id || '');
@@ -7227,24 +7302,74 @@ calcChitta();
 let accounts = [];
 let currentAccountIndex = -1;
 
+function populateAccountDatalists(accList) {
+    if (!accList || !Array.isArray(accList) || accList.length === 0) return;
+    const dataList = document.getElementById('accountNamesList');
+    if (dataList) {
+        dataList.innerHTML = accList.map(a => '<option value="' + (a.accountName || '').replace(/"/g, '&quot;') + '">').join('');
+    }
+    const datalist = document.getElementById('farmerNameList');
+    if (datalist) {
+        datalist.innerHTML = accList.filter(a => a.accountName).map(a => '<option value="' + a.accountName.replace(/"/g, '&quot;') + '">').join('');
+    }
+}
+
 async function fetchAccounts(loadFirst = false) {
     try {
+        // Instant bootstrap from bundled seed if accounts not yet loaded
+        if ((!accounts || accounts.length === 0) && typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && window.INITIAL_SEED_DATABASE.accounts) {
+            accounts = window.INITIAL_SEED_DATABASE.accounts;
+            populateAccountDatalists(accounts);
+            if (loadFirst && accounts.length > 0) loadFirstAccount();
+        }
+
         const res = await fetch('/api/accounts');
         if(res.ok) {
-            accounts = await res.json();
-                        if (loadFirst && accounts.length > 0) loadFirstAccount();
-            // Fast string-buffer datalist population (non-blocking)
-            const dataList = document.getElementById('accountNamesList');
-            if (dataList) {
-                dataList.innerHTML = accounts.map(a => '<option value="' + (a.accountName || '').replace(/"/g, '&quot;') + '">').join('');
+            const fetched = await res.json();
+            if (Array.isArray(fetched) && fetched.length > 0) {
+                accounts = fetched;
+            } else if ((!accounts || accounts.length === 0) && window.INITIAL_SEED_DATABASE) {
+                accounts = window.INITIAL_SEED_DATABASE.accounts || [];
             }
-            const datalist = document.getElementById('farmerNameList');
-            if (datalist) {
-                datalist.innerHTML = accounts.filter(a => a.accountName).map(a => '<option value="' + a.accountName.replace(/"/g, '&quot;') + '">').join('');
-            }
+            if (loadFirst && accounts.length > 0) loadFirstAccount();
+            populateAccountDatalists(accounts);
         }
     } catch(e) {
-        console.error(e);
+        console.error('fetchAccounts error:', e);
+        if ((!accounts || accounts.length === 0) && window.INITIAL_SEED_DATABASE) {
+            accounts = window.INITIAL_SEED_DATABASE.accounts || [];
+            populateAccountDatalists(accounts);
+        }
+    }
+}
+
+
+function lookupAccountMasterByCode() {
+    const code = (document.getElementById('accPartyId')?.value || '').trim();
+    if (!code) return;
+    const accList = getGlobalAccountsList();
+    const q = code.toLowerCase();
+    const idx = accList.findIndex(a => 
+        (typeof getDisplayFarmerCode === 'function' && getDisplayFarmerCode(a).toLowerCase() === q) ||
+        (a.partyId && String(a.partyId).toLowerCase() === q) ||
+        (String(a.id).toLowerCase() === q)
+    );
+    if (idx >= 0) {
+        displayAccount(idx);
+    }
+}
+
+function lookupAccountMasterByName() {
+    const name = (document.getElementById('accName')?.value || '').trim();
+    if (!name) return;
+    const accList = getGlobalAccountsList();
+    const q = name.toLowerCase();
+    let idx = accList.findIndex(a => (a.accountName || '').trim().toLowerCase() === q);
+    if (idx < 0) {
+        idx = accList.findIndex(a => (a.accountName || '').trim().toLowerCase().startsWith(q));
+    }
+    if (idx >= 0) {
+        displayAccount(idx);
     }
 }
 
@@ -8671,7 +8796,7 @@ function initLedgerWindow() {
 function onLedgerAccountCodeChange() {
     const code = document.getElementById('ledgerAccountCode')?.value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || 
         String(a.id) === code
     );
@@ -8687,7 +8812,7 @@ function onLedgerAccountCodeChange() {
 function onLedgerAccountNameChange() {
     const name = document.getElementById('ledgerAccountName')?.value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -8701,7 +8826,7 @@ function findLedgerAccountDialog() {
     const term = prompt('Enter Account Name or Code:');
     if (term && term.trim()) {
         const t = term.trim().toLowerCase();
-        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        const acc = getGlobalAccountsList().find(a => 
             (a.accountName && a.accountName.toLowerCase().includes(t)) ||
             (a.partyId && String(a.partyId).toLowerCase() === t) ||
             String(a.id) === t
@@ -8729,7 +8854,7 @@ async function loadLedger() {
         const toDate = document.getElementById('ledgerRegToDate')?.value || '';
 
         if (!accId && (accCode || accName)) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 (accCode && (String(a.partyId).toUpperCase() === accCode.toUpperCase() || String(a.id) === accCode)) ||
                 (accName && a.accountName && a.accountName.toUpperCase() === accName.toUpperCase())
             );
@@ -9983,6 +10108,205 @@ async function loadItemSummary() {
     } catch(e) { console.error('loadItemSummary error:', e); }
 }
 
+
+// =========================================================================
+// ================= PURCHASE REGISTER LOGIC (VFP9 EXACT) ==================
+// =========================================================================
+let selectedPurchaseRegIndex = 0;
+
+async function loadPurchaseRegister() {
+    try {
+        const fromInput = document.getElementById('prFromDate');
+        const toInput = document.getElementById('prToDate');
+        const pendingCheckbox = document.getElementById('prShowPendingOnly');
+        const today = getTodayDateStr();
+
+        if (fromInput && !fromInput.value) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
+                fromInput.value = currentFinancialPeriod.startDate;
+            } else {
+                fromInput.value = today;
+            }
+        }
+        if (toInput && !toInput.value) {
+            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.endDate) {
+                toInput.value = currentFinancialPeriod.endDate;
+            } else {
+                toInput.value = today;
+            }
+        }
+
+        const tbody = document.getElementById('purchaseRegisterBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading Purchase records...</td></tr>';
+        }
+
+        let url = '/api/reports/purchase-register?';
+        const fromDate = fromInput?.value;
+        const toDate = toInput?.value;
+        const pendingOnly = pendingCheckbox ? pendingCheckbox.checked : false;
+
+        if (fromDate) url += 'startDate=' + encodeURIComponent(fromDate) + '&';
+        if (toDate) url += 'endDate=' + encodeURIComponent(toDate) + '&';
+        if (pendingOnly) url += 'pendingOnly=true&';
+
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let sumQty = 0;
+            let sumAmount = 0;
+            let sumAdvance = 0;
+            let sumTotal = 0;
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#888;">No Purchase records found</td></tr>';
+            } else {
+                data.sort((a, b) => {
+                    const da = String(a.purchaseDate || '').substring(0, 10);
+                    const db = String(b.purchaseDate || '').substring(0, 10);
+                    if (da !== db) return da.localeCompare(db);
+                    return (parseInt(a.purchaseNo, 10) || 0) - (parseInt(b.purchaseNo, 10) || 0);
+                });
+
+                data.forEach((r, idx) => {
+                    const q = parseFloat(r.weight || r.quantity) || 0;
+                    const amt = parseFloat(r.grossAmount) || 0;
+                    const adv = parseFloat(r.advance) || 0;
+                    const tot = parseFloat(r.netPayable) || (amt - adv);
+
+                    sumQty += q;
+                    sumAmount += amt;
+                    sumAdvance += adv;
+                    sumTotal += tot;
+
+                    let dtShort = '';
+                    if (r.purchaseDate) {
+                        const parts = String(r.purchaseDate).substring(0, 10).split('-');
+                        dtShort = parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : r.purchaseDate;
+                    }
+
+                    let paidOnShort = '';
+                    if (r.paidOn) {
+                        const pparts = String(r.paidOn).substring(0, 10).split('-');
+                        paidOnShort = pparts.length === 3 ? pparts[2] + '/' + pparts[1] + '/' + pparts[0] : r.paidOn;
+                    }
+
+                    const purNo = r.purchaseNo || String(r.id || '');
+                    const traderName = r.traderName || (r.traderAccount ? r.traderAccount.accountName : '');
+                    const paidTo = r.paidTo || '';
+
+                    const tr = document.createElement('tr');
+                    tr.id = 'prRow_' + idx;
+                    tr.style.cursor = 'pointer';
+                    tr.style.height = '20px';
+                    // Active row 0 highlighted in cyan (#00ffff), matching FoxPro image
+                    if (idx === 0) {
+                        tr.style.backgroundColor = '#00ffff';
+                    } else {
+                        tr.style.backgroundColor = '#ffffff';
+                    }
+
+                    tr.title = 'Click to select / Double click to open Purchase #' + purNo;
+                    tr.onclick = function() { selectPurchaseRegRow(idx); };
+                    tr.ondblclick = function() { openPurchaseFromRegister(purNo, r.id); };
+
+                    tr.innerHTML = `
+                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${dtShort}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" title="Click to open Purchase #${purNo}" onclick="openPurchaseFromRegister('${purNo}', '${r.id}'); event.stopPropagation();">${purNo}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${traderName}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${q > 0 ? q.toFixed(3) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px; font-weight:bold;">${tot > 0 ? tot.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${paidOnShort}</td>
+                        <td style="border-bottom:1px solid #ccc; padding:2px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${paidTo}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Pad with empty rows to fill grid height down to bottom like FoxPro
+            const currentRows = data ? data.length : 0;
+            const padCount = Math.max(0, 18 - currentRows);
+            for (let p = 0; p < padCount; p++) {
+                const tr = document.createElement('tr');
+                tr.style.height = '20px';
+                tr.innerHTML = `
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
+                    <td style="border-bottom:1px solid #ccc;"></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // Populate bottom 4 boxes
+            const elQty = document.getElementById('prSumQty');
+            const elAmt = document.getElementById('prSumAmount');
+            const elAdv = document.getElementById('prSumAdvance');
+            const elTot = document.getElementById('prSumTotal');
+
+            if (elQty) elQty.value = sumQty > 0 ? sumQty.toFixed(3) : '';
+            if (elAmt) elAmt.value = sumAmount > 0 ? sumAmount.toFixed(2) : '';
+            if (elAdv) elAdv.value = sumAdvance > 0 ? sumAdvance.toFixed(2) : '';
+            if (elTot) elTot.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
+
+            showToast("Purchase Register Loaded");
+        }
+    } catch(e) {
+        console.error('loadPurchaseRegister error:', e);
+    }
+}
+
+function selectPurchaseRegRow(idx) {
+    selectedPurchaseRegIndex = idx;
+    const rows = document.querySelectorAll('#purchaseRegisterBody tr');
+    rows.forEach((r, i) => {
+        if (i === idx) {
+            r.style.backgroundColor = '#00ffff';
+        } else {
+            r.style.backgroundColor = '#ffffff';
+        }
+    });
+}
+
+async function openPurchaseFromRegister(purchaseNo, purchaseId) {
+    try {
+        openWin('purchase');
+        if (typeof purchases === 'undefined' || !purchases || purchases.length === 0) {
+            if (typeof fetchPurchases === 'function') await fetchPurchases();
+        }
+        if (typeof purchases !== 'undefined' && purchases && purchases.length > 0) {
+            let idx = -1;
+            if (purchaseId) idx = purchases.findIndex(p => String(p.id) === String(purchaseId));
+            if (idx < 0 && purchaseNo) idx = purchases.findIndex(p => String(p.purchaseNo) === String(purchaseNo));
+            if (idx >= 0) {
+                displayPurchase(idx);
+            }
+        }
+    } catch(e) {
+        console.error('openPurchaseFromRegister error:', e);
+    }
+}
+
+function printPurchaseRegisterReport(autoPrint = false) {
+    printRegisterTable('purchaseRegister', 'Purchase Register', autoPrint);
+}
+
+function exportPurchaseRegisterExcel() {
+    exportRegisterToExcel('purchaseRegister', 'Purchase Register');
+}
+
 async function loadCommissionRegister() {
     try {
         let url = '/api/reports/commission-register?';
@@ -10890,7 +11214,7 @@ function bottomPurchase() { if (purchases && purchases.length > 0) { setPurchase
 function onPurchaseTraderCodeChange() {
     const code = document.getElementById('purchaseAccountId').value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || 
         String(a.id) === code
     );
@@ -10907,7 +11231,7 @@ function onPurchaseTraderCodeChange() {
 function onPurchaseTraderNameChange() {
     const name = document.getElementById('purchaseAccountName').value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -10932,7 +11256,7 @@ async function loadRightPendingBills(accIdOrCode, currentPurId = null) {
         });
 
         if (traderPurchases.length === 0) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 String(a.partyId) === String(accIdOrCode) || String(a.id) === String(accIdOrCode)
             );
             const apiAccId = acc ? acc.id : accIdOrCode;
@@ -11021,7 +11345,7 @@ async function savePurchase() {
 
     let traderAcc = currentPurchaseTrader;
     if (!traderAcc) {
-        traderAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        traderAcc = getGlobalAccountsList().find(a => 
             (a.accountName || '').toUpperCase() === traderName.toUpperCase()
         );
     }
@@ -11211,7 +11535,7 @@ function printPurchaseInvoice(autoPrint = true) {
 function findPurchaseTrader() {
     const code = prompt('Enter Supplier Code or Name:');
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() ||
         String(a.accountName).toUpperCase().includes(code.toUpperCase())
     );
@@ -11465,7 +11789,7 @@ function onPpBillNoChange() {
 function onPpCodeChange() {
     const code = document.getElementById('ppCode').value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || String(a.id) === code
     );
     if (acc) {
@@ -11477,7 +11801,7 @@ function onPpCodeChange() {
 function onPpSupplierNameChange() {
     const name = document.getElementById('ppSupplierName').value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -11501,7 +11825,7 @@ function findPpBillDialog() {
 function findPpAccountDialog() {
     const term = prompt("Enter Supplier Name or Code:");
     if (term && term.trim()) {
-        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        const acc = getGlobalAccountsList().find(a => 
             (a.accountName && a.accountName.toLowerCase().includes(term.toLowerCase())) ||
             String(a.partyId) === term.trim() || String(a.id) === term.trim()
         );
@@ -11824,7 +12148,7 @@ function onPobBillNoChange() {
 function onPobCodeChange() {
     const code = document.getElementById('pobCode').value.trim();
     if (!code) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         String(a.partyId).toUpperCase() === code.toUpperCase() || String(a.id) === code
     );
     if (acc) {
@@ -11837,7 +12161,7 @@ function onPobCodeChange() {
 function onPobSupplierNameChange() {
     const name = document.getElementById('pobSupplierName').value.trim();
     if (!name) return;
-    const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+    const acc = getGlobalAccountsList().find(a => 
         (a.accountName || '').toUpperCase() === name.toUpperCase()
     );
     if (acc) {
@@ -11862,7 +12186,7 @@ function findPobBillDialog() {
 function findPobAccountDialog() {
     const term = prompt("Enter Supplier Name or Code:");
     if (term && term.trim()) {
-        const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        const acc = getGlobalAccountsList().find(a => 
             (a.accountName && a.accountName.toLowerCase().includes(term.toLowerCase())) ||
             String(a.partyId) === term.trim() || String(a.id) === term.trim()
         );
@@ -11933,12 +12257,12 @@ async function savePurchaseOpeningBalanceData() {
 
     let targetAcc = null;
     if (code) {
-        targetAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        targetAcc = getGlobalAccountsList().find(a => 
             String(a.partyId).toLowerCase() === code.toLowerCase() || String(a.id) === code
         );
     }
     if (!targetAcc && supplierName) {
-        targetAcc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+        targetAcc = getGlobalAccountsList().find(a => 
             a.accountName && a.accountName.toLowerCase() === supplierName.toLowerCase()
         );
     }
@@ -12072,7 +12396,7 @@ async function loadPurchasePaymentRegister() {
         if (toDate) url += 'endDate=' + toDate + '&';
 
         if (traderName) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 (a.accountName || '').toUpperCase() === traderName.toUpperCase()
             );
             if (acc) url += 'accountId=' + acc.id;
@@ -12139,7 +12463,7 @@ async function loadPurchasePendingRegister() {
         const traderName = document.getElementById('ppndAccountName')?.value.trim();
 
         if (traderName) {
-            const acc = (typeof accounts !== 'undefined' ? accounts : []).find(a => 
+            const acc = getGlobalAccountsList().find(a => 
                 (a.accountName || '').toUpperCase() === traderName.toUpperCase()
             );
             if (acc) url += 'accountId=' + acc.id;
@@ -12189,6 +12513,27 @@ async function loadPurchasePendingRegister() {
         document.getElementById('ppndTotBal').innerText = totBal.toFixed(2);
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#c00;">Error loading pending register</td></tr>';
+    }
+}
+
+// ================= ONLINE APK AUTO-UPDATE =================
+function checkAppUpdateOnline() {
+    if (window.AndroidTablet && typeof window.AndroidTablet.checkForUpdates === 'function') {
+        window.AndroidTablet.checkForUpdates(false);
+    } else {
+        fetch('https://raw.githubusercontent.com/Nivash005/KANIMC-WEB-APP/main/version.json?t=' + Date.now())
+            .then(res => res.json())
+            .then(v => {
+                const msg = `KANIMC Tablet Online Update\n\nLatest Version: v${v.versionName || '1.0.1'} (Build ${v.versionCode || 2})\nPublished: ${v.publishDate || ''}\n\nWhat's New:\n${v.releaseNotes || 'Bug fixes and performance improvements'}\n\nDownload the new APK now?`;
+                if (confirm(msg)) {
+                    window.open(v.apkUrl || 'https://github.com/Nivash005/KANIMC-WEB-APP/releases', '_blank');
+                }
+            })
+            .catch(() => {
+                if (confirm("Could not check update online. Open GitHub Releases page?")) {
+                    window.open('https://github.com/Nivash005/KANIMC-WEB-APP/releases', '_blank');
+                }
+            });
     }
 }
 

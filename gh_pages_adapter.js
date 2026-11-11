@@ -110,21 +110,25 @@
     };
 
     function getCentralServerUrl() {
-        // If running locally, never route to external Cloudflare tunnel
+        // If running in Android WebView or file: scheme
+        if (window.location.protocol === 'file:') {
+            return localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.3:8080';
+        }
+        // If running locally, route to local origin
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return window.location.origin;
+            return (window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
         }
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
         // Clear dead / expired Cloudflare tunnel domains from localStorage
-        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats'))) {
-            cs = 'https://piece-oxygen-vendors-adopt.trycloudflare.com';
-            try { localStorage.setItem('KANIMC_SERVER_URL', cs); } catch(e) {}
+        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats') || cs.includes('piece-oxygen-vendors-adopt'))) {
+            cs = '';
+            try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
         }
         if (!cs) {
-            if (!window.location.hostname.includes('github.io') && window.location.port !== '') {
+            if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('github.io') && window.location.port !== '') {
                 cs = window.location.origin;
             } else {
-                cs = 'https://piece-oxygen-vendors-adopt.trycloudflare.com';
+                cs = '';
             }
         }
         return cs;
@@ -298,6 +302,17 @@
         if (cached) {
             try {
                 db = JSON.parse(cached);
+                // Ensure accounts are present even if previous cache had empty accounts
+                if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && (!db.accounts || db.accounts.length < 50)) {
+                    console.log('[KANIMC] Restoring accounts from bundled seed into existing cache...');
+                    db.accounts = window.INITIAL_SEED_DATABASE.accounts || [];
+                    if (!db.places || db.places.length === 0) db.places = window.INITIAL_SEED_DATABASE.places || [];
+                    if (!db.items || db.items.length === 0) db.items = window.INITIAL_SEED_DATABASE.items || [];
+                    if (!db.groups || db.groups.length === 0) db.groups = window.INITIAL_SEED_DATABASE.groups || [];
+                    if (!db.periods || db.periods.length === 0) db.periods = window.INITIAL_SEED_DATABASE.periods || [];
+                    if (!db.company || Object.keys(db.company).length === 0) db.company = window.INITIAL_SEED_DATABASE.company || {};
+                    saveDb();
+                }
                 if (db.accounts && db.accounts.length > 0) {
                     console.log('[KANIMC] Loaded DB from localStorage (' + db.accounts.length + ' accounts, ' + (db.chittas ? db.chittas.length : 0) + ' chittas)');
                     return;
@@ -305,6 +320,30 @@
             } catch(e) {
                 console.warn('[KANIMC] Failed parsing cached DB, reloading:', e);
             }
+        }
+
+        // Direct instant offline seed from bundled seed_data.js
+        if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE) {
+            const seed = window.INITIAL_SEED_DATABASE;
+            db.accounts = seed.accounts || [];
+            db.periods = seed.periods || [];
+            db.places = seed.places || [];
+            db.items = seed.items || [];
+            db.groups = seed.groups || [];
+            db.commissionRates = seed.commissionRates || [];
+            db.company = seed.company || {};
+            db.settings = seed.settings || {};
+            db.chittas = db.chittas || [];
+            db.salesBills = db.salesBills || [];
+            db.purchases = db.purchases || [];
+            db.purchasePayments = db.purchasePayments || [];
+            db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
+            db.cashVouchers = db.cashVouchers || [];
+            db.receiptVouchers = db.receiptVouchers || [];
+            db.openingBalances = db.openingBalances || [];
+            saveDb();
+            console.log('[KANIMC] Seeded database directly from seed_data.js (' + db.accounts.length + ' accounts)');
+            return;
         }
 
         const oldV3 = localStorage.getItem('KANIMC_GHPAGES_DB_V3') || localStorage.getItem('KANIMC_GHPAGES_DB_V2');
@@ -380,7 +419,8 @@
             return originalFetch(resource, init);
         }
 
-        const urlObj = new URL(url, window.location.origin);
+        const baseOrigin = (window.location && window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost';
+        const urlObj = new URL(url, baseOrigin);
         let path = urlObj.pathname;
         if (path.startsWith('/KANIMC-WEB-APP/')) {
             path = path.substring('/KANIMC-WEB-APP'.length);
@@ -422,7 +462,7 @@
                     if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
                         targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
                     } else {
-                        targetUrl = window.location.origin + path + urlObj.search;
+                        targetUrl = ((window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:8080') + path + urlObj.search;
                     }
                 }
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
@@ -983,31 +1023,36 @@
                 const sDate = search.get('startDate');
                 const eDate = search.get('endDate');
                 const accId = search.get('accountId');
+                const pendingOnly = search.get('pendingOnly') === 'true';
                 const list = (db.purchases || []).filter(p => {
                     const dt = (p.purchaseDate || '').substring(0, 10);
                     if (sDate && dt < sDate) return false;
                     if (eDate && dt > eDate) return false;
                     if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
+                    if (pendingOnly && (p.paid || (p.paidAmount && p.paidAmount >= p.netPayable))) return false;
                     return true;
                 }).map(p => {
                     let weight = 0, bags = 0;
                     (p.items || []).forEach(it => {
-                        weight += parseFloat(it.quantity) || 0;
+                        weight += parseFloat(it.quantity || it.weight) || 0;
                         bags += parseFloat(it.bags) || 0;
                     });
                     return {
                         id: p.id,
                         purchaseNo: p.purchaseNo,
                         purchaseDate: p.purchaseDate,
-                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : (p.traderName || 'Unknown'),
                         traderAccount: p.traderAccount,
                         grossAmount: p.grossAmount || 0,
+                        advance: p.advance || 0,
                         freight: p.freightCharges || 0,
                         packing: p.packingCharges || 0,
                         other: p.otherCharges || 0,
                         discount: p.discount || 0,
                         netPayable: p.netPayable || 0,
                         paid: Boolean(p.paid),
+                        paidOn: p.payDate || p.paidOn || '',
+                        paidTo: p.paidTo || '',
                         weight: weight,
                         bags: bags,
                         items: p.items || []
