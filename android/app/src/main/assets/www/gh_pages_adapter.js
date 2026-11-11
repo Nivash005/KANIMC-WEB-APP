@@ -1066,44 +1066,76 @@
                 const sDate = search.get('startDate');
                 const eDate = search.get('endDate');
                 const accId = search.get('accountId');
-                const list = (db.purchasePayments || []).filter(pp => {
+                let list = [];
+                (db.purchasePayments || []).forEach(pp => {
                     const dt = (pp.paymentDate || '').substring(0, 10);
-                    if (sDate && dt < sDate) return false;
-                    if (eDate && dt > eDate) return false;
-                    if (accId && pp.traderAccount && (pp.traderAccount.id != accId && pp.traderAccount.partyId != accId)) return false;
-                    return true;
-                }).map(pp => ({
-                    id: pp.id,
-                    paymentNo: pp.paymentNo,
-                    paymentDate: pp.paymentDate,
-                    traderName: pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : 'Unknown',
-                    amount: pp.amount || 0,
-                    discount: pp.discount || 0,
-                    paymentMethod: pp.paymentMethod || 'CASH',
-                    narration: pp.narration || ''
-                }));
+                    if (sDate && dt < sDate) return;
+                    if (eDate && dt > eDate) return;
+                    if (accId && pp.traderAccount && (pp.traderAccount.id != accId && pp.traderAccount.partyId != accId)) return;
+                    
+                    const pur = (db.purchases || []).find(p => p.id == pp.purchaseId || p.purchaseNo == pp.purchaseNo);
+                    list.push({
+                        id: pp.id,
+                        paidOn: pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : '',
+                        chittaDate: (pur && pur.purchaseDate) ? String(pur.purchaseDate).substring(0, 10) : (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : ''),
+                        no: (pur && pur.purchaseNo) ? pur.purchaseNo : (pp.paymentNo || pp.id),
+                        name: pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : (pur && pur.traderAccount ? (pur.traderAccount.accountName || pur.traderAccount.name) : 'Unknown'),
+                        amount: (pur && pur.grossAmount) ? pur.grossAmount : (pp.amount || 0),
+                        advance: (pur && pur.advance) ? pur.advance : 0,
+                        total: pp.amount || (pur && pur.netPayable ? pur.netPayable : 0),
+                        paidTo: (pur && pur.paidTo) ? pur.paidTo : (pp.narration || pp.paymentMethod || '')
+                    });
+                });
+
+                (db.purchases || []).forEach(p => {
+                    if (p.payDate && !list.some(item => item.no == p.purchaseNo && item.paidOn == p.payDate)) {
+                        const dt = String(p.payDate).substring(0, 10);
+                        if (sDate && dt < sDate) return;
+                        if (eDate && dt > eDate) return;
+                        if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return;
+                        list.push({
+                            id: p.id,
+                            paidOn: dt,
+                            chittaDate: p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '',
+                            no: p.purchaseNo || p.id,
+                            name: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                            amount: p.grossAmount || 0,
+                            advance: p.advance || 0,
+                            total: p.netPayable || p.paidAmount || 0,
+                            paidTo: p.paidTo || ''
+                        });
+                    }
+                });
+
                 return jsonResponse(list);
             }
 
             // Reports: Purchase Pending Register
             if (path === '/api/reports/purchase-pending-register') {
+                const asOfDate = search.get('asOfDate') || search.get('date');
                 const accId = search.get('accountId');
                 const list = (db.purchases || []).filter(p => {
                     if (p.paid) return false;
+                    const pDate = (p.purchaseDate || '').substring(0, 10);
+                    if (asOfDate && pDate > asOfDate) return false;
                     if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
                     return true;
                 }).map(p => {
-                    const net = parseFloat(p.netPayable) || 0;
+                    const gross = parseFloat(p.grossAmount) || 0;
+                    const adv = parseFloat(p.advance) || 0;
+                    const net = parseFloat(p.netPayable) || (gross - adv);
                     const paidAmt = parseFloat(p.paidAmount) || 0;
+                    const bal = net - paidAmt > 0 ? (net - paidAmt) : net;
                     return {
                         id: p.id,
-                        purchaseNo: p.purchaseNo,
-                        purchaseDate: p.purchaseDate,
-                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
-                        traderAccount: p.traderAccount,
-                        netPayable: net,
-                        paidAmount: paidAmt,
-                        balance: net - paidAmt > 0 ? (net - paidAmt) : net
+                        date: p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '',
+                        no: p.purchaseNo || p.id,
+                        name: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        amount: gross > 0 ? gross : net,
+                        advance: adv,
+                        total: bal,
+                        paidOn: p.payDate ? String(p.payDate).substring(0, 10) : '',
+                        paidTo: p.paidTo || ''
                     };
                 });
                 return jsonResponse(list);

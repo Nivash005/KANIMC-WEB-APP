@@ -1193,31 +1193,60 @@ public class ReportController {
         return list.stream().map(pp -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", pp.getId());
+            map.put("paidOn", pp.getPaymentDate());
+            if (pp.getPurchase() != null) {
+                map.put("chittaDate", pp.getPurchase().getPurchaseDate());
+                map.put("no", pp.getPurchase().getPurchaseNo());
+                map.put("name", pp.getPurchase().getTraderAccount() != null ? pp.getPurchase().getTraderAccount().getAccountName() : (pp.getTraderAccount() != null ? pp.getTraderAccount().getAccountName() : "Unknown"));
+                map.put("amount", pp.getPurchase().getGrossAmount() != null ? pp.getPurchase().getGrossAmount() : pp.getAmount());
+                map.put("advance", pp.getPurchase().getAdvance() != null ? pp.getPurchase().getAdvance() : BigDecimal.ZERO);
+                map.put("total", pp.getAmount());
+                map.put("paidTo", pp.getPurchase().getPaidTo() != null ? pp.getPurchase().getPaidTo() : (pp.getNarration() != null ? pp.getNarration() : ""));
+            } else {
+                map.put("chittaDate", pp.getPaymentDate());
+                map.put("no", pp.getPaymentNo());
+                map.put("name", pp.getTraderAccount() != null ? pp.getTraderAccount().getAccountName() : "Unknown");
+                map.put("amount", pp.getAmount());
+                map.put("advance", BigDecimal.ZERO);
+                map.put("total", pp.getAmount());
+                map.put("paidTo", pp.getNarration() != null ? pp.getNarration() : "");
+            }
             map.put("paymentNo", pp.getPaymentNo());
             map.put("paymentDate", pp.getPaymentDate());
-            map.put("traderName", pp.getTraderAccount() != null ? pp.getTraderAccount().getAccountName() : "Unknown");
-            map.put("amount", pp.getAmount() != null ? pp.getAmount() : BigDecimal.ZERO);
-            map.put("discount", pp.getDiscount() != null ? pp.getDiscount() : BigDecimal.ZERO);
-            map.put("paymentMethod", pp.getPaymentMethod());
-            map.put("narration", pp.getNarration());
+            map.put("traderName", map.get("name"));
             return map;
         }).collect(Collectors.toList());
     }
 
     @GetMapping("/purchase-pending-register")
     public List<Map<String, Object>> getPurchasePendingRegister(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Long accountId) {
         List<com.kanimc.entity.Purchase> list = purchaseRepository.findPending(accountId);
-        return list.stream().map(p -> {
+        return list.stream().filter(p -> {
+            if (date != null && p.getPurchaseDate() != null && p.getPurchaseDate().isAfter(date)) {
+                return false;
+            }
+            return true;
+        }).map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", p.getId());
-            map.put("purchaseNo", p.getPurchaseNo());
-            map.put("purchaseDate", p.getPurchaseDate());
-            map.put("traderName", p.getTraderAccount() != null ? p.getTraderAccount().getAccountName() : "Unknown");
-            map.put("traderAccount", p.getTraderAccount());
-            BigDecimal net = p.getNetPayable() != null ? p.getNetPayable() : BigDecimal.ZERO;
+            map.put("date", p.getPurchaseDate());
+            map.put("no", p.getPurchaseNo());
+            map.put("name", p.getTraderAccount() != null ? p.getTraderAccount().getAccountName() : "Unknown");
+            BigDecimal gross = p.getGrossAmount() != null ? p.getGrossAmount() : BigDecimal.ZERO;
+            BigDecimal adv = p.getAdvance() != null ? p.getAdvance() : BigDecimal.ZERO;
+            BigDecimal net = p.getNetPayable() != null ? p.getNetPayable() : (gross.subtract(adv));
             BigDecimal paidAmt = p.getPaidAmount() != null ? p.getPaidAmount() : BigDecimal.ZERO;
             BigDecimal balance = net.subtract(paidAmt);
+            map.put("amount", gross.compareTo(BigDecimal.ZERO) > 0 ? gross : net);
+            map.put("advance", adv);
+            map.put("total", balance.compareTo(BigDecimal.ZERO) > 0 ? balance : net);
+            map.put("paidOn", p.getPayDate());
+            map.put("paidTo", p.getPaidTo() != null ? p.getPaidTo() : "");
+            map.put("purchaseNo", p.getPurchaseNo());
+            map.put("purchaseDate", p.getPurchaseDate());
+            map.put("traderName", map.get("name"));
             map.put("netPayable", net);
             map.put("paidAmount", paidAmt);
             map.put("balance", balance.compareTo(BigDecimal.ZERO) > 0 ? balance : net);

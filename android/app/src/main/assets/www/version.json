@@ -1,7 +1,7 @@
 {
-  "versionCode": 3,
-  "versionName": "1.0.2",
+  "versionCode": 4,
+  "versionName": "1.0.3",
   "apkUrl": "https://github.com/Nivash005/KANIMC-WEB-APP/releases/download/v1.0.0-tablet/kanimc-tablet.apk",
-  "releaseNotes": "Updated UI with Toolbar shortcuts for Purchase Register, Item Register, and Item Summary, FoxPro exact Purchase Register grid layout, and online updater.",
+  "releaseNotes": "FoxPro exact UI implemented for Purchase Payment Register and Purchase Pending Register with toolbar shortcuts, cyan row selection, and bottom summary totals.",
   "publishDate": "2026-11-11"
 }
