@@ -2469,20 +2469,14 @@ Commission % <input id="commRatePct" value="10.00%">
                 <input id="purchasePhone" style="width:180px; padding:2px 4px; border:1px solid #777; font-size:12px;">
             </div>
 
-            <!-- Row 3: Paid on, Paid to -->
-            <div style="display:flex; align-items:center; gap:6px;">
-                <label style="width:45px;">Paid on</label>
-                <input type="date" id="purchasePayDate" style="width:125px; padding:2px 4px; border:1px solid #777; font-size:12px;">
-
-                <label style="margin-left:10px; width:45px;">Paid to</label>
-                <input id="purchasePaidTo" style="width:180px; padding:2px 4px; border:1px solid #777; font-size:12px;" placeholder="Recipient / Note">
-                
-                <input type="hidden" id="purchaseBalance" value="0.00">
-                <input type="hidden" id="purchaseFreight" value="0.00">
-                <input type="hidden" id="purchasePacking" value="0.00">
-                <input type="hidden" id="purchaseOther" value="0.00">
-                <input type="hidden" id="purchaseDiscount" value="0.00">
-            </div>
+            <!-- Hidden payment fields (payment entry and Paid To are exclusively done in Purchase Payment) -->
+            <input type="hidden" id="purchasePayDate">
+            <input type="hidden" id="purchasePaidTo">
+            <input type="hidden" id="purchaseBalance" value="0.00">
+            <input type="hidden" id="purchaseFreight" value="0.00">
+            <input type="hidden" id="purchasePacking" value="0.00">
+            <input type="hidden" id="purchaseOther" value="0.00">
+            <input type="hidden" id="purchaseDiscount" value="0.00">
         </div>
 
         <!-- Main Items Grid -->
@@ -11379,8 +11373,12 @@ function openPurchasePaymentFromPurchase() {
         return;
     }
     const p = purchases[currentPurchaseIndex];
-    openWin('purchasePayment');
+    closeWin("purchase");
+    openWin('purchasePayment', p.id);
     setTimeout(() => {
+        if (!ppIsEditMode && typeof changePurchasePaymentUI === "function") changePurchasePaymentUI();
+        const pTo = document.getElementById("ppPaidTo");
+        if (pTo) { pTo.focus(); pTo.select?.(); }
         if (p.traderAccount) {
             document.getElementById('ppAccountId').value = p.traderAccount.partyId || p.traderAccount.id || '';
             document.getElementById('ppAccountName').value = p.traderAccount.accountName || '';
@@ -11455,16 +11453,22 @@ async function savePurchase() {
     const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : purDate;
     const auditStr = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
 
+    let isEdit = currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex]?.id;
+    let existingPur = isEdit ? purchases[currentPurchaseIndex] : null;
+
+    // In Purchase only the purchase chitta is saved. Payment and Paid To are strictly managed in Purchase Payment.
     const payload = {
         purchaseNo: purNo,
         purchaseDate: purDate,
         traderAccount: { id: traderAcc.id, partyId: traderAcc.partyId, accountName: traderAcc.accountName },
         phone: phone,
-        payDate: payDate,
-        paidTo: paidTo,
+        payDate: existingPur ? existingPur.payDate : null,
+        paidTo: existingPur ? (existingPur.paidTo || "") : "",
         advance: advance,
         grossAmount: gross,
         netPayable: net > 0 ? net : gross,
+        paid: existingPur ? (existingPur.paid || false) : false,
+        paidAmount: existingPur ? (existingPur.paidAmount || 0) : 0,
         auditInfo: auditStr,
         items: items
     };
@@ -11482,7 +11486,7 @@ async function savePurchase() {
 
         if (res.ok) {
             const saved = await res.json();
-            showToast('Purchase Saved Successfully!');
+            showToast('Purchase Chitta Saved! Payment is done in Purchase Payment.');
             refreshOpenPurchaseRegistersSilently();
             // Requirement: after saving again it should change to change button
             setPurchaseEditMode(false);
@@ -12059,8 +12063,14 @@ function viewPpInvoice() {
 }
 
 function openPurchasePaymentFromPurchase() {
-    closeWin('purchase');
-    openWin('purchasePayment', currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex] ? purchases[currentPurchaseIndex].id : null);
+    const currentId = currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex] ? purchases[currentPurchaseIndex].id : null;
+    closeWin("purchase");
+    openWin("purchasePayment", currentId);
+    setTimeout(() => {
+        if (!ppIsEditMode && typeof changePurchasePaymentUI === "function") changePurchasePaymentUI();
+        const pTo = document.getElementById("ppPaidTo");
+        if (pTo) { pTo.focus(); pTo.select?.(); }
+    }, 150);
 }
 
 function initPurchasePaymentFieldKeyListeners() {
