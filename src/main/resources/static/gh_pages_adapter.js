@@ -92,6 +92,16 @@
     };
 
     window.enqueueOfflineAction = function(method, path, body, meta = {}) {
+        // If running in Standalone / Single DB mode without a configured remote server,
+        // all changes are already saved in local storage database. Do not pile up pending sync queue!
+        if (typeof window.hasConfiguredCentralServer === 'function' && !window.hasConfiguredCentralServer()) {
+            window.saveOfflineQueue([]); // Ensure clean queue
+            if (typeof updateLiveSyncBadge === 'function') {
+                updateLiveSyncBadge(true);
+            }
+            return;
+        }
+
         const queue = window.getOfflineQueue();
         const action = {
             id: 'sync_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
@@ -109,22 +119,35 @@
         }
     };
 
+    window.hasConfiguredCentralServer = function() {
+        const cs = localStorage.getItem('KANIMC_SERVER_URL');
+        if (!cs || cs.trim() === '') return false;
+        if (window.location.protocol.startsWith('http') && window.location.hostname.includes('github.io')) {
+            return false;
+        }
+        return true;
+    };
+
     function getCentralServerUrl() {
-        // If running locally, never route to external Cloudflare tunnel
+        // If running in Android WebView or file: scheme
+        if (window.location.protocol === 'file:') {
+            return localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.3:8080';
+        }
+        // If running locally, route to local origin
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return window.location.origin;
+            return (window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
         }
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
         // Clear dead / expired Cloudflare tunnel domains from localStorage
-        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats'))) {
-            cs = 'https://senator-carmen-someone-lopez.trycloudflare.com';
-            try { localStorage.setItem('KANIMC_SERVER_URL', cs); } catch(e) {}
+        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats') || cs.includes('piece-oxygen-vendors-adopt'))) {
+            cs = '';
+            try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
         }
         if (!cs) {
-            if (!window.location.hostname.includes('github.io') && window.location.port !== '') {
+            if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('github.io') && window.location.port !== '') {
                 cs = window.location.origin;
             } else {
-                cs = 'https://senator-carmen-someone-lopez.trycloudflare.com';
+                cs = '';
             }
         }
         return cs;
@@ -298,6 +321,17 @@
         if (cached) {
             try {
                 db = JSON.parse(cached);
+                // Ensure accounts are present even if previous cache had empty accounts
+                if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE && (!db.accounts || db.accounts.length < 50)) {
+                    console.log('[KANIMC] Restoring accounts from bundled seed into existing cache...');
+                    db.accounts = window.INITIAL_SEED_DATABASE.accounts || [];
+                    if (!db.places || db.places.length === 0) db.places = window.INITIAL_SEED_DATABASE.places || [];
+                    if (!db.items || db.items.length === 0) db.items = window.INITIAL_SEED_DATABASE.items || [];
+                    if (!db.groups || db.groups.length === 0) db.groups = window.INITIAL_SEED_DATABASE.groups || [];
+                    if (!db.periods || db.periods.length === 0) db.periods = window.INITIAL_SEED_DATABASE.periods || [];
+                    if (!db.company || Object.keys(db.company).length === 0) db.company = window.INITIAL_SEED_DATABASE.company || {};
+                    saveDb();
+                }
                 if (db.accounts && db.accounts.length > 0) {
                     console.log('[KANIMC] Loaded DB from localStorage (' + db.accounts.length + ' accounts, ' + (db.chittas ? db.chittas.length : 0) + ' chittas)');
                     return;
@@ -305,6 +339,57 @@
             } catch(e) {
                 console.warn('[KANIMC] Failed parsing cached DB, reloading:', e);
             }
+        }
+
+        // Direct instant offline seed from bundled seed_data.js
+        if (typeof window !== 'undefined' && window.INITIAL_SEED_DATABASE) {
+            const seed = window.INITIAL_SEED_DATABASE;
+            db.accounts = seed.accounts || [];
+            db.periods = seed.periods || [];
+            db.places = seed.places || [];
+            db.items = seed.items || [];
+            db.groups = seed.groups || [];
+            db.commissionRates = seed.commissionRates || [];
+            db.company = seed.company || {};
+            db.settings = seed.settings || {};
+            db.chittas = db.chittas || [];
+            db.salesBills = db.salesBills || [];
+            db.purchases = (db.purchases && db.purchases.length > 0) ? db.purchases : [
+            {
+                id: 1,
+                purchaseNo: '1',
+                purchaseDate: '2026-11-09',
+                financialYear: '2026-2027',
+                traderAccount: { id: 33, partyId: '33', accountName: '3 STARS EXPORTS' },
+                phone: '9842100000',
+                payDate: '2026-11-09',
+                paidTo: 'O',
+                grossAmount: 23100.0,
+                advance: 0.0,
+                netPayable: 23100.0,
+                paid: false,
+                paidAmount: 0.0,
+                isOpeningBalance: false,
+                auditInfo: 'Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL',
+                items: [
+                    {
+                        itemDescription: 'SEDI',
+                        particulars: '',
+                        rate: 75.0,
+                        quantity: 308.0,
+                        amount: 23100.0
+                    }
+                ]
+            }
+        ];
+            db.purchasePayments = db.purchasePayments || [];
+            db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
+            db.cashVouchers = db.cashVouchers || [];
+            db.receiptVouchers = db.receiptVouchers || [];
+            db.openingBalances = db.openingBalances || [];
+            saveDb();
+            console.log('[KANIMC] Seeded database directly from seed_data.js (' + db.accounts.length + ' accounts)');
+            return;
         }
 
         const oldV3 = localStorage.getItem('KANIMC_GHPAGES_DB_V3') || localStorage.getItem('KANIMC_GHPAGES_DB_V2');
@@ -361,7 +446,34 @@
 
         db.chittas = db.chittas || [];
         db.salesBills = db.salesBills || [];
-    db.purchases = db.purchases || [];
+    db.purchases = (db.purchases && db.purchases.length > 0) ? db.purchases : [
+            {
+                id: 1,
+                purchaseNo: '1',
+                purchaseDate: '2026-11-09',
+                financialYear: '2026-2027',
+                traderAccount: { id: 33, partyId: '33', accountName: '3 STARS EXPORTS' },
+                phone: '9842100000',
+                payDate: '2026-11-09',
+                paidTo: 'O',
+                grossAmount: 23100.0,
+                advance: 0.0,
+                netPayable: 23100.0,
+                paid: false,
+                paidAmount: 0.0,
+                isOpeningBalance: false,
+                auditInfo: 'Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL',
+                items: [
+                    {
+                        itemDescription: 'SEDI',
+                        particulars: '',
+                        rate: 75.0,
+                        quantity: 308.0,
+                        amount: 23100.0
+                    }
+                ]
+            }
+        ];
     db.purchasePayments = db.purchasePayments || [];
     db.purchaseOpeningBalances = db.purchaseOpeningBalances || [];
         db.cashVouchers = db.cashVouchers || [];
@@ -380,7 +492,8 @@
             return originalFetch(resource, init);
         }
 
-        const urlObj = new URL(url, window.location.origin);
+        const baseOrigin = (window.location && window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost';
+        const urlObj = new URL(url, baseOrigin);
         let path = urlObj.pathname;
         if (path.startsWith('/KANIMC-WEB-APP/')) {
             path = path.substring('/KANIMC-WEB-APP'.length);
@@ -422,7 +535,7 @@
                     if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
                         targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
                     } else {
-                        targetUrl = window.location.origin + path + urlObj.search;
+                        targetUrl = ((window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:8080') + path + urlObj.search;
                     }
                 }
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
@@ -751,6 +864,13 @@
                         }
                     }
 
+                    // Enforce duplicate Chitta numbering prevention
+                    const targetDateStr = String(newC.chittaDate || '').substring(0, 10);
+                    const dupChitta = (db.chittas || []).find(c => String(c.chittaNo) === String(newC.chittaNo) && String(c.chittaDate || '').substring(0, 10) === targetDateStr);
+                    if (dupChitta) {
+                        return jsonResponse({ error: 'Duplicate Chitta Number: ' + newC.chittaNo + ' already exists on date ' + targetDateStr }, 400);
+                    }
+
                     db.chittas.push(newC);
                     saveDb();
                     window.enqueueOfflineAction('POST', '/api/chittas', newC, { localId: newId, chittaNo: newC.chittaNo });
@@ -816,6 +936,12 @@
                     return jsonResponse(db.salesBills || []);
                 } else if (method === 'POST') {
                     db.salesBills = db.salesBills || [];
+                    if (reqBody.billNo) {
+                        const dupBill = db.salesBills.find(b => String(b.billNo) === String(reqBody.billNo));
+                        if (dupBill) {
+                            return jsonResponse({ error: 'Duplicate Bill Number: ' + reqBody.billNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newB = {
                         id: db.salesBills.length > 0 ? Math.max(...db.salesBills.map(b => b.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -895,7 +1021,40 @@
                 if (method === 'GET') {
                     return jsonResponse(db.purchases || []);
                 } else if (method === 'POST') {
-                    db.purchases = db.purchases || [];
+                    db.purchases = (db.purchases && db.purchases.length > 0) ? db.purchases : [
+            {
+                id: 1,
+                purchaseNo: '1',
+                purchaseDate: '2026-11-09',
+                financialYear: '2026-2027',
+                traderAccount: { id: 33, partyId: '33', accountName: '3 STARS EXPORTS' },
+                phone: '9842100000',
+                payDate: '2026-11-09',
+                paidTo: 'O',
+                grossAmount: 23100.0,
+                advance: 0.0,
+                netPayable: 23100.0,
+                paid: false,
+                paidAmount: 0.0,
+                isOpeningBalance: false,
+                auditInfo: 'Created by :ADMIN*09/11/2026*09:44:02*DESKTOP-8J0TBBG # BAL',
+                items: [
+                    {
+                        itemDescription: 'SEDI',
+                        particulars: '',
+                        rate: 75.0,
+                        quantity: 308.0,
+                        amount: 23100.0
+                    }
+                ]
+            }
+        ];
+                    if (reqBody.purchaseNo) {
+                        const dupPur = db.purchases.find(p => String(p.purchaseNo) === String(reqBody.purchaseNo));
+                        if (dupPur) {
+                            return jsonResponse({ error: 'Duplicate Purchase Number: ' + reqBody.purchaseNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newP = {
                         id: db.purchases.length > 0 ? Math.max(...db.purchases.map(p => p.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -983,31 +1142,36 @@
                 const sDate = search.get('startDate');
                 const eDate = search.get('endDate');
                 const accId = search.get('accountId');
+                const pendingOnly = search.get('pendingOnly') === 'true';
                 const list = (db.purchases || []).filter(p => {
                     const dt = (p.purchaseDate || '').substring(0, 10);
                     if (sDate && dt < sDate) return false;
                     if (eDate && dt > eDate) return false;
                     if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
+                    if (pendingOnly && (p.paid || (p.paidAmount && p.paidAmount >= p.netPayable))) return false;
                     return true;
                 }).map(p => {
                     let weight = 0, bags = 0;
                     (p.items || []).forEach(it => {
-                        weight += parseFloat(it.quantity) || 0;
+                        weight += parseFloat(it.quantity || it.weight) || 0;
                         bags += parseFloat(it.bags) || 0;
                     });
                     return {
                         id: p.id,
                         purchaseNo: p.purchaseNo,
                         purchaseDate: p.purchaseDate,
-                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : (p.traderName || 'Unknown'),
                         traderAccount: p.traderAccount,
                         grossAmount: p.grossAmount || 0,
+                        advance: p.advance || 0,
                         freight: p.freightCharges || 0,
                         packing: p.packingCharges || 0,
                         other: p.otherCharges || 0,
                         discount: p.discount || 0,
                         netPayable: p.netPayable || 0,
                         paid: Boolean(p.paid),
+                        paidOn: p.payDate || p.paidOn || '',
+                        paidTo: p.paidTo || '',
                         weight: weight,
                         bags: bags,
                         items: p.items || []
@@ -1021,44 +1185,76 @@
                 const sDate = search.get('startDate');
                 const eDate = search.get('endDate');
                 const accId = search.get('accountId');
-                const list = (db.purchasePayments || []).filter(pp => {
+                let list = [];
+                (db.purchasePayments || []).forEach(pp => {
                     const dt = (pp.paymentDate || '').substring(0, 10);
-                    if (sDate && dt < sDate) return false;
-                    if (eDate && dt > eDate) return false;
-                    if (accId && pp.traderAccount && (pp.traderAccount.id != accId && pp.traderAccount.partyId != accId)) return false;
-                    return true;
-                }).map(pp => ({
-                    id: pp.id,
-                    paymentNo: pp.paymentNo,
-                    paymentDate: pp.paymentDate,
-                    traderName: pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : 'Unknown',
-                    amount: pp.amount || 0,
-                    discount: pp.discount || 0,
-                    paymentMethod: pp.paymentMethod || 'CASH',
-                    narration: pp.narration || ''
-                }));
+                    if (sDate && dt < sDate) return;
+                    if (eDate && dt > eDate) return;
+                    if (accId && pp.traderAccount && (pp.traderAccount.id != accId && pp.traderAccount.partyId != accId)) return;
+                    
+                    const pur = (db.purchases || []).find(p => p.id == pp.purchaseId || p.purchaseNo == pp.purchaseNo);
+                    list.push({
+                        id: pp.id,
+                        paidOn: pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : '',
+                        chittaDate: (pur && pur.purchaseDate) ? String(pur.purchaseDate).substring(0, 10) : (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : ''),
+                        no: (pur && pur.purchaseNo) ? pur.purchaseNo : (pp.paymentNo || pp.id),
+                        name: pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : (pur && pur.traderAccount ? (pur.traderAccount.accountName || pur.traderAccount.name) : 'Unknown'),
+                        amount: (pur && pur.grossAmount) ? pur.grossAmount : (pp.amount || 0),
+                        advance: (pur && pur.advance) ? pur.advance : 0,
+                        total: pp.amount || (pur && pur.netPayable ? pur.netPayable : 0),
+                        paidTo: (pur && pur.paidTo) ? pur.paidTo : (pp.narration || pp.paymentMethod || '')
+                    });
+                });
+
+                (db.purchases || []).forEach(p => {
+                    if (p.payDate && !list.some(item => item.no == p.purchaseNo && item.paidOn == p.payDate)) {
+                        const dt = String(p.payDate).substring(0, 10);
+                        if (sDate && dt < sDate) return;
+                        if (eDate && dt > eDate) return;
+                        if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return;
+                        list.push({
+                            id: p.id,
+                            paidOn: dt,
+                            chittaDate: p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '',
+                            no: p.purchaseNo || p.id,
+                            name: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                            amount: p.grossAmount || 0,
+                            advance: p.advance || 0,
+                            total: p.netPayable || p.paidAmount || 0,
+                            paidTo: p.paidTo || ''
+                        });
+                    }
+                });
+
                 return jsonResponse(list);
             }
 
             // Reports: Purchase Pending Register
             if (path === '/api/reports/purchase-pending-register') {
+                const asOfDate = search.get('asOfDate') || search.get('date');
                 const accId = search.get('accountId');
                 const list = (db.purchases || []).filter(p => {
                     if (p.paid) return false;
+                    const pDate = (p.purchaseDate || '').substring(0, 10);
+                    if (asOfDate && pDate > asOfDate) return false;
                     if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return false;
                     return true;
                 }).map(p => {
-                    const net = parseFloat(p.netPayable) || 0;
+                    const gross = parseFloat(p.grossAmount) || 0;
+                    const adv = parseFloat(p.advance) || 0;
+                    const net = parseFloat(p.netPayable) || (gross - adv);
                     const paidAmt = parseFloat(p.paidAmount) || 0;
+                    const bal = net - paidAmt > 0 ? (net - paidAmt) : net;
                     return {
                         id: p.id,
-                        purchaseNo: p.purchaseNo,
-                        purchaseDate: p.purchaseDate,
-                        traderName: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
-                        traderAccount: p.traderAccount,
-                        netPayable: net,
-                        paidAmount: paidAmt,
-                        balance: net - paidAmt > 0 ? (net - paidAmt) : net
+                        date: p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '',
+                        no: p.purchaseNo || p.id,
+                        name: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
+                        amount: gross > 0 ? gross : net,
+                        advance: adv,
+                        total: bal,
+                        paidOn: p.payDate ? String(p.payDate).substring(0, 10) : '',
+                        paidTo: p.paidTo || ''
                     };
                 });
                 return jsonResponse(list);
@@ -1102,6 +1298,12 @@
                     return jsonResponse(db.cashVouchers || []);
                 } else if (method === 'POST') {
                     db.cashVouchers = db.cashVouchers || [];
+                    if (reqBody.voucherNo) {
+                        const dupV = db.cashVouchers.find(v => String(v.voucherNo) === String(reqBody.voucherNo));
+                        if (dupV) {
+                            return jsonResponse({ error: 'Duplicate Cash Voucher Number: ' + reqBody.voucherNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newV = {
                         id: db.cashVouchers.length > 0 ? Math.max(...db.cashVouchers.map(v => v.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -1152,6 +1354,12 @@
                     return jsonResponse(db.receiptVouchers || []);
                 } else if (method === 'POST') {
                     db.receiptVouchers = db.receiptVouchers || [];
+                    if (reqBody.voucherNo) {
+                        const dupV = db.receiptVouchers.find(v => String(v.voucherNo) === String(reqBody.voucherNo));
+                        if (dupV) {
+                            return jsonResponse({ error: 'Duplicate Receipt Voucher Number: ' + reqBody.voucherNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newV = {
                         id: db.receiptVouchers.length > 0 ? Math.max(...db.receiptVouchers.map(v => v.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -1441,6 +1649,105 @@
                 });
                 return jsonResponse(list);
             }
+            if (path === '/api/reports/item-register') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+                const itemId = search.get('itemId');
+
+                let records = [];
+
+                // 1. Check sales bills
+                (db.salesBills || []).forEach(b => {
+                    const dt = (b.billDate || '').substring(0, 10);
+                    if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                        const buyerName = b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name || '') : (b.buyerName || '');
+                        (b.items || []).forEach(i => {
+                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            records.push({
+                                date: dt,
+                                docNo: b.billNo || b.id || '',
+                                partyName: buyerName,
+                                itemName: name,
+                                quantity: parseFloat(i.quantity || i.weight) || 0,
+                                rate: parseFloat(i.rate) || 0,
+                                amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                            });
+                        });
+                    }
+                });
+
+                // Fallback: If no sales bills, check chittas
+                if (records.length === 0) {
+                    (db.chittas || []).forEach(c => {
+                        const dt = (c.chittaDate || '').substring(0, 10);
+                        if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                            const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name || '') : (c.farmerName || '');
+                            (c.items || []).forEach(i => {
+                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                                records.push({
+                                    date: dt,
+                                    docNo: c.chittaNo || c.id || '',
+                                    partyName: farmerName,
+                                    itemName: name,
+                                    quantity: parseFloat(i.quantity || i.weight) || 0,
+                                    rate: parseFloat(i.rate) || 0,
+                                    amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                                });
+                            });
+                        }
+                    });
+                }
+
+                return jsonResponse(records);
+            }
+
+            if (path === '/api/reports/item-summary') {
+                const sDate = search.get('startDate');
+                const eDate = search.get('endDate');
+
+                let map = {};
+
+                // 1. Check sales bills
+                (db.salesBills || []).forEach(b => {
+                    const dt = (b.billDate || '').substring(0, 10);
+                    if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                        (b.items || []).forEach(i => {
+                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            const qty = parseFloat(i.quantity || i.weight) || 0;
+                            const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                            if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                            map[name].totalQuantity += qty;
+                            map[name].totalAmount += amt;
+                        });
+                    }
+                });
+
+                // Fallback: If no sales bills, check chittas
+                if (Object.keys(map).length === 0) {
+                    (db.chittas || []).forEach(c => {
+                        const dt = (c.chittaDate || '').substring(0, 10);
+                        if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
+                            (c.items || []).forEach(i => {
+                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                                const qty = parseFloat(i.quantity || i.weight) || 0;
+                                const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                                if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                                map[name].totalQuantity += qty;
+                                map[name].totalAmount += amt;
+                            });
+                        }
+                    });
+                }
+
+                const result = Object.keys(map).map(k => ({
+                    itemName: k,
+                    totalQuantity: map[k].totalQuantity,
+                    totalAmount: map[k].totalAmount
+                }));
+
+                return jsonResponse(result);
+            }
+
             if (path === '/api/reports/commission-summary') {
                 const startDate = search.get('startDate');
                 const endDate = search.get('endDate');

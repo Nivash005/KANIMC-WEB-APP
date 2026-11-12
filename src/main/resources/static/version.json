@@ -1,0 +1,7 @@
+{
+  "versionCode": 8,
+  "versionName": "1.0.7",
+  "apkUrl": "https://github.com/Nivash005/KANIMC-WEB-APP/releases/download/v1.0.0-tablet/kanimc-tablet.apk",
+  "releaseNotes": "FoxPro Register UI parity matching images, audit lines (created by/changed by), duplicate numbering check, financial period 2026-2027 auto-fix, single DB status stability.",
+  "publishDate": "2026-11-12"
+}
