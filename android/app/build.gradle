@@ -18,24 +18,12 @@ android {
 
     signingConfigs {
         release {
-            def ks = file("kanimc.jks")
-            if (!ks.exists()) {
-                ks = file("${projectDir}/kanimc.jks")
-            }
-            if (!ks.exists()) {
-                ks = file("${rootDir}/kanimc.jks")
-            }
-            if (!ks.exists()) {
-                ks = file("kanimc.keystore")
-            }
-            if (ks.exists()) {
-                storeFile ks
-                storePassword "kanimc123"
-                keyAlias "kanimc"
-                keyPassword "kanimc123"
-                v1SigningEnabled true
-                v2SigningEnabled true
-            }
+            storeFile file("kanimc.keystore")
+            storePassword "kanimc123"
+            keyAlias "kanimc"
+            keyPassword "kanimc123"
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
 

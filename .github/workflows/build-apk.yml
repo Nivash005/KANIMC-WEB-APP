@@ -54,7 +54,7 @@ jobs:
       - name: Build Signed APK with Gradle
         run: |
           cd android
-          gradle assembleRelease assembleDebug --stacktrace
+          gradle assembleRelease --stacktrace || gradle assembleDebug --stacktrace
 
       - name: Prepare APK Output
         run: |
