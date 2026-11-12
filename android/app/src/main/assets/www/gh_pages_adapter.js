@@ -689,16 +689,7 @@
                 const isFarmer = acc && (acc.isFarmer || (acc.accountGroup && String(acc.accountGroup.groupName).toUpperCase().includes('FARMER')));
 
                 if (isFarmer) {
-                    (db.purchasePayments || []).forEach(pp => {
-                    const dt = (pp.paymentDate || '').substring(0, 10);
-                    if (dt && dt < sDate) {
-                        if (!pp.paymentMethod || pp.paymentMethod.toUpperCase() === 'CASH') {
-                            opening -= (parseFloat(pp.amount) || 0);
-                        }
-                    }
-                });
-
-                (db.chittas || []).forEach(c => {
+                    (db.chittas || []).forEach(c => {
                         if (c.farmerAccount && (c.farmerAccount.id === id || String(c.farmerAccount.partyId) === String(id))) {
                             bal += (parseFloat(c.netPayable || c.grossAmount) || 0);
                         }
@@ -1193,10 +1184,13 @@
                     if (accId && pp.traderAccount && (pp.traderAccount.id != accId && pp.traderAccount.partyId != accId)) return;
                     
                     const pur = (db.purchases || []).find(p => p.id == pp.purchaseId || p.purchaseNo == pp.purchaseNo);
+                    const purDateStr = (pur && pur.purchaseDate) ? String(pur.purchaseDate).substring(0, 10) : (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : '');
                     list.push({
                         id: pp.id,
                         paidOn: pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : '',
-                        chittaDate: (pur && pur.purchaseDate) ? String(pur.purchaseDate).substring(0, 10) : (pp.paymentDate ? String(pp.paymentDate).substring(0, 10) : ''),
+                        date: purDateStr,
+                        purchaseDate: purDateStr,
+                        chittaDate: purDateStr,
                         no: (pur && pur.purchaseNo) ? pur.purchaseNo : (pp.paymentNo || pp.id),
                         name: pp.traderAccount ? (pp.traderAccount.accountName || pp.traderAccount.name) : (pur && pur.traderAccount ? (pur.traderAccount.accountName || pur.traderAccount.name) : 'Unknown'),
                         amount: (pur && pur.grossAmount) ? pur.grossAmount : (pp.amount || 0),
@@ -1212,10 +1206,13 @@
                         if (sDate && dt < sDate) return;
                         if (eDate && dt > eDate) return;
                         if (accId && p.traderAccount && (p.traderAccount.id != accId && p.traderAccount.partyId != accId)) return;
+                        const pDtStr = p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '';
                         list.push({
                             id: p.id,
                             paidOn: dt,
-                            chittaDate: p.purchaseDate ? String(p.purchaseDate).substring(0, 10) : '',
+                            date: pDtStr,
+                            purchaseDate: pDtStr,
+                            chittaDate: pDtStr,
                             no: p.purchaseNo || p.id,
                             name: p.traderAccount ? (p.traderAccount.accountName || p.traderAccount.name) : 'Unknown',
                             amount: p.grossAmount || 0,

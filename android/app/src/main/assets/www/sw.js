@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261112_foxpro_registers_v3';
+const CACHE_NAME = 'kanimc-cache-v20261112_foxpro_segregated_v4';
 const STATIC_ASSETS = [
     './',
     './index.html',
