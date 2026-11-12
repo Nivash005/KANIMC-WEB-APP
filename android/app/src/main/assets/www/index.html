@@ -667,6 +667,7 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 
 <div class="modal-footer orange" style="border-top:1px solid #fff;">
+    <div id="chittaAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-bottom:4px; width:100%; box-sizing:border-box;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # CHITTA</div>
     <div style="display:flex; gap:3px; align-items:center;">
         <button id="btnChittaNew" onclick="chittaActionNew()" style="font-weight:bold; color:#0055aa; border:1px solid #99ccee; background:#f0f8ff; padding:3px 12px; cursor:pointer;" title="Start New Chitta or Save Current (F2 or Alt+N)"><u>N</u>ew</button>
         <button id="btnChittaSave" onclick="saveChitta()" style="font-weight:bold; background:#0055aa; color:#fff; border:1px solid #003388; padding:3px 14px; cursor:pointer;" tabindex="1999" title="Save Chitta (F9 or Alt+S)"><u>S</u>ave (F9)</button>
@@ -802,6 +803,7 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 
+<div id="cpPayAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-top:2px;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # CHITTA_PAY</div>
 <div class="modal-footer orange" style="border-top:1px solid #fff;">
     <div style="display:flex; gap:3px;">
         <button style="color:#777;" onclick="clearChittaPaymentForm()">New</button>
@@ -955,19 +957,22 @@ Commission % <input id="commRatePct" value="10.00%">
     <div>Voucher: <span id="cpVoucherInfo" style="font-weight:bold; color:#0055aa;">New</span></div>
     <div>Record: <span id="cpRecordInfo">0 / 0</span></div>
 </div>
-<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0;">
-    <div style="display:flex; gap:3px;">
-        <button style="color:#000;" onclick="clearCashPayment()"><u>N</u>ew</button>
-        <button id="btnCpSave" style="font-weight:bold;" onclick="saveCashPayment()"><u>S</u>ave</button>
-        <button style="color:#000;" onclick="findCashPayment()"><u>F</u>ind</button>
-        <button style="color:#a00;" onclick="deleteCashPayment()"><u>D</u>elete</button>
-        <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
-    </div>
-    <div style="display:flex; gap:3px;">
-        <button style="color:#000;" onclick="loadFirstCashPayment()"><u>T</u>op</button>
-        <button style="color:#000;" onclick="loadPrevCashPayment()"><u>P</u>rev</button>
-        <button style="color:#000;" onclick="loadNextCashPayment()"><u>N</u>ext</button>
-        <button style="color:#000;" onclick="loadLastCashPayment()"><u>B</u>ottom</button>
+<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0; flex-direction:column; align-items:stretch;">
+    <div id="cpAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-bottom:4px; width:100%; box-sizing:border-box;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # CASH_PAYMENT</div>
+    <div style="display:flex; justify-content:space-between; width:100%;">
+        <div style="display:flex; gap:3px;">
+            <button style="color:#000;" onclick="clearCashPayment()"><u>N</u>ew</button>
+            <button id="btnCpSave" style="font-weight:bold;" onclick="saveCashPayment()"><u>S</u>ave</button>
+            <button style="color:#000;" onclick="findCashPayment()"><u>F</u>ind</button>
+            <button style="color:#a00;" onclick="deleteCashPayment()"><u>D</u>elete</button>
+            <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
+        </div>
+        <div style="display:flex; gap:3px;">
+            <button style="color:#000;" onclick="loadFirstCashPayment()"><u>T</u>op</button>
+            <button style="color:#000;" onclick="loadPrevCashPayment()"><u>P</u>rev</button>
+            <button style="color:#000;" onclick="loadNextCashPayment()"><u>N</u>ext</button>
+            <button style="color:#000;" onclick="loadLastCashPayment()"><u>B</u>ottom</button>
+        </div>
     </div>
 </div>
 </div>
@@ -1039,19 +1044,22 @@ Commission % <input id="commRatePct" value="10.00%">
     <div>Voucher: <span id="rvVoucherInfo" style="font-weight:bold; color:#0055aa;">New</span></div>
     <div>Record: <span id="rvRecordInfo">0 / 0</span></div>
 </div>
-<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0;">
-    <div style="display:flex; gap:3px;">
-        <button style="color:#000;" onclick="clearReceipt()"><u>N</u>ew</button>
-        <button id="btnRvSave" style="font-weight:bold;" onclick="saveReceipt()"><u>S</u>ave</button>
-        <button style="color:#000;" onclick="findReceipt()"><u>F</u>ind</button>
-        <button style="color:#a00;" onclick="deleteReceipt()"><u>D</u>elete</button>
-        <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
-    </div>
-    <div style="display:flex; gap:3px;">
-        <button style="color:#000;" onclick="loadFirstReceipt()"><u>T</u>op</button>
-        <button style="color:#000;" onclick="loadPrevReceipt()"><u>P</u>rev</button>
-        <button style="color:#000;" onclick="loadNextReceipt()"><u>N</u>ext</button>
-        <button style="color:#000;" onclick="loadLastReceipt()"><u>B</u>ottom</button>
+<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0; flex-direction:column; align-items:stretch;">
+    <div id="rvAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-bottom:4px; width:100%; box-sizing:border-box;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # RECEIPT</div>
+    <div style="display:flex; justify-content:space-between; width:100%;">
+        <div style="display:flex; gap:3px;">
+            <button style="color:#000;" onclick="clearReceipt()"><u>N</u>ew</button>
+            <button id="btnRvSave" style="font-weight:bold;" onclick="saveReceipt()"><u>S</u>ave</button>
+            <button style="color:#000;" onclick="findReceipt()"><u>F</u>ind</button>
+            <button style="color:#a00;" onclick="deleteReceipt()"><u>D</u>elete</button>
+            <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
+        </div>
+        <div style="display:flex; gap:3px;">
+            <button style="color:#000;" onclick="loadFirstReceipt()"><u>T</u>op</button>
+            <button style="color:#000;" onclick="loadPrevReceipt()"><u>P</u>rev</button>
+            <button style="color:#000;" onclick="loadNextReceipt()"><u>N</u>ext</button>
+            <button style="color:#000;" onclick="loadLastReceipt()"><u>B</u>ottom</button>
+        </div>
     </div>
 </div>
 </div>
@@ -1184,18 +1192,20 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 
-<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0;">
-    <div style="display:flex; gap:3px;">
-        <button style="color:#777;" onclick="clearBill()">New</button>
-        <button id="btnBillFind" style="font-weight:bold;" onclick="findBill()"><u>F</u>ind</button>
-        <button id="btnBillSave" style="font-weight:bold;" onclick="saveBill()"><u>S</u>ave</button>
-        <button style="color:#777;">Change</button>
-        <button style="color:#777;" onclick="deleteBillAction()">Delete</button>
-        <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
-        <button style="color:#000;" onclick="printBill(true)">Print</button>
-        <button style="color:#000;" onclick="printBill(false)">View</button>
-    </div>
-    <div style="display:flex; gap:3px;">
+<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0; flex-direction:column; align-items:stretch;">
+    <div id="billAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#e8f4e5; border:1px solid #b0c8b0; margin-bottom:4px; width:100%; box-sizing:border-box;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # BILL</div>
+    <div style="display:flex; justify-content:space-between; width:100%;">
+        <div style="display:flex; gap:3px;">
+            <button style="color:#777;" onclick="clearBill()">New</button>
+            <button id="btnBillFind" style="font-weight:bold;" onclick="findBill()"><u>F</u>ind</button>
+            <button id="btnBillSave" style="font-weight:bold;" onclick="saveBill()"><u>S</u>ave</button>
+            <button style="color:#777;">Change</button>
+            <button style="color:#777;" onclick="deleteBillAction()">Delete</button>
+            <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
+            <button style="color:#000;" onclick="printBill(true)">Print</button>
+            <button style="color:#000;" onclick="printBill(false)">View</button>
+        </div>
+        <div style="display:flex; gap:3px;">
         <button style="color:#777;" onclick="loadFirstBill()">Top</button>
         <button style="color:#777;" onclick="loadPrevBill()">Prev</button>
         <button style="color:#777;" onclick="loadNextBill()">Next</button>
@@ -2856,7 +2866,7 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 <!-- ================= 41. PURCHASE REGISTER ================= -->
 <div class="modal-overlay" id="purchaseRegister">
-<div class="modal" style="width:1080px; max-width:98vw; background:#f0ece9; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
+<div class="modal" style="width:1100px; max-width:98vw; background:#ece9d8; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
 <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#f0ece9,#dcd8d4); border-bottom:1px solid #9c9c9c; font-weight:bold; font-size:13px; padding:4px 8px; color:#000;">
     <div style="display:flex; align-items:center; gap:6px;">
         <span style="display:inline-block; width:14px; height:14px; background:linear-gradient(45deg, #0055aa, #ffff00, #ff0000); border:1px solid #333;"></span>
@@ -2891,46 +2901,61 @@ Commission % <input id="commRatePct" value="10.00%">
         </div>
         
         <div style="display:flex; gap:3px;">
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchaseRegisterReport(true)"><u>P</u>rint</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchaseRegisterReport(false)"><u>V</u>iew</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="exportPurchaseRegisterExcel()"><u>E</u>xcel</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:55px;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="closeAll()"><u>C</u>lose</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="loadPurchaseRegister()"><u>O</u>k</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchaseRegisterReport(true)"><u>P</u>rint</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchaseRegisterReport(false)"><u>V</u>iew</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="exportPurchaseRegisterExcel()"><u>E</u>xcel</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:55px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
 
     <!-- Table Grid matching FoxPro Image (Exact Column Widths & Layout) -->
     <div id="purchaseRegisterTableContainer" style="border:1px solid #777; background:#fff; height:430px; overflow-y:scroll; overflow-x:auto;">
-        <table id="purchaseRegisterTable" style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
+        <table id="purchaseRegisterTable" style="width:1060px; min-width:1060px; border-collapse:collapse; font-size:12px; table-layout:fixed;">
             <thead>
                 <tr style="font-weight:bold; background:#e0dedb; position:sticky; top:0; z-index:2; height:24px; border-bottom:1px solid #888;">
-                    <th style="width:45px; border-right:1px solid #ccc; text-align:center; padding:2px;">Sno</th>
-                    <th style="width:85px; border-right:1px solid #ccc; text-align:center; padding:2px;">Date</th>
-                    <th style="width:55px; border-right:1px solid #ccc; text-align:center; padding:2px;">No</th>
-                    <th style="width:230px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Name</th>
-                    <th style="width:90px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Qty</th>
-                    <th style="width:100px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Amount</th>
-                    <th style="width:95px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Advance</th>
-                    <th style="width:100px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Total</th>
-                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Paid On</th>
-                    <th style="width:110px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Paid to</th>
+                    <th style="width:45px; border-right:1px solid #999; text-align:center; padding:2px;">Sno</th>
+                    <th style="width:85px; border-right:1px solid #999; text-align:center; padding:2px;">Date</th>
+                    <th style="width:55px; border-right:1px solid #999; text-align:center; padding:2px;">No</th>
+                    <th style="width:260px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Name</th>
+                    <th style="width:80px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Qty</th>
+                    <th style="width:100px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Amount</th>
+                    <th style="width:90px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Advance</th>
+                    <th style="width:105px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Total</th>
+                    <th style="width:85px; border-right:1px solid #999; text-align:center; padding:2px;">Paid On</th>
+                    <th style="width:155px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Paid to</th>
                 </tr>
             </thead>
             <tbody id="purchaseRegisterBody"></tbody>
         </table>
     </div>
 
-    <!-- Bottom Totals Area Aligned under Qty, Amount, Advance, Total columns matching FoxPro Image -->
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px 2px 4px;">
-        <div style="flex:1;"></div>
-        <div style="display:flex; gap:6px; align-items:center;">
-            <input type="text" id="prSumQty" readonly style="width:90px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="prSumAmount" readonly style="width:100px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="prSumAdvance" readonly style="width:95px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="prSumTotal" readonly style="width:100px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-        </div>
-        <div style="width:200px; display:flex; justify-content:flex-end; align-items:center;">
+    <!-- Bottom Totals Area Aligned Exactly under Qty, Amount, Advance, Total columns matching FoxPro Image -->
+    <div id="purchaseRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; display:flex; justify-content:space-between; align-items:center; overflow-x:hidden;">
+        <table style="width:1020px; min-width:1020px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
+            <tr>
+                <td style="width:45px;"></td>
+                <td style="width:85px;"></td>
+                <td style="width:55px;"></td>
+                <td style="width:260px;"></td>
+                <td style="width:80px; padding:0 3px;">
+                    <input type="text" id="prSumQty" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:100px; padding:0 3px;">
+                    <input type="text" id="prSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:90px; padding:0 3px;">
+                    <input type="text" id="prSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:105px; padding:0 3px;">
+                    <input type="text" id="prSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:85px;"></td>
+                <td style="width:115px;"></td>
+            </tr>
+        </table>
+        <div style="padding-right:6px;">
             <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
         </div>
     </div>
@@ -2940,7 +2965,7 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 42. PURCHASE PAYMENT REGISTER ================= -->
 <div class="modal-overlay" id="purchasePaymentRegister">
-<div class="modal" style="width:1080px; max-width:98vw; background:#f0ece9; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
+<div class="modal" style="width:1100px; max-width:98vw; background:#ece9d8; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
 <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#f0ece9,#dcd8d4); border-bottom:1px solid #9c9c9c; font-weight:bold; font-size:13px; padding:4px 8px; color:#000;">
     <div style="display:flex; align-items:center; gap:6px;">
         <span style="display:inline-block; width:14px; height:14px; background:linear-gradient(45deg, #0055aa, #ffff00, #ff0000); border:1px solid #333;"></span>
@@ -2953,7 +2978,7 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 <div style="padding:8px 10px 6px 10px;">
-    <!-- Top Filter Bar matching FoxPro Image -->
+    <!-- Top Filter Bar matching FoxPro Image (From Date, To Date, Actions) -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
         <div style="display:flex; gap:8px; align-items:center;">
             <label style="font-weight:bold;">From</label> 
@@ -2970,44 +2995,57 @@ Commission % <input id="commRatePct" value="10.00%">
         </div>
         
         <div style="display:flex; gap:3px;">
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="loadPurchasePaymentRegister()"><u>O</u>k</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchasePaymentRegisterReport(true)"><u>P</u>rint</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchasePaymentRegisterReport(false)"><u>V</u>iew</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="exportPurchasePaymentRegisterExcel()"><u>E</u>xcel</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:55px;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="closeAll()"><u>C</u>lose</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="loadPurchasePaymentRegister()"><u>O</u>k</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchasePaymentRegisterReport(true)"><u>P</u>rint</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchasePaymentRegisterReport(false)"><u>V</u>iew</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="exportPurchasePaymentRegisterExcel()"><u>E</u>xcel</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:55px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
 
     <!-- Table Grid matching FoxPro Image (Exact Column Widths & Layout) -->
     <div id="purchasePaymentRegisterTableContainer" style="border:1px solid #777; background:#fff; height:430px; overflow-y:scroll; overflow-x:auto;">
-        <table id="purchasePaymentRegisterTable" style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
+        <table id="purchasePaymentRegisterTable" style="width:1060px; min-width:1060px; border-collapse:collapse; font-size:12px; table-layout:fixed;">
             <thead>
                 <tr style="font-weight:bold; background:#e0dedb; position:sticky; top:0; z-index:2; height:24px; border-bottom:1px solid #888;">
-                    <th style="width:45px; border-right:1px solid #ccc; text-align:center; padding:2px;">Sno</th>
-                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Paid On</th>
-                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Chitta Date</th>
-                    <th style="width:55px; border-right:1px solid #ccc; text-align:center; padding:2px;">No</th>
-                    <th style="width:240px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Name</th>
-                    <th style="width:105px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Amount</th>
-                    <th style="width:95px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Advance</th>
-                    <th style="width:105px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Total</th>
-                    <th style="width:130px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Paid to</th>
+                    <th style="width:45px; border-right:1px solid #999; text-align:center; padding:2px;">Sno</th>
+                    <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;">Paid On</th>
+                    <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;">Chitta Date</th>
+                    <th style="width:55px; border-right:1px solid #999; text-align:center; padding:2px;">No</th>
+                    <th style="width:260px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Name</th>
+                    <th style="width:105px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Amount</th>
+                    <th style="width:95px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Advance</th>
+                    <th style="width:105px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Total</th>
+                    <th style="width:215px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Paid to</th>
                 </tr>
             </thead>
             <tbody id="purchasePaymentRegisterBody"></tbody>
         </table>
     </div>
 
-    <!-- Bottom Totals Area Aligned under Amount, Advance, Total columns matching FoxPro Image -->
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px 2px 4px;">
-        <div style="flex:1;"></div>
-        <div style="display:flex; gap:6px; align-items:center;">
-            <input type="text" id="pprSumAmount" readonly style="width:105px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="pprSumAdvance" readonly style="width:95px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="pprSumTotal" readonly style="width:105px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-        </div>
-        <div style="width:160px; display:flex; justify-content:flex-end; align-items:center;">
+    <!-- Bottom Totals Area Aligned Exactly under Amount, Advance, Total columns matching FoxPro Image -->
+    <div id="purchasePaymentRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; display:flex; justify-content:space-between; align-items:center; overflow-x:hidden;">
+        <table style="width:1020px; min-width:1020px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
+            <tr>
+                <td style="width:45px;"></td>
+                <td style="width:90px;"></td>
+                <td style="width:90px;"></td>
+                <td style="width:55px;"></td>
+                <td style="width:260px;"></td>
+                <td style="width:105px; padding:0 3px;">
+                    <input type="text" id="pprSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:95px; padding:0 3px;">
+                    <input type="text" id="pprSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:105px; padding:0 3px;">
+                    <input type="text" id="pprSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:175px;"></td>
+            </tr>
+        </table>
+        <div style="padding-right:6px;">
             <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
         </div>
     </div>
@@ -3017,7 +3055,7 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 43. PURCHASE PENDING REGISTER ================= -->
 <div class="modal-overlay" id="purchasePendingRegister">
-<div class="modal" style="width:1080px; max-width:98vw; background:#f0ece9; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
+<div class="modal" style="width:1100px; max-width:98vw; background:#ece9d8; border:2px solid #555; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border-radius:4px; font-family: Tahoma, Arial, sans-serif;">
 <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(#f0ece9,#dcd8d4); border-bottom:1px solid #9c9c9c; font-weight:bold; font-size:13px; padding:4px 8px; color:#000;">
     <div style="display:flex; align-items:center; gap:6px;">
         <span style="display:inline-block; width:14px; height:14px; background:linear-gradient(45deg, #0055aa, #ffff00, #ff0000); border:1px solid #333;"></span>
@@ -3030,7 +3068,7 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 <div style="padding:8px 10px 6px 10px;">
-    <!-- Top Filter Bar matching FoxPro Image (Single Date Input) -->
+    <!-- Top Filter Bar matching FoxPro Image (Single Date Input, Actions) -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:12px;">
         <div style="display:flex; gap:8px; align-items:center;">
             <label style="font-weight:bold;">Date</label> 
@@ -3041,44 +3079,57 @@ Commission % <input id="commRatePct" value="10.00%">
         </div>
         
         <div style="display:flex; gap:3px;">
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="loadPurchasePendingRegister()"><u>O</u>k</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchasePendingRegisterReport(true)"><u>P</u>rint</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="printPurchasePendingRegisterReport(false)"><u>V</u>iew</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="exportPurchasePendingRegisterExcel()"><u>E</u>xcel</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:55px;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
-            <button style="padding:3px 12px; font-size:12px; min-width:48px;" onclick="closeAll()"><u>C</u>lose</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="loadPurchasePendingRegister()"><u>O</u>k</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchasePendingRegisterReport(true)"><u>P</u>rint</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchasePendingRegisterReport(false)"><u>V</u>iew</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="exportPurchasePendingRegisterExcel()"><u>E</u>xcel</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:55px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeAll()"><u>C</u>lose</button>
         </div>
     </div>
 
     <!-- Table Grid matching FoxPro Image (Exact Column Widths & Layout) -->
     <div id="purchasePendingRegisterTableContainer" style="border:1px solid #777; background:#fff; height:430px; overflow-y:scroll; overflow-x:auto;">
-        <table id="purchasePendingRegisterTable" style="width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed;">
+        <table id="purchasePendingRegisterTable" style="width:1060px; min-width:1060px; border-collapse:collapse; font-size:12px; table-layout:fixed;">
             <thead>
                 <tr style="font-weight:bold; background:#e0dedb; position:sticky; top:0; z-index:2; height:24px; border-bottom:1px solid #888;">
-                    <th style="width:45px; border-right:1px solid #ccc; text-align:center; padding:2px;">Sno</th>
-                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Date</th>
-                    <th style="width:55px; border-right:1px solid #ccc; text-align:center; padding:2px;">No</th>
-                    <th style="width:250px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Name</th>
-                    <th style="width:105px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Amount</th>
-                    <th style="width:95px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Advance</th>
-                    <th style="width:105px; border-right:1px solid #ccc; text-align:right; padding:2px 8px;">Total</th>
-                    <th style="width:90px; border-right:1px solid #ccc; text-align:center; padding:2px;">Paid On</th>
-                    <th style="width:130px; border-right:1px solid #ccc; text-align:left; padding:2px 8px;">Paid to</th>
+                    <th style="width:45px; border-right:1px solid #999; text-align:center; padding:2px;">Sno</th>
+                    <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;">Date</th>
+                    <th style="width:55px; border-right:1px solid #999; text-align:center; padding:2px;">No</th>
+                    <th style="width:260px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Name</th>
+                    <th style="width:105px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Amount</th>
+                    <th style="width:95px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Advance</th>
+                    <th style="width:105px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Total</th>
+                    <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;">Paid On</th>
+                    <th style="width:215px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Paid to</th>
                 </tr>
             </thead>
             <tbody id="purchasePendingRegisterBody"></tbody>
         </table>
     </div>
 
-    <!-- Bottom Totals Area Aligned under Amount, Advance, Total columns matching FoxPro Image -->
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 4px 2px 4px;">
-        <div style="flex:1;"></div>
-        <div style="display:flex; gap:6px; align-items:center;">
-            <input type="text" id="ppndSumAmount" readonly style="width:105px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="ppndSumAdvance" readonly style="width:95px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-            <input type="text" id="ppndSumTotal" readonly style="width:105px; height:24px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; padding:2px 4px; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.1);">
-        </div>
-        <div style="width:240px; display:flex; justify-content:flex-end; align-items:center;">
+    <!-- Bottom Totals Area Aligned Exactly under Amount, Advance, Total columns matching FoxPro Image -->
+    <div id="purchasePendingRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; display:flex; justify-content:space-between; align-items:center; overflow-x:hidden;">
+        <table style="width:1020px; min-width:1020px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
+            <tr>
+                <td style="width:45px;"></td>
+                <td style="width:90px;"></td>
+                <td style="width:55px;"></td>
+                <td style="width:260px;"></td>
+                <td style="width:105px; padding:0 3px;">
+                    <input type="text" id="ppndSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:95px; padding:0 3px;">
+                    <input type="text" id="ppndSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:105px; padding:0 3px;">
+                    <input type="text" id="ppndSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                </td>
+                <td style="width:90px;"></td>
+                <td style="width:175px;"></td>
+            </tr>
+        </table>
+        <div style="padding-right:6px;">
             <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
         </div>
     </div>
@@ -3561,6 +3612,12 @@ function renderKaniPreprintedBill(opts) {
                 </div>
             </div>
         </div>
+
+        <!-- AUDIT STAMP LINE -->
+        <div style="margin-top:4mm; padding-top:2mm; border-top:1px dashed #bbb; font-size:9px; color:#555; font-family:monospace; display:flex; justify-content:space-between; align-items:center;">
+            <span>${opts.auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp(type) : '')}</span>
+            <span>KANIMC PRINT ENGINE</span>
+        </div>
     </div>
     `;
 }
@@ -3624,7 +3681,8 @@ function printChitta(autoPrint = true, targetChitta = null) {
         netAmount: net,
         isPaid: Boolean(c.paid || c.payDate),
         paidDate: payDateFormatted || dateFormatted,
-        paidTo: c.paidTo || farmerName
+        paidTo: c.paidTo || farmerName,
+        auditInfo: c.auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('CHITTA') : '')
     });
 
     openVfpReportPreview('Chitta Bill - #' + (c.chittaNo || ''), billHtml, autoPrint);
@@ -3678,7 +3736,8 @@ function printBill(autoPrint = true) {
         grossAmount: gross,
         charges: charges,
         netAmount: net,
-        isPaid: false
+        isPaid: false,
+        auditInfo: b.auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('SALES_BILL') : '')
     });
 
     openVfpReportPreview('Sales Bill - #' + (b.billNo || ''), billHtml, autoPrint);
@@ -5118,6 +5177,9 @@ async function loadFinancialPeriods() {
                     }
                     sel.appendChild(opt);
                 });
+                if (curPeriod && (!sel.value || periods.find(x => String(x.id) === String(sel.value) && (x.periodName || '').includes('2023')))) {
+                    sel.value = curPeriod.id;
+                }
             }
 
             if (loginSel) {
@@ -5127,11 +5189,15 @@ async function loadFinancialPeriods() {
                     const label = formatPeriodYear(p);
                     opt.value = label;
                     opt.innerText = label;
-                    if (label === savedPeriod) {
+                    if (label === savedPeriod || label === curLabel) {
                         opt.selected = true;
                     }
                     loginSel.appendChild(opt);
                 });
+                loginSel.value = savedPeriod || curLabel;
+                if (!loginSel.value || loginSel.value.includes('2023') || loginSel.value.includes('2024') || loginSel.value.includes('2025')) {
+                    loginSel.value = curLabel;
+                }
             }
 
             const userEl = document.getElementById('userInfo');
@@ -5258,7 +5324,7 @@ function openWin(id, targetParam){
         } else if(id === 'receipt' && typeof onOpenReceipt === 'function') {
             onOpenReceipt();
         } else if(id === 'purchaseRegister') {
-            loadPurchaseRegister();
+            initPurchaseRegisterWindow();
         } else if(id === 'purchasePaymentRegister') {
             initPurchasePaymentRegisterWindow();
         } else if(id === 'purchasePendingRegister') {
@@ -5408,6 +5474,43 @@ const USER_CREDENTIALS = {
     'USER1': '250'
 };
 
+function getCredentialsForUser(u) {
+    try {
+        const stored = JSON.parse(localStorage.getItem('kanimc_user_credentials') || '{}');
+        if (stored && stored[u]) return stored[u];
+    } catch(e) {}
+    return USER_CREDENTIALS[u] || '';
+}
+
+// --- LIVE BILLING AUDIT STAMP GENERATORS ---
+function getLiveAuditStamp(docType = 'CHITTA') {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const secs = String(now.getSeconds()).padStart(2, '0');
+    const isTablet = (typeof window.AndroidTablet !== 'undefined') || /android|tablet|ipad/i.test(navigator.userAgent);
+    const machine = isTablet ? 'TABLET' : 'DESKTOP-8J0TBBG';
+    return `Created by :${user}*${day}/${month}/${year}*${hours}:${mins}:${secs}*${machine} # ${docType}`;
+}
+
+function getLiveEditStamp(docType = 'CHITTA') {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const secs = String(now.getSeconds()).padStart(2, '0');
+    const isTablet = (typeof window.AndroidTablet !== 'undefined') || /android|tablet|ipad/i.test(navigator.userAgent);
+    const machine = isTablet ? 'TABLET' : 'DESKTOP-8J0TBBG';
+    return `Changed by ${user}*${day}/${month}/${year}*${hours}:${mins}:${secs}*${machine} # ${docType}*`;
+}
+
 const USER1_ALLOWED_WINDOWS = new Set([
     'account',                  // Account Master
     'groupList',                // Group lookup for account
@@ -5428,14 +5531,13 @@ const USER1_ALLOWED_WINDOWS = new Set([
 ]);
 
 function onUserChange() {
-    const u = document.getElementById('username')?.value || 'ADMIN';
     const pInput = document.getElementById('password');
     const err = document.getElementById('loginErrorMsg');
     if (err) err.innerText = '';
     if (pInput) {
-        pInput.value = (u === 'ADMIN') ? 'admin' : '250';
+        pInput.value = '';
+        pInput.placeholder = 'Enter password';
         pInput.focus();
-        pInput.select();
     }
 }
 
@@ -5453,8 +5555,8 @@ function login() {
     localStorage.setItem('kanimc_active_period', period);
     const err = document.getElementById('loginErrorMsg');
     
-    const expectedPass = USER_CREDENTIALS[u];
-    if (expectedPass === undefined) {
+    const expectedPass = getCredentialsForUser(u);
+    if (!expectedPass) {
         if (err) err.innerText = 'Invalid username!';
         return;
     }
@@ -5880,13 +5982,14 @@ function updateLiveSyncBadge(isOnline, status) {
     const badge = document.getElementById('liveSyncStatusIndicator');
     const modalText = document.getElementById('syncModalStatusText');
     const hasServer = (typeof window.hasConfiguredCentralServer === 'function') ? window.hasConfiguredCentralServer() : false;
-    const qLen = hasServer && (typeof window.getOfflineQueueLength === 'function') ? window.getOfflineQueueLength() : 0;
+    const isServerReachable = typeof window.isOnlineServerReachable !== 'undefined' ? Boolean(window.isOnlineServerReachable) : false;
+    const qLen = (hasServer && isServerReachable && typeof window.getOfflineQueueLength === 'function') ? window.getOfflineQueueLength() : 0;
 
     if (badge) {
         badge.style.background = '#d4edda';
         badge.style.color = '#155724';
         badge.style.borderColor = '#c3e6cb';
-        if (hasServer && qLen > 0) {
+        if (hasServer && isServerReachable && qLen > 0) {
             badge.innerText = '🔄 Syncing (' + qLen + ' pending)...';
         } else {
             badge.innerText = '🟢 Single DB: Connected | Auto-Sync ON';
@@ -6778,6 +6881,17 @@ function displayChitta(index) {
     if(document.getElementById('chittaFreight')) document.getElementById('chittaFreight').value = c.freightAmount ?? '';
     calcChitta();
     setChittaMode('VIEW');
+
+    const auditEl = document.getElementById('chittaAuditLine');
+    if (auditEl) {
+        let stamp = c.auditInfo || '';
+        if (!stamp) {
+            let dtShort = c.chittaDate ? c.chittaDate.substring(0, 10).split('-').reverse().join('/') : '';
+            stamp = `Created by :ADMIN*${dtShort}*00:00:00*DESKTOP-8J0TBBG # CHITTA`;
+        }
+        if (c.changedInfo) stamp += ' | ' + c.changedInfo;
+        auditEl.innerText = stamp;
+    }
 }
 
 function loadNextChitta() { displayChitta(currentChittaIndex + 1); }
@@ -6802,6 +6916,9 @@ function clearChitta() {
     if (paidTo) paidTo.value = '';
     const paidOn = document.getElementById('paidOn') || document.querySelector('#openingChitta input[tabindex="6"]');
     if (paidOn) paidOn.value = '';
+
+    const auditEl = document.getElementById('chittaAuditLine');
+    if (auditEl) auditEl.innerText = getLiveAuditStamp('CHITTA');
     
     const itemDescs = document.querySelectorAll('#chittaGrid .grid-item');
     const qtys = document.querySelectorAll('#chittaGrid .grid-qty');
@@ -6964,8 +7081,29 @@ async function saveChitta() {
     data.commissionDeduction = commAmt;
     data.netPayable = Math.round((calcGrossTotal - commAmt - advAmt - frtAmt) * 100) / 100;
     
+    // DUPLICATE CHITTA NUMBER CHECK
+    const isExisting = (currentChittaIndex >= 0 && chittas[currentChittaIndex] && String(chittas[currentChittaIndex].chittaNo).trim() === chittaNoStr && String(chittas[currentChittaIndex].chittaDate).substring(0, 10) === dateVal);
+    const duplicateChitta = (chittas || []).find((c, idx) => {
+        if (isExisting && idx === currentChittaIndex) return false;
+        return String(c.chittaNo).trim() === chittaNoStr && String(c.chittaDate).substring(0, 10) === dateVal;
+    });
+    if (duplicateChitta) {
+        alert(`DUPLICATE ERROR: Chitta #${chittaNoStr} already exists on ${dateVal}!\nPlease enter a unique Chitta Number.`);
+        const cNoInput = document.getElementById('chittaNo');
+        if (cNoInput) { cNoInput.focus(); cNoInput.select(); }
+        return;
+    }
+
+    // AUDIT STAMP
+    const auditStamp = isExisting ? getLiveEditStamp('CHITTA') : getLiveAuditStamp('CHITTA');
+    if (isExisting) {
+        data.changedInfo = auditStamp;
+        data.auditInfo = chittas[currentChittaIndex].auditInfo || getLiveAuditStamp('CHITTA');
+    } else {
+        data.auditInfo = auditStamp;
+    }
+
     try {
-        const isExisting = (currentChittaIndex >= 0 && chittas[currentChittaIndex] && String(chittas[currentChittaIndex].chittaNo).trim() === chittaNoStr && String(chittas[currentChittaIndex].chittaDate).substring(0, 10) === dateVal);
         const endpoint = isExisting ? `/api/chittas/${chittas[currentChittaIndex].id}` : '/api/chittas';
         const method = isExisting ? 'PUT' : 'POST';
         
@@ -7588,6 +7726,8 @@ function clearCashPayment() {
     document.getElementById('cpAmount').value = '';
     document.getElementById('cpNarration').value = '';
     updateCpCounter();
+    const auditEl = document.getElementById('cpAuditLine');
+    if (auditEl) auditEl.innerText = typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('CASH_PAYMENT') : '';
     const dateInput = document.getElementById('cpDate');
     if (dateInput) dateInput.focus();
 }
@@ -7619,6 +7759,13 @@ function displayCashPayment(index) {
     document.getElementById('cpAmount').value = cv.amount !== undefined && cv.amount !== null ? parseFloat(cv.amount).toFixed(2) : '';
     document.getElementById('cpNarration').value = cv.narration || '';
     updateCpCounter();
+
+    const auditEl = document.getElementById('cpAuditLine');
+    if (auditEl) {
+        let stamp = cv.auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('CASH_PAYMENT') : '');
+        if (cv.changedInfo) stamp += ' | ' + cv.changedInfo;
+        auditEl.innerText = stamp;
+    }
 }
 
 function loadFirstCashPayment() { displayCashPayment(0); }
@@ -7688,6 +7835,10 @@ async function saveCashPayment() {
     }
     
     const isoDate = dateVal ? `${dateVal}T00:00:00Z` : new Date().toISOString();
+    const isEdit = (currentCashVoucherIndex >= 0 && cashVouchers[currentCashVoucherIndex]);
+    const liveStamp = isEdit ? (cashVouchers[currentCashVoucherIndex].auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('CASH_PAYMENT') : '')) : (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('CASH_PAYMENT') : '');
+    const liveEdit = isEdit ? (typeof getLiveEditStamp === 'function' ? getLiveEditStamp('CASH_PAYMENT') : '') : '';
+
     const payload = {
         voucherDate: isoDate,
         amount: amountVal,
@@ -7698,10 +7849,11 @@ async function saveCashPayment() {
             partyId: targetAcc.partyId,
             accountName: targetAcc.accountName
         },
-        accountName: targetAcc.accountName
+        accountName: targetAcc.accountName,
+        auditInfo: liveStamp,
+        changedInfo: liveEdit
     };
     
-    const isEdit = (currentCashVoucherIndex >= 0 && cashVouchers[currentCashVoucherIndex]);
     const url = isEdit ? `/api/cash-vouchers/${cashVouchers[currentCashVoucherIndex].id}` : '/api/cash-vouchers';
     const method = isEdit ? 'PUT' : 'POST';
     
@@ -7964,6 +8116,8 @@ function clearReceipt() {
     document.getElementById('rvAmount').value = '';
     document.getElementById('rvNarration').value = '';
     updateRvCounter();
+    const auditEl = document.getElementById('rvAuditLine');
+    if (auditEl) auditEl.innerText = typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('RECEIPT') : '';
     const dateInput = document.getElementById('rvDate');
     if (dateInput) dateInput.focus();
 }
@@ -7995,6 +8149,13 @@ function displayReceipt(index) {
     document.getElementById('rvAmount').value = rv.amount !== undefined && rv.amount !== null ? parseFloat(rv.amount).toFixed(2) : '';
     document.getElementById('rvNarration').value = rv.narration || '';
     updateRvCounter();
+
+    const auditEl = document.getElementById('rvAuditLine');
+    if (auditEl) {
+        let stamp = rv.auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('RECEIPT') : '');
+        if (rv.changedInfo) stamp += ' | ' + rv.changedInfo;
+        auditEl.innerText = stamp;
+    }
 }
 
 function loadFirstReceipt() { displayReceipt(0); }
@@ -8063,6 +8224,10 @@ async function saveReceipt() {
     }
     
     const isoDate = dateVal ? `${dateVal}T00:00:00Z` : new Date().toISOString();
+    const isEdit = (currentReceiptVoucherIndex >= 0 && receiptVouchers[currentReceiptVoucherIndex]);
+    const liveStamp = isEdit ? (receiptVouchers[currentReceiptVoucherIndex].auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('RECEIPT') : '')) : (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('RECEIPT') : '');
+    const liveEdit = isEdit ? (typeof getLiveEditStamp === 'function' ? getLiveEditStamp('RECEIPT') : '') : '';
+
     const payload = {
         voucherDate: isoDate,
         amount: amountVal,
@@ -8073,10 +8238,11 @@ async function saveReceipt() {
             partyId: targetAcc.partyId,
             accountName: targetAcc.accountName
         },
-        accountName: targetAcc.accountName
+        accountName: targetAcc.accountName,
+        auditInfo: liveStamp,
+        changedInfo: liveEdit
     };
     
-    const isEdit = (currentReceiptVoucherIndex >= 0 && receiptVouchers[currentReceiptVoucherIndex]);
     const url = isEdit ? `/api/receipt-vouchers/${receiptVouchers[currentReceiptVoucherIndex].id}` : '/api/receipt-vouchers';
     const method = isEdit ? 'PUT' : 'POST';
     
@@ -8380,6 +8546,17 @@ function displayBill(index) {
     document.getElementById('billDiscount').value = b.discount || '';
     
     calcBill();
+
+    const auditEl = document.getElementById('billAuditLine');
+    if (auditEl) {
+        let stamp = b.auditInfo || '';
+        if (!stamp) {
+            let dtShort = b.billDate ? b.billDate.substring(0, 10).split('-').reverse().join('/') : '';
+            stamp = `Created by :ADMIN*${dtShort}*00:00:00*DESKTOP-8J0TBBG # BILL`;
+        }
+        if (b.changedInfo) stamp += ' | ' + b.changedInfo;
+        auditEl.innerText = stamp;
+    }
 }
 
 function loadNextBill() { displayBill(currentBillIndex + 1); }
@@ -8387,9 +8564,28 @@ function loadPrevBill() { displayBill(currentBillIndex - 1); }
 function loadFirstBill() { displayBill(0); }
 function loadLastBill() { displayBill(bills.length - 1); }
 
+async function autoAssignNextBillNo() {
+    try {
+        const res = await fetch('/api/sales-bills/next-no');
+        if (res.ok) {
+            const d = await res.json();
+            if (d && d.nextNo) {
+                document.getElementById('billNo').value = d.nextNo;
+                return;
+            }
+        }
+    } catch(e) {}
+    let max = 0;
+    (bills || []).forEach(b => {
+        const n = parseInt(b.billNo, 10);
+        if (!isNaN(n) && n > max) max = n;
+    });
+    document.getElementById('billNo').value = String(max + 1);
+}
+
 function clearBill() {
     currentBillIndex = -1;
-    document.getElementById('billNo').value = '';
+    autoAssignNextBillNo();
     const billDateEl = document.getElementById('billDate');
     if (billDateEl) billDateEl.value = (typeof getPeriodCurrentDate === 'function') ? getPeriodCurrentDate() : new Date().toISOString().substring(0, 10);
     document.getElementById('buyerAccountId').value = '';
@@ -8407,6 +8603,9 @@ function clearBill() {
     document.getElementById('billPacking').value = '';
     document.getElementById('billDiscount').value = '';
     calcBill();
+
+    const auditEl = document.getElementById('billAuditLine');
+    if (auditEl) auditEl.innerText = getLiveAuditStamp('BILL');
 }
 
 
@@ -8497,6 +8696,21 @@ async function saveBill() {
         return;
     }
 
+    // DUPLICATE BILL NUMBER CHECK
+    const duplicateBill = (bills || []).find((b, idx) => {
+        if (currentBillIndex >= 0 && idx === currentBillIndex) return false;
+        return String(b.billNo).trim() === billNoStr;
+    });
+    if (duplicateBill) {
+        alert(`DUPLICATE ERROR: Bill #${billNoStr} already exists!\nPlease enter a unique Bill Number.`);
+        const bNoInput = document.getElementById('billNo');
+        if (bNoInput) { bNoInput.focus(); bNoInput.select(); }
+        return;
+    }
+
+    const isEditBill = currentBillIndex >= 0 && bills[currentBillIndex] && bills[currentBillIndex].id;
+    const auditStamp = isEditBill ? getLiveEditStamp('BILL') : getLiveAuditStamp('BILL');
+
     const data = {
         billNo: billNoStr,
         billDate: bDate,
@@ -8506,8 +8720,13 @@ async function saveBill() {
         otherCharges: 0,
         commissionCharges: 0,
         discount: parseFloat(document.getElementById('billDiscount')?.value) || 0,
+        auditInfo: isEditBill ? (bills[currentBillIndex].auditInfo || getLiveAuditStamp('BILL')) : auditStamp,
+        changedInfo: isEditBill ? auditStamp : null,
         items: []
     };
+    if (isEditBill) {
+        data.id = bills[currentBillIndex].id;
+    }
     
     let grossTotal = 0;
     const itemDescs = document.querySelectorAll('#billGrid .b-grid-item');
@@ -8546,8 +8765,10 @@ async function saveBill() {
     data.netReceivable = Math.round((grossTotal + totalCharges - data.discount) * 100) / 100;
 
     try {
-        const res = await fetch('/api/sales-bills', {
-            method: 'POST',
+        const billEndpoint = (data.id) ? `/api/sales-bills/${data.id}` : '/api/sales-bills';
+        const billMethod = (data.id) ? 'PUT' : 'POST';
+        const res = await fetch(billEndpoint, {
+            method: billMethod,
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
@@ -10194,6 +10415,15 @@ async function loadItemSummary() {
 // =========================================================================
 let selectedPurchaseRegIndex = 0;
 
+function initPurchaseRegisterWindow() {
+    const curDate = getTodayDateStr();
+    const fromInput = document.getElementById('prFromDate');
+    const toInput = document.getElementById('prToDate');
+    if (fromInput) fromInput.value = curDate;
+    if (toInput) toInput.value = curDate;
+    loadPurchaseRegister();
+}
+
 async function loadPurchaseRegister() {
     try {
         const fromInput = document.getElementById('prFromDate');
@@ -10202,18 +10432,10 @@ async function loadPurchaseRegister() {
         const today = getTodayDateStr();
 
         if (fromInput && !fromInput.value) {
-            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
-                fromInput.value = currentFinancialPeriod.startDate;
-            } else {
-                fromInput.value = today;
-            }
+            fromInput.value = today;
         }
         if (toInput && !toInput.value) {
-            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.endDate) {
-                toInput.value = currentFinancialPeriod.endDate;
-            } else {
-                toInput.value = today;
-            }
+            toInput.value = today;
         }
 
         const tbody = document.getElementById('purchaseRegisterBody');
@@ -10241,9 +10463,7 @@ async function loadPurchaseRegister() {
             let sumAdvance = 0;
             let sumTotal = 0;
 
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#888;">No Purchase records found</td></tr>';
-            } else {
+            if (data && data.length > 0) {
                 data.sort((a, b) => {
                     const da = String(a.purchaseDate || '').substring(0, 10);
                     const db = String(b.purchaseDate || '').substring(0, 10);
@@ -10282,65 +10502,66 @@ async function loadPurchaseRegister() {
                     tr.id = 'prRow_' + idx;
                     tr.style.cursor = 'pointer';
                     tr.style.height = '20px';
-                    // Active row 0 highlighted in cyan (#00ffff), matching FoxPro image
-                    if (idx === 0) {
-                        tr.style.backgroundColor = '#00ffff';
-                    } else {
-                        tr.style.backgroundColor = '#ffffff';
-                    }
+                    tr.style.backgroundColor = idx === 0 ? '#00ffff' : '#ffffff';
 
                     tr.title = 'Click to select / Double click to open Purchase #' + purNo;
                     tr.onclick = function() { selectPurchaseRegRow(idx); };
                     tr.ondblclick = function() { openPurchaseFromRegister(purNo, r.id); };
 
                     tr.innerHTML = `
-                        <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${dtShort}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" title="Click to open Purchase #${purNo}" onclick="openPurchaseFromRegister('${purNo}', '${r.id}'); event.stopPropagation();">${purNo}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${traderName}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${q > 0 ? q.toFixed(3) : ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px; font-weight:bold;">${tot > 0 ? tot.toFixed(2) : ''}</td>
-                        <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center; padding:2px;">${paidOnShort}</td>
-                        <td style="border-bottom:1px solid #ccc; padding:2px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${paidTo}</td>
+                        <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${idx + 1}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:center; padding:2px;">${dtShort}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:center; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" title="Click to open Purchase #${purNo}" onclick="openPurchaseFromRegister('${purNo}', '${r.id}'); event.stopPropagation();">${purNo}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px 8px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${traderName}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${q > 0 ? (q % 1 === 0 ? q : q.toFixed(3)) : ''}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px; font-weight:bold;">${tot > 0 ? tot.toFixed(2) : ''}</td>
+                        <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:center; padding:2px;">${paidOnShort}</td>
+                        <td style="border-bottom:1px solid #dcdcdc; padding:2px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${paidTo}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
 
-            // Pad with empty rows to fill grid height down to bottom like FoxPro
+            // Pad with empty rows to fill grid height down to bottom matching FoxPro
             const currentRows = data ? data.length : 0;
-            const padCount = Math.max(0, 18 - currentRows);
+            const padCount = Math.max(0, 20 - currentRows);
             for (let p = 0; p < padCount; p++) {
                 const tr = document.createElement('tr');
                 tr.style.height = '20px';
+                if (currentRows === 0 && p === 0) {
+                    tr.style.backgroundColor = '#00ffff';
+                } else {
+                    tr.style.backgroundColor = '#ffffff';
+                }
                 tr.innerHTML = `
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td>
-                    <td style="border-bottom:1px solid #ccc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;">&nbsp;</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                    <td style="border-bottom:1px solid #dcdcdc;"></td>
                 `;
                 tbody.appendChild(tr);
             }
 
-            // Populate bottom 4 boxes
+            // Populate bottom 4 boxes aligned exactly under Qty, Amount, Advance, Total
             const elQty = document.getElementById('prSumQty');
             const elAmt = document.getElementById('prSumAmount');
             const elAdv = document.getElementById('prSumAdvance');
             const elTot = document.getElementById('prSumTotal');
 
-            if (elQty) elQty.value = sumQty > 0 ? sumQty.toFixed(3) : '';
+            if (elQty) elQty.value = sumQty > 0 ? (sumQty % 1 === 0 ? sumQty : sumQty.toFixed(3)) : '';
             if (elAmt) elAmt.value = sumAmount > 0 ? sumAmount.toFixed(2) : '';
             if (elAdv) elAdv.value = sumAdvance > 0 ? sumAdvance.toFixed(2) : '';
             if (elTot) elTot.value = sumTotal > 0 ? sumTotal.toFixed(2) : '';
 
+            selectedPurchaseRegIndex = 0;
             showToast("Purchase Register Loaded");
         }
     } catch(e) {
@@ -11229,7 +11450,9 @@ function displayPurchase(idx) {
     const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : dt;
     const auditEl = document.getElementById('purchaseAuditLine');
     if (auditEl) {
-        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL');
+        let s = p.auditInfo || ('Created by :ADMIN*' + dtUK + '*00:00:00*DESKTOP-8J0TBBG # PURCHASE');
+        if (p.changedInfo) s += ' | ' + p.changedInfo;
+        auditEl.innerText = s;
     }
 
     loadRightPendingBills(traderCode, p.id);
@@ -11240,6 +11463,9 @@ function newPurchase() {
     currentPurchaseTrader = null;
     const titleEl = document.getElementById('purchaseModalTitle');
     if (titleEl) titleEl.children[0].innerText = 'Purchase';
+
+    const auditEl = document.getElementById('purchaseAuditLine');
+    if (auditEl) auditEl.innerText = getLiveAuditStamp('PURCHASE');
 
     const todayStr = getTodayDateStr();
     document.getElementById('purchaseDate').value = todayStr;
@@ -11256,11 +11482,6 @@ function newPurchase() {
 
     // Toggle Change button to Save button
     setPurchaseEditMode(true);
-
-    const dtParts = todayStr.split('-');
-    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : todayStr;
-    const auditEl = document.getElementById('purchaseAuditLine');
-    if (auditEl) auditEl.innerText = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
 
     const rightBody = document.getElementById('purchaseRightPendingBody');
     if (rightBody) rightBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#888;">Select supplier to view pending bills</td></tr>';
@@ -11468,14 +11689,24 @@ async function savePurchase() {
 
     calcPurchaseTotals();
 
-    const gross = parseFloat(document.getElementById('purchaseGrossAmount')?.value) || 0;
-    const net = gross - advance;
-    const dtParts = purDate ? purDate.split('-') : [];
-    const dtUK = dtParts.length === 3 ? dtParts[2] + '/' + dtParts[1] + '/' + dtParts[0] : purDate;
-    const auditStr = 'Created by :ADMIN*' + dtUK + '*09:44:02*DESKTOP-8J0TBBG # BAL';
-
     let isEdit = currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex]?.id;
     let existingPur = isEdit ? purchases[currentPurchaseIndex] : null;
+
+    // DUPLICATE PURCHASE NUMBER CHECK
+    const duplicatePur = (purchases || []).find((p, idx) => {
+        if (isEdit && idx === currentPurchaseIndex) return false;
+        return String(p.purchaseNo).trim() === purNo;
+    });
+    if (duplicatePur) {
+        alert(`DUPLICATE ERROR: Purchase #${purNo} already exists!\nPlease enter a unique Purchase Number.`);
+        const pNoInput = document.getElementById('purchaseNo');
+        if (pNoInput) { pNoInput.focus(); pNoInput.select(); }
+        return;
+    }
+
+    const gross = parseFloat(document.getElementById('purchaseGrossAmount')?.value) || 0;
+    const net = gross - advance;
+    const liveAuditStr = isEdit ? getLiveEditStamp('PURCHASE') : getLiveAuditStamp('PURCHASE');
 
     // In Purchase only the purchase chitta is saved. Payment and Paid To are strictly managed in Purchase Payment.
     const payload = {
@@ -11490,9 +11721,17 @@ async function savePurchase() {
         netPayable: net > 0 ? net : gross,
         paid: existingPur ? (existingPur.paid || false) : false,
         paidAmount: existingPur ? (existingPur.paidAmount || 0) : 0,
-        auditInfo: auditStr,
+        auditInfo: isEdit ? (existingPur?.auditInfo || getLiveAuditStamp('PURCHASE')) : liveAuditStr,
+        changedInfo: isEdit ? liveAuditStr : null,
         items: items
     };
+
+    const pAuditEl = document.getElementById('purchaseAuditLine');
+    if (pAuditEl) {
+        let s = payload.auditInfo;
+        if (payload.changedInfo) s += ' | ' + payload.changedInfo;
+        pAuditEl.innerText = s;
+    }
 
     try {
         let isEdit = currentPurchaseIndex >= 0 && purchases[currentPurchaseIndex]?.id;
@@ -11618,6 +11857,10 @@ function printPurchaseInvoice(autoPrint = true) {
                     <tr><td style="padding:2px 4px;">Advance:</td><td style="text-align:right;">${parseFloat(p.advance || 0).toFixed(2)}</td></tr>
                     <tr style="font-size:15px; font-weight:bold; border-top:2px solid #000;"><td style="padding:4px;">Net Payable:</td><td style="text-align:right; color:#c00; padding:4px;">${parseFloat(p.netPayable || p.grossAmount || 0).toFixed(2)}</td></tr>
                 </table>
+            </div>
+            <div style="margin-top:15px; padding-top:6px; border-top:1px dashed #777; font-size:10px; color:#555; font-family:monospace; display:flex; justify-content:space-between; align-items:center;">
+                <span>${p.auditInfo || (typeof getLiveAuditStamp === 'function' ? getLiveAuditStamp('PURCHASE') : '')}</span>
+                <span>KANIMC VFP9 REPORT ENGINE</span>
             </div>
         </div>
     `;
@@ -11778,7 +12021,9 @@ function displayPurchasePaymentBill(idx) {
     // Audit Info
     const auditEl = document.getElementById('ppAuditLine');
     if (auditEl) {
-        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # BAL');
+        let s = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*00:00:00*DESKTOP-8J0TBBG # PURCHASE_PAY');
+        if (p.changedInfo) s += ' | ' + p.changedInfo;
+        auditEl.innerText = s;
     }
 
     // Main Grid Items
@@ -12484,11 +12729,6 @@ function displayPobBill(idx) {
     const net = parseFloat(p.netPayable) || (gross - adv);
     document.getElementById('pobNetBigDisplay').innerText = formatIndianCurrency(net);
 
-    const auditEl = document.getElementById('pobAuditLine');
-    if (auditEl) {
-        auditEl.innerText = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # OPBAL');
-    }
-
     // Grid Items
     initPobGrid();
     const items = p.items || [];
@@ -12520,6 +12760,13 @@ function displayPobBill(idx) {
         addPobGridRow(items.length);
     }
     highlightPobRow(0);
+
+    const auditEl = document.getElementById('pobAuditLine');
+    if (auditEl) {
+        let s = p.auditInfo || ('Created by :ADMIN*' + payDt.split('-').reverse().join('/') + '*00:00:00*DESKTOP-8J0TBBG # PUR_OPBAL');
+        if (p.changedInfo) s += ' | ' + p.changedInfo;
+        auditEl.innerText = s;
+    }
 
     if (p.traderAccount && (p.traderAccount.id || p.traderAccount.partyId)) {
         loadPobSupplierPendingBills(p.traderAccount.id || p.traderAccount.partyId);
@@ -12652,6 +12899,8 @@ function findPobAccountDialog() {
 async function newPurchaseOpeningBalanceUI() {
     clearPobFields();
     setPobEditMode(true);
+    const pobAuditEl = document.getElementById('pobAuditLine');
+    if (pobAuditEl) pobAuditEl.innerText = getLiveAuditStamp('PUR_OPBAL');
     try {
         const res = await fetch('/api/purchases/next-no');
         if (res.ok) {
@@ -12734,6 +12983,22 @@ async function savePurchaseOpeningBalanceData() {
     items.forEach(it => { gross += it.amount; });
     const net = Math.max(0, gross - advVal);
 
+    const isEdit = (currentPobPurchaseIndex >= 0 && currentPobPurchases[currentPobPurchaseIndex]);
+
+    // DUPLICATE OPENING BILL CHECK
+    const duplicatePob = (currentPobPurchases || []).find((p, idx) => {
+        if (isEdit && idx === currentPobPurchaseIndex) return false;
+        return String(p.purchaseNo).trim() === billNo;
+    });
+    if (duplicatePob) {
+        alert(`DUPLICATE ERROR: Opening Bill #${billNo} already exists!\nPlease enter a unique Bill Number.`);
+        const bNoInput = document.getElementById('pobBillNo');
+        if (bNoInput) { bNoInput.focus(); bNoInput.select(); }
+        return;
+    }
+
+    const liveAuditStr = isEdit ? getLiveEditStamp('PUR_OPBAL') : getLiveAuditStamp('PUR_OPBAL');
+
     const payload = {
         purchaseNo: billNo,
         purchaseDate: billDate,
@@ -12747,10 +13012,18 @@ async function savePurchaseOpeningBalanceData() {
         paid: (advVal >= gross && gross > 0),
         paidAmount: advVal,
         isOpeningBalance: true,
-        auditInfo: 'Created by :ADMIN*' + billDate.split('-').reverse().join('/') + '*09:44:02*DESKTOP-8J0TBBG # OPBAL',
+        auditInfo: isEdit ? (currentPobPurchases[currentPobPurchaseIndex]?.auditInfo || getLiveAuditStamp('PUR_OPBAL')) : liveAuditStr,
+        changedInfo: isEdit ? liveAuditStr : null,
         traderAccount: targetAcc ? { id: targetAcc.id, partyId: targetAcc.partyId, accountName: targetAcc.accountName } : { id: 1, partyId: code || '1', accountName: supplierName },
         items: items
     };
+
+    const pobAuditEl = document.getElementById('pobAuditLine');
+    if (pobAuditEl) {
+        let s = payload.auditInfo;
+        if (payload.changedInfo) s += ' | ' + payload.changedInfo;
+        pobAuditEl.innerText = s;
+    }
 
     try {
         const isEdit = (currentPobPurchaseIndex >= 0 && currentPobPurchases[currentPobPurchaseIndex]);
@@ -12843,11 +13116,7 @@ function initPurchasePaymentRegisterWindow() {
     const fromInput = document.getElementById('pprFromDate');
     const toInput = document.getElementById('pprToDate');
     if (fromInput && (!fromInput.value || fromInput.value === '2024-04-26')) {
-        if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
-            fromInput.value = currentFinancialPeriod.startDate;
-        } else {
-            fromInput.value = curDate;
-        }
+        fromInput.value = curDate;
     }
     if (toInput && (!toInput.value || toInput.value === '2024-04-26')) {
         toInput.value = curDate;
@@ -12901,29 +13170,25 @@ async function loadPurchasePaymentRegister() {
                 const paidToStr = p.paidTo || '';
 
                 const tr = document.createElement('tr');
+                tr.id = 'pprRow_' + idx;
                 tr.style.cursor = 'pointer';
                 tr.style.height = '20px';
-                tr.style.backgroundColor = idx === 0 ? '#00ffff' : (idx % 2 === 1 ? '#fff2f4' : '#ffffff');
-                tr.onmouseover = function() {
-                    if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff'))
-                        this.style.backgroundColor = '#e8f4e5';
-                };
-                tr.onmouseout = function() {
-                    if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff'))
-                        this.style.backgroundColor = (idx % 2 === 1 ? '#fff2f4' : '#ffffff');
-                };
+                tr.style.backgroundColor = idx === 0 ? '#00ffff' : '#ffffff';
+
+                tr.title = 'Click to select / Double click to view Purchase #' + noStr;
                 tr.onclick = function() { selectPurchasePaymentRegRow(idx); };
+                tr.ondblclick = function() { openPurchaseFromRegister(noStr, p.id); };
 
                 tr.innerHTML = `
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${paidOnShort}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${chittaDateShort}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" onclick="openPurchaseFromRegister('${noStr}'); event.stopPropagation();" title="Click to view Purchase">${noStr}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold;">${nameStr}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px; font-weight:bold;">${tot.toFixed(2)}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px;">${paidToStr}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${paidOnShort}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${chittaDateShort}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" onclick="openPurchaseFromRegister('${noStr}', '${p.id}'); event.stopPropagation();" title="Click to view Purchase">${noStr}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px 8px; font-weight:bold;">${nameStr}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px; font-weight:bold;">${tot > 0 ? tot.toFixed(2) : ''}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px 8px;">${paidToStr}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -12931,21 +13196,25 @@ async function loadPurchasePaymentRegister() {
 
         // Pad empty rows to fill grid height down to bottom
         const rowCount = data ? data.length : 0;
-        const minRows = Math.max(18, rowCount);
+        const minRows = Math.max(20, rowCount);
         for (let i = rowCount; i < minRows; i++) {
             const tr = document.createElement('tr');
             tr.style.height = '20px';
-            tr.style.backgroundColor = (i % 2 === 1 ? '#fff2f4' : '#ffffff');
+            if (rowCount === 0 && i === 0) {
+                tr.style.backgroundColor = '#00ffff';
+            } else {
+                tr.style.backgroundColor = '#ffffff';
+            }
             tr.innerHTML = `
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;">&nbsp;</td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-bottom:1px solid #dcdcdc;"></td>
             `;
             tbody.appendChild(tr);
         }
@@ -12953,9 +13222,9 @@ async function loadPurchasePaymentRegister() {
         const sumAmtEl = document.getElementById('pprSumAmount');
         const sumAdvEl = document.getElementById('pprSumAdvance');
         const sumTotEl = document.getElementById('pprSumTotal');
-        if (sumAmtEl) sumAmtEl.value = totAmt.toFixed(2);
-        if (sumAdvEl) sumAdvEl.value = totAdv.toFixed(2);
-        if (sumTotEl) sumTotEl.value = totTot.toFixed(2);
+        if (sumAmtEl) sumAmtEl.value = totAmt > 0 ? totAmt.toFixed(2) : '';
+        if (sumAdvEl) sumAdvEl.value = totAdv > 0 ? totAdv.toFixed(2) : '';
+        if (sumTotEl) sumTotEl.value = totTot > 0 ? totTot.toFixed(2) : '';
 
         selectedPurchasePaymentRegIndex = 0;
     } catch(e) {
@@ -12971,7 +13240,7 @@ function selectPurchasePaymentRegRow(idx) {
             r.style.backgroundColor = '#00ffff';
             r.scrollIntoView({ block: 'nearest' });
         } else {
-            r.style.backgroundColor = (i % 2 === 1 ? '#fff2f4' : '#ffffff');
+            r.style.backgroundColor = '#ffffff';
         }
     });
 }
@@ -12990,7 +13259,7 @@ let selectedPurchasePendingRegIndex = 0;
 function initPurchasePendingRegisterWindow() {
     const curDate = getTodayDateStr();
     const dateInput = document.getElementById('ppndDate');
-    if (dateInput && (!dateInput.value || dateInput.value === '2024-04-26')) {
+    if (dateInput) {
         dateInput.value = curDate;
     }
     loadPurchasePendingRegister();
@@ -13040,29 +13309,25 @@ async function loadPurchasePendingRegister() {
                 const paidToStr = p.paidTo || '';
 
                 const tr = document.createElement('tr');
+                tr.id = 'ppndRow_' + idx;
                 tr.style.cursor = 'pointer';
                 tr.style.height = '20px';
-                tr.style.backgroundColor = idx === 0 ? '#00ffff' : (idx % 2 === 1 ? '#fff2f4' : '#ffffff');
-                tr.onmouseover = function() {
-                    if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff'))
-                        this.style.backgroundColor = '#e8f4e5';
-                };
-                tr.onmouseout = function() {
-                    if (!this.style.backgroundColor.includes('0, 255, 255') && !this.style.backgroundColor.includes('00ffff'))
-                        this.style.backgroundColor = (idx % 2 === 1 ? '#fff2f4' : '#ffffff');
-                };
+                tr.style.backgroundColor = idx === 0 ? '#00ffff' : '#ffffff';
+
+                tr.title = 'Click to select / Double click to view Purchase #' + purNo;
                 tr.onclick = function() { selectPurchasePendingRegRow(idx); };
+                tr.ondblclick = function() { openPurchaseFromRegister(purNo, p.id); };
 
                 tr.innerHTML = `
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${dtShort}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" onclick="openPurchaseFromRegister('${purNo}'); event.stopPropagation();" title="Click to view Purchase">${purNo}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold;">${nameStr}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding:2px 8px; font-weight:bold; color:#b00000;">${tot.toFixed(2)}</td>
-                    <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${paidOnShort}</td>
-                    <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px;">${paidToStr}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${idx + 1}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${dtShort}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" onclick="openPurchaseFromRegister('${purNo}', '${p.id}'); event.stopPropagation();" title="Click to view Purchase">${purNo}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px 8px; font-weight:bold;">${nameStr}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${adv > 0 ? adv.toFixed(2) : ''}</td>
+                    <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px; font-weight:bold; color:#b00000;">${tot > 0 ? tot.toFixed(2) : ''}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${paidOnShort}</td>
+                    <td style="border-bottom:1px solid #dcdcdc; padding:2px 8px;">${paidToStr}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -13070,21 +13335,25 @@ async function loadPurchasePendingRegister() {
 
         // Pad empty rows to fill grid height down to bottom
         const rowCount = data ? data.length : 0;
-        const minRows = Math.max(18, rowCount);
+        const minRows = Math.max(20, rowCount);
         for (let i = rowCount; i < minRows; i++) {
             const tr = document.createElement('tr');
             tr.style.height = '20px';
-            tr.style.backgroundColor = (i % 2 === 1 ? '#fff2f4' : '#ffffff');
+            if (rowCount === 0 && i === 0) {
+                tr.style.backgroundColor = '#00ffff';
+            } else {
+                tr.style.backgroundColor = '#ffffff';
+            }
             tr.innerHTML = `
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
-                <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;">&nbsp;</td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc;"></td>
+                <td style="border-bottom:1px solid #dcdcdc;"></td>
             `;
             tbody.appendChild(tr);
         }
@@ -13092,9 +13361,9 @@ async function loadPurchasePendingRegister() {
         const sumAmtEl = document.getElementById('ppndSumAmount');
         const sumAdvEl = document.getElementById('ppndSumAdvance');
         const sumTotEl = document.getElementById('ppndSumTotal');
-        if (sumAmtEl) sumAmtEl.value = totAmt.toFixed(2);
-        if (sumAdvEl) sumAdvEl.value = totAdv.toFixed(2);
-        if (sumTotEl) sumTotEl.value = totTot.toFixed(2);
+        if (sumAmtEl) sumAmtEl.value = totAmt > 0 ? totAmt.toFixed(2) : '';
+        if (sumAdvEl) sumAdvEl.value = totAdv > 0 ? totAdv.toFixed(2) : '';
+        if (sumTotEl) sumTotEl.value = totTot > 0 ? totTot.toFixed(2) : '';
 
         selectedPurchasePendingRegIndex = 0;
     } catch(e) {
@@ -13110,7 +13379,7 @@ function selectPurchasePendingRegRow(idx) {
             r.style.backgroundColor = '#00ffff';
             r.scrollIntoView({ block: 'nearest' });
         } else {
-            r.style.backgroundColor = (i % 2 === 1 ? '#fff2f4' : '#ffffff');
+            r.style.backgroundColor = '#ffffff';
         }
     });
 }

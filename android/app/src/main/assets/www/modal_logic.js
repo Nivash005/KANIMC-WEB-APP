@@ -1103,10 +1103,21 @@ async function deleteDco() {
     }
 }
 
-const ADMIN_AUTH_HEADERS = {
-    'Authorization': 'Basic ' + btoa('admin:admin123'),
-    'Content-Type': 'application/json'
-};
+function getAdminAuthHeaders() {
+    let authHeader = '';
+    try {
+        const creds = JSON.parse(localStorage.getItem('kanimc_user_credentials') || '{}');
+        const adminPass = creds['ADMIN'] || sessionStorage.getItem('kanimc_admin_pass') || 'admin';
+        authHeader = 'Basic ' + btoa('admin:' + adminPass);
+    } catch(e) {
+        authHeader = 'Basic ' + btoa('admin:admin');
+    }
+    return {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+    };
+}
+const ADMIN_AUTH_HEADERS = getAdminAuthHeaders();
 
 // --- 15. ACCOUNT UPDATION LOGIC ---
 async function runAccountUpdation() {
@@ -1452,7 +1463,7 @@ async function findUserPassword() {
 }
 
 function saveUserPassword() {
-    const user = document.getElementById('upUserName')?.value;
+    const user = (document.getElementById('upUserName')?.value || '').trim();
     const newP = document.getElementById('upNewPass')?.value;
     const conf = document.getElementById('upConfirmPass')?.value;
     if (!user) {
@@ -1462,6 +1473,18 @@ function saveUserPassword() {
     if (newP && newP !== conf) {
         alert("New password and confirm password do not match.");
         return;
+    }
+    if (newP) {
+        try {
+            let creds = {};
+            try {
+                creds = JSON.parse(localStorage.getItem('kanimc_user_credentials') || '{}');
+            } catch(e) { creds = {}; }
+            creds[user.toUpperCase()] = newP;
+            localStorage.setItem('kanimc_user_credentials', JSON.stringify(creds));
+        } catch(e) {
+            console.error('Error saving credentials:', e);
+        }
     }
     showToast("User security settings updated successfully.");
     document.getElementById('upOldPass').value = '';

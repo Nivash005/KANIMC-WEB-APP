@@ -864,6 +864,13 @@
                         }
                     }
 
+                    // Enforce duplicate Chitta numbering prevention
+                    const targetDateStr = String(newC.chittaDate || '').substring(0, 10);
+                    const dupChitta = (db.chittas || []).find(c => String(c.chittaNo) === String(newC.chittaNo) && String(c.chittaDate || '').substring(0, 10) === targetDateStr);
+                    if (dupChitta) {
+                        return jsonResponse({ error: 'Duplicate Chitta Number: ' + newC.chittaNo + ' already exists on date ' + targetDateStr }, 400);
+                    }
+
                     db.chittas.push(newC);
                     saveDb();
                     window.enqueueOfflineAction('POST', '/api/chittas', newC, { localId: newId, chittaNo: newC.chittaNo });
@@ -929,6 +936,12 @@
                     return jsonResponse(db.salesBills || []);
                 } else if (method === 'POST') {
                     db.salesBills = db.salesBills || [];
+                    if (reqBody.billNo) {
+                        const dupBill = db.salesBills.find(b => String(b.billNo) === String(reqBody.billNo));
+                        if (dupBill) {
+                            return jsonResponse({ error: 'Duplicate Bill Number: ' + reqBody.billNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newB = {
                         id: db.salesBills.length > 0 ? Math.max(...db.salesBills.map(b => b.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -1036,6 +1049,12 @@
                 ]
             }
         ];
+                    if (reqBody.purchaseNo) {
+                        const dupPur = db.purchases.find(p => String(p.purchaseNo) === String(reqBody.purchaseNo));
+                        if (dupPur) {
+                            return jsonResponse({ error: 'Duplicate Purchase Number: ' + reqBody.purchaseNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newP = {
                         id: db.purchases.length > 0 ? Math.max(...db.purchases.map(p => p.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -1279,6 +1298,12 @@
                     return jsonResponse(db.cashVouchers || []);
                 } else if (method === 'POST') {
                     db.cashVouchers = db.cashVouchers || [];
+                    if (reqBody.voucherNo) {
+                        const dupV = db.cashVouchers.find(v => String(v.voucherNo) === String(reqBody.voucherNo));
+                        if (dupV) {
+                            return jsonResponse({ error: 'Duplicate Cash Voucher Number: ' + reqBody.voucherNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newV = {
                         id: db.cashVouchers.length > 0 ? Math.max(...db.cashVouchers.map(v => v.id || 0)) + 1 : 1,
                         ...reqBody,
@@ -1329,6 +1354,12 @@
                     return jsonResponse(db.receiptVouchers || []);
                 } else if (method === 'POST') {
                     db.receiptVouchers = db.receiptVouchers || [];
+                    if (reqBody.voucherNo) {
+                        const dupV = db.receiptVouchers.find(v => String(v.voucherNo) === String(reqBody.voucherNo));
+                        if (dupV) {
+                            return jsonResponse({ error: 'Duplicate Receipt Voucher Number: ' + reqBody.voucherNo + ' already exists.' }, 400);
+                        }
+                    }
                     const newV = {
                         id: db.receiptVouchers.length > 0 ? Math.max(...db.receiptVouchers.map(v => v.id || 0)) + 1 : 1,
                         ...reqBody,
