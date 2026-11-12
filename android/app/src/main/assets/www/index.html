@@ -635,7 +635,8 @@ Commission % <input id="commRatePct" value="10.00%">
             </div>
         </div>
         
-        <div style="color:darkred; font-weight:bold; font-size:13px; margin-top:2px;">F9 -Save</div>
+        <div id="chittaF9SaveIndicator" style="color:darkred; font-weight:bold; font-size:13px; margin-top:2px;">F9 -Save</div>
+        <div id="chittaAuditLine" style="display:none; font-size:11px; color:#222; font-family:monospace; font-weight:bold; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Chitta Audit Info"></div>
 
     </div>
     
@@ -667,7 +668,6 @@ Commission % <input id="commRatePct" value="10.00%">
 </div>
 
 <div class="modal-footer orange" style="border-top:1px solid #fff;">
-    <div id="chittaAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-bottom:4px; width:100%; box-sizing:border-box;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # CHITTA</div>
     <div style="display:flex; gap:3px; align-items:center;">
         <button id="btnChittaNew" onclick="chittaActionNew()" style="font-weight:bold; color:#0055aa; border:1px solid #99ccee; background:#f0f8ff; padding:3px 12px; cursor:pointer;" title="Start New Chitta or Save Current (F2 or Alt+N)"><u>N</u>ew</button>
         <button id="btnChittaSave" onclick="saveChitta()" style="font-weight:bold; background:#0055aa; color:#fff; border:1px solid #003388; padding:3px 14px; cursor:pointer;" tabindex="1999" title="Save Chitta (F9 or Alt+S)"><u>S</u>ave (F9)</button>
@@ -775,7 +775,8 @@ Commission % <input id="commRatePct" value="10.00%">
             </div>
         </div>
         
-        <div style="color:darkred; font-weight:bold; font-size:13px; margin-top:2px;">F9 -Save</div>
+        <div id="cpPayF9SaveIndicator" style="color:darkred; font-weight:bold; font-size:13px; margin-top:2px;">F9 -Save</div>
+        <div id="cpPayAuditLine" style="display:none; font-size:11px; color:#222; font-family:monospace; font-weight:bold; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Chitta Payment Audit Info"></div>
 
     </div>
     
@@ -803,7 +804,6 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 </div>
 
-<div id="cpPayAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#f7ecd0; border:1px solid #c8b090; margin-top:2px;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # CHITTA_PAY</div>
 <div class="modal-footer orange" style="border-top:1px solid #fff;">
     <div style="display:flex; gap:3px;">
         <button style="color:#777;" onclick="clearChittaPaymentForm()">New</button>
@@ -1188,14 +1188,13 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
     
     <div style="border:1px solid #fff; padding:5px;">
-        <div style="color:darkred; font-weight:bold; font-size:13px; margin-bottom:10px;">F9 -Save</div>
+        <div id="billF9SaveIndicator" style="color:darkred; font-weight:bold; font-size:13px; margin-bottom:6px;">F9 -Save</div>
+        <div id="billAuditLine" style="display:none; font-size:11px; color:#222; font-family:monospace; font-weight:bold; padding:3px 8px; background:#e8f4e5; border:1px solid #b0c8b0; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Bill Audit Info"></div>
     </div>
 </div>
 
-<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0; flex-direction:column; align-items:stretch;">
-    <div id="billAuditLine" style="font-size:11px; color:#222; font-family:monospace; padding:3px 8px; background:#e8f4e5; border:1px solid #b0c8b0; margin-bottom:4px; width:100%; box-sizing:border-box;">Created by :ADMIN*12/11/2026*00:00:00*DESKTOP-8J0TBBG # BILL</div>
-    <div style="display:flex; justify-content:space-between; width:100%;">
-        <div style="display:flex; gap:3px;">
+<div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0; display:flex; justify-content:space-between; width:100%;">
+    <div style="display:flex; gap:3px;">
             <button style="color:#777;" onclick="clearBill()">New</button>
             <button id="btnBillFind" style="font-weight:bold;" onclick="findBill()"><u>F</u>ind</button>
             <button id="btnBillSave" style="font-weight:bold;" onclick="saveBill()"><u>S</u>ave</button>
@@ -2875,7 +2874,7 @@ Commission % <input id="commRatePct" value="10.00%">
     <div style="display:flex; gap:3px;">
         <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">_</button>
         <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">□</button>
-        <button type="button" onclick="closeAll()" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
+        <button type="button" onclick="closeWin('purchaseRegister')" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
     </div>
 </div>
 <div style="padding:8px 10px 6px 10px;">
@@ -2895,7 +2894,7 @@ Commission % <input id="commRatePct" value="10.00%">
             </div>
             
             <label style="display:flex; align-items:center; gap:5px; font-weight:bold; cursor:pointer; margin-left:8px; user-select:none;">
-                <input type="checkbox" id="prShowPendingOnly" style="cursor:pointer;" onchange="loadPurchaseRegister()">
+                <input type="checkbox" id="prShowPendingOnly" checked style="cursor:pointer;" onchange="loadPurchaseRegister()">
                 <span>Show Pending Details Only</span>
             </label>
         </div>
@@ -2906,7 +2905,7 @@ Commission % <input id="commRatePct" value="10.00%">
             <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchaseRegisterReport(false)"><u>V</u>iew</button>
             <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="exportPurchaseRegisterExcel()"><u>E</u>xcel</button>
             <button style="padding:2px 12px; font-size:12px; min-width:55px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
-            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeAll()"><u>C</u>lose</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeWin('purchaseRegister')"><u>C</u>lose</button>
         </div>
     </div>
 
@@ -2932,32 +2931,29 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 
     <!-- Bottom Totals Area Aligned Exactly under Qty, Amount, Advance, Total columns matching FoxPro Image -->
-    <div id="purchaseRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; display:flex; justify-content:space-between; align-items:center; overflow-x:hidden;">
-        <table style="width:1020px; min-width:1020px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
+    <div id="purchaseRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; overflow-x:hidden;">
+        <table style="width:1060px; min-width:1060px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
             <tr>
                 <td style="width:45px;"></td>
                 <td style="width:85px;"></td>
                 <td style="width:55px;"></td>
                 <td style="width:260px;"></td>
                 <td style="width:80px; padding:0 3px;">
-                    <input type="text" id="prSumQty" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="prSumQty" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:100px; padding:0 3px;">
-                    <input type="text" id="prSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="prSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:90px; padding:0 3px;">
-                    <input type="text" id="prSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="prSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:105px; padding:0 3px;">
-                    <input type="text" id="prSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="prSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:85px;"></td>
-                <td style="width:115px;"></td>
+                <td style="width:155px;"></td>
             </tr>
         </table>
-        <div style="padding-right:6px;">
-            <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
-        </div>
     </div>
 </div>
 </div>
@@ -2974,7 +2970,7 @@ Commission % <input id="commRatePct" value="10.00%">
     <div style="display:flex; gap:3px;">
         <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">_</button>
         <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">□</button>
-        <button type="button" onclick="closeAll()" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
+        <button type="button" onclick="closeWin('purchasePaymentRegister')" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
     </div>
 </div>
 <div style="padding:8px 10px 6px 10px;">
@@ -3000,7 +2996,7 @@ Commission % <input id="commRatePct" value="10.00%">
             <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchasePaymentRegisterReport(false)"><u>V</u>iew</button>
             <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="exportPurchasePaymentRegisterExcel()"><u>E</u>xcel</button>
             <button style="padding:2px 12px; font-size:12px; min-width:55px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
-            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeAll()"><u>C</u>lose</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeWin('purchasePaymentRegister')"><u>C</u>lose</button>
         </div>
     </div>
 
@@ -3025,8 +3021,8 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 
     <!-- Bottom Totals Area Aligned Exactly under Amount, Advance, Total columns matching FoxPro Image -->
-    <div id="purchasePaymentRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; display:flex; justify-content:space-between; align-items:center; overflow-x:hidden;">
-        <table style="width:1020px; min-width:1020px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
+    <div id="purchasePaymentRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; overflow-x:hidden;">
+        <table style="width:1060px; min-width:1060px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
             <tr>
                 <td style="width:45px;"></td>
                 <td style="width:90px;"></td>
@@ -3034,20 +3030,17 @@ Commission % <input id="commRatePct" value="10.00%">
                 <td style="width:55px;"></td>
                 <td style="width:260px;"></td>
                 <td style="width:105px; padding:0 3px;">
-                    <input type="text" id="pprSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="pprSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:95px; padding:0 3px;">
-                    <input type="text" id="pprSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="pprSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:105px; padding:0 3px;">
-                    <input type="text" id="pprSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="pprSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
-                <td style="width:175px;"></td>
+                <td style="width:215px;"></td>
             </tr>
         </table>
-        <div style="padding-right:6px;">
-            <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
-        </div>
     </div>
 </div>
 </div>
@@ -3064,7 +3057,7 @@ Commission % <input id="commRatePct" value="10.00%">
     <div style="display:flex; gap:3px;">
         <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">_</button>
         <button type="button" style="padding:0 5px; font-size:11px; height:18px; line-height:16px;">□</button>
-        <button type="button" onclick="closeAll()" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
+        <button type="button" onclick="closeWin('purchasePendingRegister')" style="padding:0 5px; font-size:11px; height:18px; line-height:16px; background:#d9534f; color:#fff; border:1px solid #ac2925;">✖</button>
     </div>
 </div>
 <div style="padding:8px 10px 6px 10px;">
@@ -3084,7 +3077,7 @@ Commission % <input id="commRatePct" value="10.00%">
             <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="printPurchasePendingRegisterReport(false)"><u>V</u>iew</button>
             <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="exportPurchasePendingRegisterExcel()"><u>E</u>xcel</button>
             <button style="padding:2px 12px; font-size:12px; min-width:55px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="openWin('advancedOption')"><u>O</u>ptions</button>
-            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeAll()"><u>C</u>lose</button>
+            <button style="padding:2px 12px; font-size:12px; min-width:48px; background:#e0dedb; border:1px solid #777; box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #999; cursor:pointer;" onclick="closeWin('purchasePendingRegister')"><u>C</u>lose</button>
         </div>
     </div>
 
@@ -3109,29 +3102,26 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
 
     <!-- Bottom Totals Area Aligned Exactly under Amount, Advance, Total columns matching FoxPro Image -->
-    <div id="purchasePendingRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; display:flex; justify-content:space-between; align-items:center; overflow-x:hidden;">
-        <table style="width:1020px; min-width:1020px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
+    <div id="purchasePendingRegisterBottomContainer" style="background:#ece9d8; padding:4px 0 2px 0; overflow-x:hidden;">
+        <table style="width:1060px; min-width:1060px; border-collapse:collapse; table-layout:fixed; font-size:12px;">
             <tr>
                 <td style="width:45px;"></td>
                 <td style="width:90px;"></td>
                 <td style="width:55px;"></td>
                 <td style="width:260px;"></td>
                 <td style="width:105px; padding:0 3px;">
-                    <input type="text" id="ppndSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="ppndSumAmount" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:95px; padding:0 3px;">
-                    <input type="text" id="ppndSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="ppndSumAdvance" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:105px; padding:0 3px;">
-                    <input type="text" id="ppndSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border:1px solid #777; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
+                    <input type="text" id="ppndSumTotal" readonly style="width:100%; height:23px; text-align:right; font-weight:bold; font-size:12px; background:#fff; border-top:1px solid #7f9db9; border-left:1px solid #7f9db9; border-right:1px solid #fff; border-bottom:1px solid #fff; color:#b00000; box-shadow:inset 1px 1px 2px rgba(0,0,0,0.15); box-sizing:border-box; padding:2px 4px;">
                 </td>
                 <td style="width:90px;"></td>
-                <td style="width:175px;"></td>
+                <td style="width:215px;"></td>
             </tr>
         </table>
-        <div style="padding-right:6px;">
-            <button type="button" style="padding:1px 5px; font-size:11px; background:#e0dedb; border:1px solid #777; cursor:pointer;" onclick="openWin('advancedOption')" title="Advanced Options">🔍</button>
-        </div>
     </div>
 </div>
 </div>
@@ -5788,6 +5778,23 @@ function setChittaMode(mode) {
     const btnSave = document.getElementById('btnChittaSave');
     if (btnSave) btnSave.disabled = (mode === 'VIEW');
 
+    // Toggle F9-Save and Date/Name/Time Audit Line
+    const f9Save = document.getElementById('chittaF9SaveIndicator');
+    const auditLine = document.getElementById('chittaAuditLine');
+    if (mode === 'EDIT') {
+        if (f9Save) f9Save.style.display = 'block';
+        if (auditLine) auditLine.style.display = 'none';
+    } else {
+        // VIEW mode: show audit line only if chitta is saved / loaded
+        if (currentChittaIndex >= 0 && typeof chittas !== 'undefined' && chittas && chittas[currentChittaIndex]) {
+            if (f9Save) f9Save.style.display = 'none';
+            if (auditLine) auditLine.style.display = 'block';
+        } else {
+            if (f9Save) f9Save.style.display = 'block';
+            if (auditLine) auditLine.style.display = 'none';
+        }
+    }
+
     const btnChange = document.getElementById('btnChittaChange');
     if (btnChange) btnChange.disabled = (mode === 'EDIT');
     const btnDel = document.getElementById('btnChittaDelete');
@@ -6401,6 +6408,13 @@ let selectedCpChitta = null;
 
 function clearChittaPaymentForm() {
     selectedCpChitta = null;
+    const f9Save = document.getElementById('cpPayF9SaveIndicator');
+    const auditLine = document.getElementById('cpPayAuditLine');
+    if (f9Save) f9Save.style.display = 'block';
+    if (auditLine) {
+        auditLine.innerText = '';
+        auditLine.style.display = 'none';
+    }
     if(document.getElementById('cpPayFarmerCode')) document.getElementById('cpPayFarmerCode').value = '';
     if(document.getElementById('cpPayFarmerName')) document.getElementById('cpPayFarmerName').value = '';
     if(document.getElementById('cpPayPhone')) document.getElementById('cpPayPhone').value = '';
@@ -6781,6 +6795,25 @@ async function populateChittaIntoPaymentForm(c) {
     if(c.farmerAccount) {
         loadFarmerChittasForPayment(c.farmerAccount, true);
     }
+
+    const cpF9Save = document.getElementById('cpPayF9SaveIndicator');
+    const cpAuditLine = document.getElementById('cpPayAuditLine');
+    if (c.paid) {
+        if (cpF9Save) cpF9Save.style.display = 'none';
+        if (cpAuditLine) {
+            let stamp = c.auditInfo || '';
+            if (!stamp) stamp = getLiveAuditStamp('CHITTA_PAY');
+            if (c.changedInfo) stamp += ' | ' + c.changedInfo;
+            cpAuditLine.innerText = stamp;
+            cpAuditLine.style.display = 'block';
+        }
+    } else {
+        if (cpF9Save) cpF9Save.style.display = 'block';
+        if (cpAuditLine) {
+            cpAuditLine.innerText = '';
+            cpAuditLine.style.display = 'none';
+        }
+    }
 }
 
 async function saveChittaPaymentSettlement() {
@@ -6882,6 +6915,8 @@ function displayChitta(index) {
     calcChitta();
     setChittaMode('VIEW');
 
+    const f9Save = document.getElementById('chittaF9SaveIndicator');
+    if (f9Save) f9Save.style.display = 'none';
     const auditEl = document.getElementById('chittaAuditLine');
     if (auditEl) {
         let stamp = c.auditInfo || '';
@@ -6891,6 +6926,7 @@ function displayChitta(index) {
         }
         if (c.changedInfo) stamp += ' | ' + c.changedInfo;
         auditEl.innerText = stamp;
+        auditEl.style.display = 'block';
     }
 }
 
@@ -6917,8 +6953,13 @@ function clearChitta() {
     const paidOn = document.getElementById('paidOn') || document.querySelector('#openingChitta input[tabindex="6"]');
     if (paidOn) paidOn.value = '';
 
+    const f9Save = document.getElementById('chittaF9SaveIndicator');
+    if (f9Save) f9Save.style.display = 'block';
     const auditEl = document.getElementById('chittaAuditLine');
-    if (auditEl) auditEl.innerText = getLiveAuditStamp('CHITTA');
+    if (auditEl) {
+        auditEl.innerText = '';
+        auditEl.style.display = 'none';
+    }
     
     const itemDescs = document.querySelectorAll('#chittaGrid .grid-item');
     const qtys = document.querySelectorAll('#chittaGrid .grid-qty');
@@ -7133,6 +7174,14 @@ async function saveChitta() {
                 displayChitta(targetIdx);
             } else {
                 setChittaMode('VIEW');
+                const f9Save = document.getElementById('chittaF9SaveIndicator');
+                const auditEl = document.getElementById('chittaAuditLine');
+                if (f9Save) f9Save.style.display = 'none';
+                if (auditEl) {
+                    auditEl.innerText = data.auditInfo || getLiveAuditStamp('CHITTA');
+                    if (data.changedInfo) auditEl.innerText += ' | ' + data.changedInfo;
+                    auditEl.style.display = 'block';
+                }
             }
         } else if (res.status === 400) {
             let errMsg = "This Chitta Number already exists on this date! Please choose a different number.";
@@ -8547,6 +8596,8 @@ function displayBill(index) {
     
     calcBill();
 
+    const f9Save = document.getElementById('billF9SaveIndicator');
+    if (f9Save) f9Save.style.display = 'none';
     const auditEl = document.getElementById('billAuditLine');
     if (auditEl) {
         let stamp = b.auditInfo || '';
@@ -8556,6 +8607,7 @@ function displayBill(index) {
         }
         if (b.changedInfo) stamp += ' | ' + b.changedInfo;
         auditEl.innerText = stamp;
+        auditEl.style.display = 'block';
     }
 }
 
@@ -8604,8 +8656,13 @@ function clearBill() {
     document.getElementById('billDiscount').value = '';
     calcBill();
 
+    const f9Save = document.getElementById('billF9SaveIndicator');
+    if (f9Save) f9Save.style.display = 'block';
     const auditEl = document.getElementById('billAuditLine');
-    if (auditEl) auditEl.innerText = getLiveAuditStamp('BILL');
+    if (auditEl) {
+        auditEl.innerText = '';
+        auditEl.style.display = 'none';
+    }
 }
 
 
@@ -10419,8 +10476,10 @@ function initPurchaseRegisterWindow() {
     const curDate = getTodayDateStr();
     const fromInput = document.getElementById('prFromDate');
     const toInput = document.getElementById('prToDate');
+    const pendingCheckbox = document.getElementById('prShowPendingOnly');
     if (fromInput) fromInput.value = curDate;
     if (toInput) toInput.value = curDate;
+    if (pendingCheckbox) pendingCheckbox.checked = true;
     loadPurchaseRegister();
 }
 
@@ -10502,7 +10561,7 @@ async function loadPurchaseRegister() {
                     tr.id = 'prRow_' + idx;
                     tr.style.cursor = 'pointer';
                     tr.style.height = '20px';
-                    tr.style.backgroundColor = idx === 0 ? '#00ffff' : '#ffffff';
+                    tr.style.backgroundColor = idx === 0 ? '#48d1cc' : '#ffffff';
 
                     tr.title = 'Click to select / Double click to open Purchase #' + purNo;
                     tr.onclick = function() { selectPurchaseRegRow(idx); };
@@ -10524,14 +10583,14 @@ async function loadPurchaseRegister() {
                 });
             }
 
-            // Pad with empty rows to fill grid height down to bottom matching FoxPro
+            // Pad with empty rows to fill grid height down to bottom matching FoxPro Image 1
             const currentRows = data ? data.length : 0;
             const padCount = Math.max(0, 20 - currentRows);
             for (let p = 0; p < padCount; p++) {
                 const tr = document.createElement('tr');
                 tr.style.height = '20px';
                 if (currentRows === 0 && p === 0) {
-                    tr.style.backgroundColor = '#00ffff';
+                    tr.style.backgroundColor = '#48d1cc';
                 } else {
                     tr.style.backgroundColor = '#ffffff';
                 }
@@ -10574,7 +10633,7 @@ function selectPurchaseRegRow(idx) {
     const rows = document.querySelectorAll('#purchaseRegisterBody tr');
     rows.forEach((r, i) => {
         if (i === idx) {
-            r.style.backgroundColor = '#00ffff';
+            r.style.backgroundColor = '#48d1cc';
         } else {
             r.style.backgroundColor = '#ffffff';
         }
@@ -13173,7 +13232,7 @@ async function loadPurchasePaymentRegister() {
                 tr.id = 'pprRow_' + idx;
                 tr.style.cursor = 'pointer';
                 tr.style.height = '20px';
-                tr.style.backgroundColor = idx === 0 ? '#00ffff' : '#ffffff';
+                tr.style.backgroundColor = idx === 0 ? '#48d1cc' : '#ffffff';
 
                 tr.title = 'Click to select / Double click to view Purchase #' + noStr;
                 tr.onclick = function() { selectPurchasePaymentRegRow(idx); };
@@ -13201,7 +13260,7 @@ async function loadPurchasePaymentRegister() {
             const tr = document.createElement('tr');
             tr.style.height = '20px';
             if (rowCount === 0 && i === 0) {
-                tr.style.backgroundColor = '#00ffff';
+                tr.style.backgroundColor = '#48d1cc';
             } else {
                 tr.style.backgroundColor = '#ffffff';
             }
@@ -13237,7 +13296,7 @@ function selectPurchasePaymentRegRow(idx) {
     const rows = document.querySelectorAll('#purchasePaymentRegisterBody tr');
     rows.forEach((r, i) => {
         if (i === idx) {
-            r.style.backgroundColor = '#00ffff';
+            r.style.backgroundColor = '#48d1cc';
             r.scrollIntoView({ block: 'nearest' });
         } else {
             r.style.backgroundColor = '#ffffff';
@@ -13312,7 +13371,7 @@ async function loadPurchasePendingRegister() {
                 tr.id = 'ppndRow_' + idx;
                 tr.style.cursor = 'pointer';
                 tr.style.height = '20px';
-                tr.style.backgroundColor = idx === 0 ? '#00ffff' : '#ffffff';
+                tr.style.backgroundColor = idx === 0 ? '#48d1cc' : '#ffffff';
 
                 tr.title = 'Click to select / Double click to view Purchase #' + purNo;
                 tr.onclick = function() { selectPurchasePendingRegRow(idx); };
@@ -13340,7 +13399,7 @@ async function loadPurchasePendingRegister() {
             const tr = document.createElement('tr');
             tr.style.height = '20px';
             if (rowCount === 0 && i === 0) {
-                tr.style.backgroundColor = '#00ffff';
+                tr.style.backgroundColor = '#48d1cc';
             } else {
                 tr.style.backgroundColor = '#ffffff';
             }
@@ -13376,7 +13435,7 @@ function selectPurchasePendingRegRow(idx) {
     const rows = document.querySelectorAll('#purchasePendingRegisterBody tr');
     rows.forEach((r, i) => {
         if (i === idx) {
-            r.style.backgroundColor = '#00ffff';
+            r.style.backgroundColor = '#48d1cc';
             r.scrollIntoView({ block: 'nearest' });
         } else {
             r.style.backgroundColor = '#ffffff';
@@ -13391,6 +13450,19 @@ function printPurchasePendingRegisterReport(autoPrint = false) {
 function exportPurchasePendingRegisterExcel() {
     exportRegisterToExcel('purchasePendingRegister', 'Purchase Pending Register');
 }
+
+// Synchronize horizontal scrolling between Register Grid and Bottom Totals
+document.addEventListener('DOMContentLoaded', function() {
+    ['purchaseRegister', 'purchasePaymentRegister', 'purchasePendingRegister'].forEach(id => {
+        const tblCont = document.getElementById(id + 'TableContainer');
+        const botCont = document.getElementById(id + 'BottomContainer');
+        if (tblCont && botCont) {
+            tblCont.addEventListener('scroll', function() {
+                botCont.scrollLeft = tblCont.scrollLeft;
+            });
+        }
+    });
+});
 
 // ================= ONLINE APK AUTO-UPDATE =================
 function checkAppUpdateOnline() {
