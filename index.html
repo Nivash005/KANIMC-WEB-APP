@@ -167,7 +167,7 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="login-body">
 <div class="field"><label>User name</label><div class="field-row"><div class="icon-user"></div><select id="username" onchange="onUserChange()"><option value="ADMIN">ADMIN</option><option value="USER1">USER1</option></select></div></div>
 <div class="field"><label>Password</label><div class="field-row"><div class="icon-lock"></div><input type="password" id="password" value="admin" onkeydown="if(event.key==='Enter')login()"></div></div>
-<div class="field"><label>Period</label><div class="field-row"><div class="icon-period"></div><select id="period" onchange="onPeriodChanged(this.value)"><option>2023 - 2024</option></select></div></div>
+<div class="field"><label>Period</label><div class="field-row"><div class="icon-period"></div><select id="period" onchange="onPeriodChanged(this.value)"><option value="2026 - 2027">2026 - 2027</option></select></div></div>
 <div class="login-actions"><button onclick="login()">Login</button></div>
 <div id="loginErrorMsg" style="color:#c00; font-size:11px; margin-top:6px; text-align:center; min-height:15px;"></div>
 </div>
@@ -298,7 +298,7 @@ input:focus, select:focus { background: #ffff00; outline: none; }
     <div style="display:flex; align-items:center; gap:10px;">
         <span onclick="checkAppUpdateOnline()" style="color:#0078d7; cursor:pointer; font-size:11px; font-weight:bold; padding:2px 7px; background:#e8f0fe; border-radius:3px; border:1px solid #c2d7ff;" title="Check for APK updates">🔄 Update</span>
         <span onclick="openMultiDeviceModal()" style="color:#0055aa; text-decoration:underline; cursor:pointer; font-weight:bold;" title="Connect other devices on Wi-Fi or Internet">📱 Connect Devices</span>
-        <div id="userInfo">ADMIN | 2023 - 2024</div>
+        <div id="userInfo">ADMIN | 2026 - 2027</div>
     </div>
 </div>
 </div>
@@ -4961,19 +4961,41 @@ function formatPeriodYear(p) {
 }
 
 // --- 21. ACCOUNT PERIOD LOGIC ---
+function getCurrentFinancialPeriod() {
+    const today = (typeof getTodayDateStr === 'function') ? getTodayDateStr() : new Date().toISOString().substring(0, 10);
+    const periods = window.allFinancialPeriods || [];
+    if (!Array.isArray(periods) || periods.length === 0) return null;
+
+    // 1. Automatically match the period containing today's date
+    const matched = periods.find(p => {
+        const s = p.startDate ? String(p.startDate).substring(0, 10) : '';
+        const e = p.endDate ? String(p.endDate).substring(0, 10) : '';
+        return s && e && today >= s && today <= e;
+    });
+    if (matched) return matched;
+
+    // 2. Otherwise sort by endDate descending and pick the latest period
+    const sorted = [...periods].sort((a,b) => (b.endDate || '').localeCompare(a.endDate || ''));
+    return sorted[0];
+}
+
 function getActivePeriod() {
+    const periods = window.allFinancialPeriods || [];
+    const curPeriod = getCurrentFinancialPeriod();
+    const curLabel = curPeriod ? formatPeriodYear(curPeriod) : '2026 - 2027';
+
     let saved = localStorage.getItem('kanimc_active_period');
-    let periods = window.allFinancialPeriods || [];
-    if (saved) {
+    // If saved is empty or an outdated historical period (e.g. 2023 - 2024 or 2024 - 2025), automatically migrate to the current active period!
+    if (!saved || saved.includes('2023') || saved.includes('2024') || saved.includes('2025')) {
+        saved = curLabel;
+        localStorage.setItem('kanimc_active_period', saved);
+    }
+
+    if (saved && periods.length > 0) {
         let p = periods.find(x => formatPeriodYear(x) === saved || x.periodName === saved || String(x.id) === saved);
         if (p) return p;
     }
-    // Automatically match the period containing today
-    const today = getTodayDateStr();
-    let currentPeriod = periods.find(p => p.startDate && p.endDate && today >= String(p.startDate).substring(0, 10) && today <= String(p.endDate).substring(0, 10));
-    if (currentPeriod) return currentPeriod;
-    if (periods.length > 0) return periods[periods.length - 1];
-    return null;
+    return curPeriod;
 }
 
 function getActivePeriodDates() {
@@ -5074,9 +5096,10 @@ async function loadFinancialPeriods() {
                 savedPeriod = formatPeriodYear({ periodName: savedPeriod }) || savedPeriod;
                 localStorage.setItem('kanimc_active_period', savedPeriod);
             }
-            if (!savedPeriod) {
-                const sortedByEnd = [...periods].sort((a,b) => (b.endDate || '').localeCompare(a.endDate || ''));
-                savedPeriod = formatPeriodYear(sortedByEnd[0]) || '2024 - 2025';
+            const curPeriod = getCurrentFinancialPeriod();
+            const curLabel = curPeriod ? formatPeriodYear(curPeriod) : '2026 - 2027';
+            if (!savedPeriod || savedPeriod.includes('2023') || savedPeriod.includes('2024') || savedPeriod.includes('2025')) {
+                savedPeriod = curLabel;
                 localStorage.setItem('kanimc_active_period', savedPeriod);
             }
 
@@ -5419,7 +5442,15 @@ function onUserChange() {
 function login() {
     const u = (document.getElementById('username')?.value || 'ADMIN').trim().toUpperCase();
     const p = (document.getElementById('password')?.value || '').trim();
-    const period = document.getElementById('period')?.value || '2023 - 2024';
+    let period = document.getElementById('period')?.value;
+    const curPeriod = getActivePeriod();
+    const curLabel = curPeriod ? formatPeriodYear(curPeriod) : '2026 - 2027';
+    if (!period || period.includes('2023') || period.includes('2024') || period.includes('2025')) {
+        period = curLabel;
+        const pSelect = document.getElementById('period');
+        if (pSelect) pSelect.value = period;
+    }
+    localStorage.setItem('kanimc_active_period', period);
     const err = document.getElementById('loginErrorMsg');
     
     const expectedPass = USER_CREDENTIALS[u];
@@ -5848,36 +5879,26 @@ function showLiveSyncToast(msg) {
 function updateLiveSyncBadge(isOnline, status) {
     const badge = document.getElementById('liveSyncStatusIndicator');
     const modalText = document.getElementById('syncModalStatusText');
-    const qLen = (typeof window.getOfflineQueueLength === 'function') ? window.getOfflineQueueLength() : 0;
-    if (isOnline) {
-        if (badge) {
-            badge.style.background = '#d4edda';
-            badge.style.color = '#155724';
-            badge.style.borderColor = '#c3e6cb';
-            if (qLen > 0) {
-                badge.innerText = '?? Syncing (' + qLen + ' pending)...';
-            } else {
-                badge.innerText = '?? Single DB: Connected | Auto-Sync ON';
-            }
+    const hasServer = (typeof window.hasConfiguredCentralServer === 'function') ? window.hasConfiguredCentralServer() : false;
+    const qLen = hasServer && (typeof window.getOfflineQueueLength === 'function') ? window.getOfflineQueueLength() : 0;
+
+    if (badge) {
+        badge.style.background = '#d4edda';
+        badge.style.color = '#155724';
+        badge.style.borderColor = '#c3e6cb';
+        if (hasServer && qLen > 0) {
+            badge.innerText = '🔄 Syncing (' + qLen + ' pending)...';
+        } else {
+            badge.innerText = '🟢 Single DB: Connected | Auto-Sync ON';
         }
-        if (modalText && status) {
-            modalText.innerText = 'Connected ? Chittas: ' + (status.chittaCount || 0) + ' (' + (status.paidCount || 0) + ' Paid) ? Accounts: ' + (status.accountCount || 0) + (qLen > 0 ? ' ? ' + qLen + ' syncing' : '');
+    }
+    if (modalText) {
+        if (hasServer && isOnline) {
+            modalText.innerText = 'Connected • Chittas: ' + ((status && status.chittaCount) || 0) + ' (' + ((status && status.paidCount) || 0) + ' Paid) • Accounts: ' + ((status && status.accountCount) || 0) + (qLen > 0 ? ' • ' + qLen + ' syncing' : '');
             modalText.style.color = '#28a745';
-        }
-    } else {
-        if (badge) {
-            badge.style.background = '#fff3cd';
-            badge.style.color = '#856404';
-            badge.style.borderColor = '#ffeeba';
-            if (qLen > 0) {
-                badge.innerText = '?? Offline Mode (' + qLen + ' pending sync)';
-            } else {
-                badge.innerText = '?? Offline Mode (Local Storage)';
-            }
-        }
-        if (modalText) {
-            modalText.innerText = 'Offline Mode ? All changes saved locally and will auto-sync when reconnected.' + (qLen > 0 ? ' (' + qLen + ' pending)' : '');
-            modalText.style.color = '#856404';
+        } else {
+            modalText.innerText = 'Single DB Mode • All records saved locally with full database parity.';
+            modalText.style.color = '#155724';
         }
     }
 }
