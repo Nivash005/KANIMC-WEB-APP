@@ -51,12 +51,12 @@ jobs:
           echo "Assets bundled into APK:"
           ls -la android/app/src/main/assets/www/
 
-      - name: Build Signed APK with Gradle
+      - name: Build APK with Gradle
         run: |
           cd android
-          gradle assembleRelease --stacktrace || gradle assembleDebug --stacktrace
+          gradle assembleRelease assembleDebug --stacktrace
 
-      - name: Prepare APK Output
+      - name: Prepare and Sign APK with Permanent Keystore
         run: |
           mkdir -p output
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
@@ -68,7 +68,13 @@ jobs:
             find android/app/build/outputs -type f || true
             exit 1
           fi
-          echo "Output files:"
+
+          echo "Signing output/kanimc-tablet.apk with permanent keystore..."
+          export ANDROID_BUILD_TOOLS=$(find $ANDROID_HOME/build-tools -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          echo "Using Android Build Tools: $ANDROID_BUILD_TOOLS"
+          $ANDROID_BUILD_TOOLS/apksigner sign --ks android/kanimc.keystore --ks-pass pass:kanimc123 --ks-key-alias kanimc --key-pass pass:kanimc123 output/kanimc-tablet.apk
+          $ANDROID_BUILD_TOOLS/apksigner verify -v output/kanimc-tablet.apk
+          echo "APK successfully signed and verified with permanent keystore!"
           ls -la output/
 
       - name: Upload APK as Workflow Artifact
