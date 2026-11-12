@@ -54,7 +54,7 @@ jobs:
       - name: Build Signed APK with Gradle
         run: |
           cd android
-          gradle assembleRelease --stacktrace
+          gradle assembleRelease assembleDebug --stacktrace
 
       - name: Prepare APK Output
         run: |
@@ -64,7 +64,8 @@ jobs:
           elif [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
             cp android/app/build/outputs/apk/debug/app-debug.apk output/kanimc-tablet.apk
           else
-            echo "Error: No APK found in release or debug!"
+            echo "Error: No APK found!"
+            find android/app/build/outputs -type f || true
             exit 1
           fi
           echo "Output files:"
@@ -82,16 +83,15 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           tag_name: v1.0.0-tablet
-          name: "📱 KANIMC Tablet APK (v1.0.1 Latest)"
+          name: "📱 KANIMC Tablet APK (v1.0.6 Latest)"
           body: |
             ## 📱 KANIMC Tablet Application (Android APK)
             
             This APK is fully implemented for Android Tablets and mobile devices:
-            - **Complete Database Seeded Offline**: Includes all 2,466 accounts, groups, places, items, periods, and company settings directly inside the APK for instant offline use.
-            - **All Masters & Registers**: Chittas, Purchases, Payments, Opening Balances, Ledger, Day Book, Cash Book, Group Master, Company Master, and Reports.
-            - **Direct Android Printing**: Thermal and Wi-Fi printer support using native Android PrintManager.
-            - **Wi-Fi Multi-Device Auto-Sync**: Connects directly to desktop computer server over Wi-Fi with instant real-time synchronization.
-            - **Native Device Features**: Hardware acceleration, responsive layout, modal back-button navigation, and instant Excel / CSV downloads.
+            - **Permanently Signed Release**: Consistent RSA 2048-bit keystore signature across all updates, ensuring smooth in-app updates without 'App not installed' errors.
+            - **Current Account Period Auto-Detection**: Automatically selects active financial period (2026-2027) upon login.
+            - **Offline Single DB Mode**: Clean local storage persistence without stuck pending sync badges.
+            - **Complete Database Seeded Offline**: All 2,466 accounts, groups, places, items, periods, and company settings.
             
             ### 📥 Direct Download:
             Download **[kanimc-tablet.apk](https://github.com/Nivash005/KANIMC-WEB-APP/releases/download/v1.0.0-tablet/kanimc-tablet.apk)** directly onto your tablet and tap to install!
