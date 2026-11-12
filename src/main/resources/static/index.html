@@ -228,8 +228,8 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="dropdown-item has-submenu" onclick="toggleSubmenu(event, this)">Purchase ▶
 <div class="submenu">
 <div class="dropdown-item" onclick="openWin('purchaseRegister');event.stopPropagation()">1. Purchase Register</div>
-<div class="dropdown-item" onclick="openWin('purchasePaymentRegister');event.stopPropagation()">2. Payment Register</div>
-<div class="dropdown-item" onclick="openWin('purchasePendingRegister');event.stopPropagation()">3. Pending Register</div>
+<div class="dropdown-item" onclick="openWin('purchasePaymentRegister');event.stopPropagation()">2. Purchase Payment Register</div>
+<div class="dropdown-item" onclick="openWin('purchasePendingRegister');event.stopPropagation()">3. Purchase Pending Register</div>
 </div>
 </div>
 
@@ -278,13 +278,15 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="tool" onclick="openWin('product');event.stopPropagation()"><div class="tool-icon">📦</div>Product</div>
 <div class="tool" onclick="openWin('openingChitta');event.stopPropagation()"><div class="tool-icon">📘</div>Chitta</div>
 <div class="tool" onclick="openWin('chittaPayment');event.stopPropagation()"><div class="tool-icon">💰</div>Chitta Payment</div>
+<div class="tool" onclick="openWin('purchase');event.stopPropagation()"><div class="tool-icon">🛒</div>Purchase</div>
+<div class="tool" onclick="openWin('purchasePayment');event.stopPropagation()"><div class="tool-icon">💳</div>Purchase Payment</div>
 <div class="tool" onclick="openWin('chittaRegister');event.stopPropagation()"><div class="tool-icon">📑</div>Chitta Register</div>
-<div class="tool" onclick="openWin('chittaPaymentRegister');event.stopPropagation()"><div class="tool-icon">🧾</div>Chitta Payment Register</div>
-<div class="tool" onclick="openWin('chittaPendingRegister');event.stopPropagation()"><div class="tool-icon">⏳</div>Chitta Pending Register</div>
-<div class="tool" onclick="openWin('purchaseRegister');event.stopPropagation()"><div class="tool-icon">🛒</div>Purchase Register</div>
-<div class="tool" onclick="openWin('purchasePaymentRegister');event.stopPropagation()"><div class="tool-icon">🧾</div>Payment Register</div>
-<div class="tool" onclick="openWin('purchasePendingRegister');event.stopPropagation()"><div class="tool-icon">⏳</div>Pending Register</div>
-<div class="tool" onclick="openWin('itemRegister');event.stopPropagation()"><div class="tool-icon">📊</div>Item Register</div>
+<div class="tool" onclick="openWin('chittaPaymentRegister');event.stopPropagation()"><div class="tool-icon">🧾</div>Chitta Payment Reg</div>
+<div class="tool" onclick="openWin('chittaPendingRegister');event.stopPropagation()"><div class="tool-icon">⏳</div>Chitta Pending Reg</div>
+<div class="tool" onclick="openWin('purchaseRegister');event.stopPropagation()"><div class="tool-icon">📊</div>Purchase Register</div>
+<div class="tool" onclick="openWin('purchasePaymentRegister');event.stopPropagation()"><div class="tool-icon">🧾</div>Purchase Payment Reg</div>
+<div class="tool" onclick="openWin('purchasePendingRegister');event.stopPropagation()"><div class="tool-icon">⏳</div>Purchase Pending Reg</div>
+<div class="tool" onclick="openWin('itemRegister');event.stopPropagation()"><div class="tool-icon">📈</div>Item Register</div>
 <div class="tool" onclick="openWin('itemSummaryReport');event.stopPropagation()"><div class="tool-icon">📦</div>Item Summary</div>
 </div>
 <div class="workspace" style="position:relative;"></div>
@@ -3007,7 +3009,7 @@ Commission % <input id="commRatePct" value="10.00%">
                 <tr style="font-weight:bold; background:#e0dedb; position:sticky; top:0; z-index:2; height:24px; border-bottom:1px solid #888;">
                     <th style="width:45px; border-right:1px solid #999; text-align:center; padding:2px;">Sno</th>
                     <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;">Paid On</th>
-                    <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;">Chitta Date</th>
+                    <th style="width:90px; border-right:1px solid #999; text-align:center; padding:2px;" title="Purchase Date">Date</th>
                     <th style="width:55px; border-right:1px solid #999; text-align:center; padding:2px;">No</th>
                     <th style="width:260px; border-right:1px solid #999; text-align:left; padding:2px 8px;">Name</th>
                     <th style="width:105px; border-right:1px solid #999; text-align:right; padding:2px 8px;">Amount</th>
@@ -11805,7 +11807,7 @@ async function savePurchase() {
 
         if (res.ok) {
             const saved = await res.json();
-            showToast('Purchase Chitta Saved! Payment is done in Purchase Payment.');
+            showToast('Purchase Saved! Payment is done in Purchase Payment.');
             refreshOpenPurchaseRegistersSilently();
             // Requirement: after saving again it should change to change button
             setPurchaseEditMode(false);
@@ -13218,10 +13220,11 @@ async function loadPurchasePaymentRegister() {
                     paidOnShort = pparts.length === 3 ? pparts[2] + '/' + pparts[1] + '/' + pparts[0] : p.paidOn;
                 }
 
-                let chittaDateShort = '';
-                if (p.chittaDate) {
-                    const cparts = String(p.chittaDate).substring(0, 10).split('-');
-                    chittaDateShort = cparts.length === 3 ? cparts[2] + '/' + cparts[1] + '/' + cparts[0] : p.chittaDate;
+                let purDateShort = '';
+                const rawPurDt = p.date || p.purchaseDate || p.chittaDate;
+                if (rawPurDt) {
+                    const cparts = String(rawPurDt).substring(0, 10).split('-');
+                    purDateShort = cparts.length === 3 ? cparts[2] + '/' + cparts[1] + '/' + cparts[0] : rawPurDt;
                 }
 
                 const noStr = p.no != null ? p.no : (p.paymentNo || '');
@@ -13241,7 +13244,7 @@ async function loadPurchasePaymentRegister() {
                 tr.innerHTML = `
                     <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${idx + 1}</td>
                     <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${paidOnShort}</td>
-                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${chittaDateShort}</td>
+                    <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px;">${purDateShort}</td>
                     <td style="text-align:center; border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px; font-weight:bold; color:#0055aa; cursor:pointer;" onclick="openPurchaseFromRegister('${noStr}', '${p.id}'); event.stopPropagation();" title="Click to view Purchase">${noStr}</td>
                     <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; padding:2px 8px; font-weight:bold;">${nameStr}</td>
                     <td style="border-right:1px solid #dcdcdc; border-bottom:1px solid #dcdcdc; text-align:right; padding:2px 8px;">${amt > 0 ? amt.toFixed(2) : ''}</td>

@@ -1195,6 +1195,8 @@ public class ReportController {
             map.put("id", pp.getId());
             map.put("paidOn", pp.getPaymentDate());
             if (pp.getPurchase() != null) {
+                map.put("date", pp.getPurchase().getPurchaseDate());
+                map.put("purchaseDate", pp.getPurchase().getPurchaseDate());
                 map.put("chittaDate", pp.getPurchase().getPurchaseDate());
                 map.put("no", pp.getPurchase().getPurchaseNo());
                 map.put("name", pp.getPurchase().getTraderAccount() != null ? pp.getPurchase().getTraderAccount().getAccountName() : (pp.getTraderAccount() != null ? pp.getTraderAccount().getAccountName() : "Unknown"));
@@ -1203,6 +1205,8 @@ public class ReportController {
                 map.put("total", pp.getAmount());
                 map.put("paidTo", pp.getPurchase().getPaidTo() != null ? pp.getPurchase().getPaidTo() : (pp.getNarration() != null ? pp.getNarration() : ""));
             } else {
+                map.put("date", pp.getPaymentDate());
+                map.put("purchaseDate", pp.getPaymentDate());
                 map.put("chittaDate", pp.getPaymentDate());
                 map.put("no", pp.getPaymentNo());
                 map.put("name", pp.getTraderAccount() != null ? pp.getTraderAccount().getAccountName() : "Unknown");
