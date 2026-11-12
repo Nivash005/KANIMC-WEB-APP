@@ -92,6 +92,16 @@
     };
 
     window.enqueueOfflineAction = function(method, path, body, meta = {}) {
+        // If running in Standalone / Single DB mode without a configured remote server,
+        // all changes are already saved in local storage database. Do not pile up pending sync queue!
+        if (typeof window.hasConfiguredCentralServer === 'function' && !window.hasConfiguredCentralServer()) {
+            window.saveOfflineQueue([]); // Ensure clean queue
+            if (typeof updateLiveSyncBadge === 'function') {
+                updateLiveSyncBadge(true);
+            }
+            return;
+        }
+
         const queue = window.getOfflineQueue();
         const action = {
             id: 'sync_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
@@ -107,6 +117,15 @@
         if (typeof updateLiveSyncBadge === 'function') {
             updateLiveSyncBadge(false);
         }
+    };
+
+    window.hasConfiguredCentralServer = function() {
+        const cs = localStorage.getItem('KANIMC_SERVER_URL');
+        if (!cs || cs.trim() === '') return false;
+        if (window.location.protocol.startsWith('http') && window.location.hostname.includes('github.io')) {
+            return false;
+        }
+        return true;
     };
 
     function getCentralServerUrl() {

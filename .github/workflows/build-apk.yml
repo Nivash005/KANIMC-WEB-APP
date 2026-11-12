@@ -51,20 +51,21 @@ jobs:
           echo "Assets bundled into APK:"
           ls -la android/app/src/main/assets/www/
 
-      - name: Build APK with Gradle
+      - name: Build Signed APK with Gradle
         run: |
           cd android
-          gradle assembleRelease assembleDebug --stacktrace
+          gradle assembleRelease --stacktrace
 
       - name: Prepare APK Output
         run: |
           mkdir -p output
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
             cp android/app/build/outputs/apk/release/app-release.apk output/kanimc-tablet.apk
-          elif [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk output/kanimc-tablet.apk
-          else
+          elif [ -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
             cp android/app/build/outputs/apk/debug/app-debug.apk output/kanimc-tablet.apk
+          else
+            echo "Error: No APK found in release or debug!"
+            exit 1
           fi
           echo "Output files:"
           ls -la output/

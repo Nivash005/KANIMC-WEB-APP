@@ -10,20 +10,32 @@ android {
         applicationId "com.kanimc.tablet"
         minSdk 24
         targetSdk 34
-        versionCode 6
-        versionName "1.0.5"
+        versionCode 7
+        versionName "1.0.6"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("kanimc.keystore")
+            storePassword "kanimc123"
+            keyAlias "kanimc"
+            keyPassword "kanimc123"
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
         debug {
             applicationIdSuffix ""
             debuggable true
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
