@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_multi_device_sync_v6';
+const CACHE_NAME = 'kanimc-cache-v20261113_universal_cloud_sync_v7';
 const STATIC_ASSETS = [
     './',
     './index.html',
