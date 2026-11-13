@@ -1,7 +1,7 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.8",
+  "versionCode": 10,
+  "versionName": "1.0.9",
   "apkUrl": "https://github.com/Nivash005/KANIMC-WEB-APP/releases/download/v1.0.0-tablet/kanimc-tablet.apk",
-  "releaseNotes": "Updated official application branding with vibrant Peacock & Vel logo across Web, Desktop EXE, and Android Tablet APK.",
+  "releaseNotes": "Universal sync update: Blocked paid-to during chitta creation, auto-capitalization, real-time multi-device sync, and Windows executable resilience.",
   "publishDate": "2026-11-13"
 }
