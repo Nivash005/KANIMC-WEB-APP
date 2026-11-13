@@ -214,6 +214,17 @@
             }
             db.chittas.sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
             changed = true;
+
+            // If desktop central server is running, also persist to backend database
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (window.location.port !== '' && window.location.protocol === 'http:')) {
+                try {
+                    originalFetch('/api/chittas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newC)
+                    }).catch(() => {});
+                } catch(e) {}
+            }
         }
 
         // 2. CHITTA PAYMENT
@@ -227,6 +238,19 @@
                 c.paymentMethod = payload.paymentMethod || c.paymentMethod;
                 c.paidAmount = payload.paidAmount != null ? payload.paidAmount : (c.netPayable || c.paidAmount);
                 changed = true;
+
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    try {
+                        const targetId = c.id || payload.id;
+                        if (targetId) {
+                            originalFetch('/api/chittas/' + targetId + '/payment', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            }).catch(() => {});
+                        }
+                    } catch(e) {}
+                }
             }
         }
 
@@ -804,7 +828,26 @@
                                     else if (path === '/api/commission-rates' && Array.isArray(data) && data.length > 0) db.commissionRates = data;
                                     else if (path === '/api/company' && typeof data === 'object') db.company = data;
                                     else if (path === '/api/settings' && typeof data === 'object') db.settings = data;
-                                    else if (path === '/api/chittas' && Array.isArray(data)) db.chittas = data;
+                                    else if (path === '/api/chittas' && Array.isArray(data)) {
+                                        const serverKeys = new Set(data.map(c => String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)));
+                                        (db.chittas || []).forEach(localC => {
+                                            const key = String(localC.chittaNo || '') + '_' + String(localC.chittaDate || '').substring(0, 10);
+                                            if (!serverKeys.has(key)) {
+                                                data.push(localC);
+                                                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                                                    try {
+                                                        originalFetch('/api/chittas', {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify(localC)
+                                                        }).catch(() => {});
+                                                    } catch(e) {}
+                                                }
+                                            }
+                                        });
+                                        data.sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
+                                        db.chittas = data;
+                                    }
                                     else if ((path === '/api/sales-bills' || path === '/api/bills') && Array.isArray(data)) db.salesBills = data;
                                     else if ((path === '/api/cash-vouchers' || path === '/api/cash-payments') && Array.isArray(data)) db.cashVouchers = data;
                                     else if ((path === '/api/receipt-vouchers' || path === '/api/receipts') && Array.isArray(data)) db.receiptVouchers = data;
@@ -844,6 +887,13 @@
                     // Background drain queue if pending
                     if (window.getOfflineQueueLength() > 0) {
                         setTimeout(() => window.processOfflineSyncQueue(), 500);
+                    }
+                    // If fetching chittas, return the merged complete dataset
+                    if (path === '/api/chittas' && method === 'GET' && Array.isArray(db.chittas) && db.chittas.length > 0) {
+                        return new Response(JSON.stringify(db.chittas), {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json' }
+                        });
                     }
                     return remoteRes;
                 }
