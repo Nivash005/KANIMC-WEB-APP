@@ -5536,8 +5536,7 @@ function getLiveEditStamp(docType = 'CHITTA') {
 const USER1_ALLOWED_WINDOWS = new Set([
     'account',                  // Account Master
     'groupList',                // Group lookup for account
-    'openingChitta',            // Chitta entry
-    'chittaPayment',            // Chitta Payment
+    'openingChitta',            // Chitta entry (only create chitta allowed)
     'chittaRegister',           // Chitta Register
     'chittaPaymentRegister',    // Chitta Payment Register
     'chittaPendingRegister',    // Chitta Pending Register
@@ -5623,6 +5622,8 @@ function logout() {
 
 function canAccessWindow(windowId) {
     if (currentUser === 'ADMIN') return true;
+    // In user login, Chitta Payment is strictly prohibited
+    if (windowId === 'chittaPayment') return false;
     if (currentUser === 'USER1') {
         return USER1_ALLOWED_WINDOWS.has(windowId);
     }
@@ -5630,7 +5631,7 @@ function canAccessWindow(windowId) {
 }
 
 function applyUserPermissions(user) {
-    const isUser1 = (user === 'USER1');
+    const isUser1 = (user === 'USER1' || user !== 'ADMIN');
     
     const masterItems = document.querySelectorAll('#master > .dropdown-item');
     masterItems.forEach(item => {
@@ -5664,7 +5665,8 @@ function applyUserPermissions(user) {
     transItems.forEach(item => {
         const onclickAttr = item.getAttribute('onclick') || '';
         if (isUser1) {
-            const allowed = onclickAttr.includes("'openingChitta'") || onclickAttr.includes("'chittaPayment'");
+            // User login only allowed to open and create Chitta, NOT Chitta Payment
+            const allowed = onclickAttr.includes("'openingChitta'");
             item.style.display = allowed ? 'flex' : 'none';
         } else {
             item.style.display = 'flex';
@@ -5691,9 +5693,9 @@ function applyUserPermissions(user) {
     toolbarTools.forEach(tool => {
         const onclickAttr = tool.getAttribute('onclick') || '';
         if (isUser1) {
+            // Remove chittaPayment tool for non-admin
             const allowed = onclickAttr.includes("'account'") || 
                             onclickAttr.includes("'openingChitta'") || 
-                            onclickAttr.includes("'chittaPayment'") || 
                             onclickAttr.includes("'chittaRegister'") || 
                             onclickAttr.includes("'itemSummaryReport'");
             tool.style.display = allowed ? 'block' : 'none';
@@ -5702,10 +5704,16 @@ function applyUserPermissions(user) {
         }
     });
     
+    // Hide the Payment button inside Chitta window for user login
     const btnPayment = document.getElementById('btnChittaPayment');
     if (btnPayment) {
-        btnPayment.style.display = 'inline-block';
-        btnPayment.disabled = false;
+        if (isUser1) {
+            btnPayment.style.display = 'none';
+            btnPayment.disabled = true;
+        } else {
+            btnPayment.style.display = 'inline-block';
+            btnPayment.disabled = false;
+        }
     }
     
     }
@@ -6894,6 +6902,12 @@ async function populateChittaIntoPaymentForm(c) {
 }
 
 async function saveChittaPaymentSettlement() {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    if (user !== 'ADMIN') {
+        alert("Access Denied: Your user account (" + user + ") does not have permission to make Chitta Payments. Only ADMIN can make Chitta Payment.");
+        showToast("Access Denied: Only ADMIN can make Chitta Payment");
+        return;
+    }
     const enteredNo = document.getElementById('cpPayChittaNo')?.value?.trim();
     if (enteredNo && (!selectedCpChitta || String(selectedCpChitta.chittaNo).trim() !== enteredNo)) {
         let found = (window.allPendingChittas || []).find(c => String(c.chittaNo).trim() === enteredNo);
@@ -7340,6 +7354,12 @@ let pendingPaymentChitta = null;
 let pendingPaymentReturnIdx = -1;
 
 function promptPostSavePayment(chittaNo, chittaObj, returnIdx) {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    if (user !== 'ADMIN') {
+        // In user login: only creation of Chitta is allowed, no payment prompt
+        showToast(`✅ Chitta #${chittaNo} Saved!`);
+        return;
+    }
     awaitingPaymentPrompt = true;
     pendingPaymentChittaNo = chittaNo;
     pendingPaymentChitta = chittaObj || null;
@@ -7358,6 +7378,11 @@ function promptPostSavePayment(chittaNo, chittaObj, returnIdx) {
 }
 
 function moveToChittaPayment(chittaNo) {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    if (user !== 'ADMIN') {
+        showToast("Access Denied: Only ADMIN can make Chitta Payment");
+        return;
+    }
     awaitingPaymentPrompt = false;
     pendingPaymentChittaNo = null;
     const target = (typeof pendingPaymentChitta !== 'undefined' && pendingPaymentChitta) ? pendingPaymentChitta : chittaNo;
@@ -7594,8 +7619,10 @@ document.addEventListener("keydown", function(e) {
             return;
         }
         if (keyLower === 'y' && (!isEditingField || chittaMode === 'VIEW')) {
-            e.preventDefault();
-            openChittaPaymentFromCurrent();
+            if (currentUser === 'ADMIN') {
+                e.preventDefault();
+                openChittaPaymentFromCurrent();
+            }
             return;
         }
         if ((e.altKey && keyLower === 'b') || (!isEditingField && e.key === 'End')) {
@@ -9248,6 +9275,12 @@ async function deleteBillAction() {
 
 // --- DRILL DOWN & PAYMENT HELPERS ---
 function openChittaPaymentFromCurrent() {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    if (user !== 'ADMIN') {
+        alert("Access Denied: Your user account (" + user + ") does not have permission to make Chitta Payments. Only ADMIN can make Chitta Payment.");
+        showToast("Access Denied: Only ADMIN can make Chitta Payment");
+        return;
+    }
     let currentChittaObj = null;
     if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && typeof chittas !== 'undefined' && chittas && chittas[currentChittaIndex]) {
         currentChittaObj = chittas[currentChittaIndex];
@@ -9292,6 +9325,11 @@ async function openChittaByDocNo(docNo) {
 }
 
 async function deleteChittaPaymentSettlement() {
+    const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    if (user !== 'ADMIN') {
+        alert("Access Denied: Only ADMIN can modify or delete Chitta Payments.");
+        return;
+    }
     if(!selectedCpChitta || !selectedCpChitta.id) {
         alert("Please select a settled Chitta to delete payment.");
         return;
