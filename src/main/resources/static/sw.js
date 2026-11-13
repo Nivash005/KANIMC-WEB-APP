@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_chitta_payment_return_v1';
+const CACHE_NAME = 'kanimc-cache-v20261113_paidto_shortcuts_and_registers_v1';
 const STATIC_ASSETS = [
     './',
     './index.html',

@@ -735,7 +735,11 @@
                 if (!found) return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
                 
                 if (method === 'POST') {
-                    const paidTo = search.get('paidTo') || (found.farmerAccount ? found.farmerAccount.accountName : '');
+                    const paidToRaw = search.get('paidTo');
+                    const paidTo = paidToRaw ? paidToRaw.trim() : '';
+                    if (!paidTo) {
+                        return jsonResponse({ error: "Paid to is mandatory and cannot be empty." }, 400);
+                    }
                     const paymentMethod = search.get('paymentMethod') || 'CASH';
                     const payDate = search.get('payDate') || new Date().toISOString().substring(0, 10);
 
