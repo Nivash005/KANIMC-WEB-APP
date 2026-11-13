@@ -329,7 +329,11 @@
                     if (!db.items || db.items.length === 0) db.items = window.INITIAL_SEED_DATABASE.items || [];
                     if (!db.groups || db.groups.length === 0) db.groups = window.INITIAL_SEED_DATABASE.groups || [];
                     if (!db.periods || db.periods.length === 0) db.periods = window.INITIAL_SEED_DATABASE.periods || [];
-                    if (!db.company || Object.keys(db.company).length === 0) db.company = window.INITIAL_SEED_DATABASE.company || {};
+                    if (!db.company || !db.company.comname) {
+                        db.company = (window.INITIAL_SEED_DATABASE && window.INITIAL_SEED_DATABASE.company && window.INITIAL_SEED_DATABASE.company.comname) ? window.INITIAL_SEED_DATABASE.company : {
+                            comname: 'MAM', complace: 'KAMARAJ NAGAR', comphone1: '9791836555', comphone2: '9789125900', comsn: 'MA', comadd1: '*/977994++303..', comadd2: '3', comadd3: '', comadd4: '', comadd5: '', comtin: '', comcst: '', mbotmes: ''
+                        };
+                    }
                     saveDb();
                 }
                 if (db.accounts && db.accounts.length > 0) {
@@ -350,7 +354,9 @@
             db.items = seed.items || [];
             db.groups = seed.groups || [];
             db.commissionRates = seed.commissionRates || [];
-            db.company = seed.company || {};
+            db.company = (seed.company && seed.company.comname) ? seed.company : {
+                comname: 'MAM', complace: 'KAMARAJ NAGAR', comphone1: '9791836555', comphone2: '9789125900', comsn: 'MA', comadd1: '*/977994++303..', comadd2: '3', comadd3: '', comadd4: '', comadd5: '', comtin: '', comcst: '', mbotmes: ''
+            };
             db.settings = seed.settings || {};
             db.chittas = db.chittas || [];
             db.salesBills = db.salesBills || [];

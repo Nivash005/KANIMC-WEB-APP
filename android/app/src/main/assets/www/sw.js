@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_peacock_vel_logo_v1';
+const CACHE_NAME = 'kanimc-cache-v20261113_company_header_preview_v2';
 const STATIC_ASSETS = [
     './',
     './index.html',

@@ -4,26 +4,143 @@
 // =========================================================================
 
 // --- 1. COMPANY MASTER LOGIC ---
+window.companyData = null;
+
+window.getCompanyDetails = function() {
+    let comp = window.companyData || null;
+
+    if (!comp || !comp.comname) {
+        try {
+            const raw = localStorage.getItem('KANIMC_OFFLINE_DB_v1');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.company && typeof parsed.company === 'object') {
+                    if (parsed.company.comname && String(parsed.company.comname).trim()) {
+                        comp = parsed.company;
+                        window.companyData = comp;
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+
+    const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+    const domName = getVal('companyName');
+    const domAdd1 = getVal('companyAdd1');
+    const domAdd2 = getVal('companyAdd2');
+    const domAdd3 = getVal('companyAdd3');
+    const domAdd4 = getVal('companyAdd4');
+    const domAdd5 = getVal('companyAdd5');
+    const domPlace = getVal('companyPlace');
+    const domPhone1 = getVal('companyPhone1');
+    const domPhone2 = getVal('companyPhone2');
+    const domShortName = getVal('companyShortName');
+    const domTin = getVal('companyTin');
+    const domCst = getVal('companyCst');
+    const domBotMsg = getVal('companyBotMsg');
+
+    const name = (comp && comp.comname && String(comp.comname).trim()) ? String(comp.comname).trim() : (domName || 'MAM');
+    const shortName = (comp && comp.comsn && String(comp.comsn).trim()) ? String(comp.comsn).trim() : (domShortName || '');
+    const add1 = (comp && comp.comadd1 != null && String(comp.comadd1).trim()) ? String(comp.comadd1).trim() : domAdd1;
+    const add2 = (comp && comp.comadd2 != null && String(comp.comadd2).trim()) ? String(comp.comadd2).trim() : domAdd2;
+    const add3 = (comp && comp.comadd3 != null && String(comp.comadd3).trim()) ? String(comp.comadd3).trim() : domAdd3;
+    const add4 = (comp && comp.comadd4 != null && String(comp.comadd4).trim()) ? String(comp.comadd4).trim() : domAdd4;
+    const add5 = (comp && comp.comadd5 != null && String(comp.comadd5).trim()) ? String(comp.comadd5).trim() : domAdd5;
+    const place = (comp && comp.complace != null && String(comp.complace).trim()) ? String(comp.complace).trim() : domPlace;
+    const phone1 = (comp && comp.comphone1 != null && String(comp.comphone1).trim()) ? String(comp.comphone1).trim() : domPhone1;
+    const phone2 = (comp && comp.comphone2 != null && String(comp.comphone2).trim()) ? String(comp.comphone2).trim() : domPhone2;
+    const tin = (comp && comp.comtin != null && String(comp.comtin).trim()) ? String(comp.comtin).trim() : domTin;
+    const cst = (comp && comp.comcst != null && String(comp.comcst).trim()) ? String(comp.comcst).trim() : domCst;
+    const botMsg = (comp && comp.mbotmes != null && String(comp.mbotmes).trim()) ? String(comp.mbotmes).trim() : domBotMsg;
+
+    const addressParts = [add1, add2, add3, add4, add5].filter(Boolean);
+    if (place && !addressParts.includes(place)) {
+        addressParts.push(place);
+    }
+    const fullAddress = addressParts.join(', ');
+    const phones = [phone1, phone2].filter(Boolean).join(', ');
+
+    return {
+        name,
+        shortName,
+        addressParts,
+        fullAddress,
+        place,
+        phone1,
+        phone2,
+        phones,
+        tin,
+        cst,
+        botMsg
+    };
+};
+
 async function loadCompanyMaster() {
     try {
-        const res = await fetch('/api/company');
-        if (res.ok) {
-            const data = await res.json();
-            if (data && data.comname) {
-                if(document.getElementById('companyName')) document.getElementById('companyName').value = data.comname || '';
-                if(document.getElementById('companyAdd1')) document.getElementById('companyAdd1').value = data.comadd1 || '';
-                if(document.getElementById('companyAdd2')) document.getElementById('companyAdd2').value = data.comadd2 || '';
-                if(document.getElementById('companyAdd3')) document.getElementById('companyAdd3').value = data.comadd3 || '';
-                if(document.getElementById('companyAdd4')) document.getElementById('companyAdd4').value = data.comadd4 || '';
-                if(document.getElementById('companyAdd5')) document.getElementById('companyAdd5').value = data.comadd5 || '';
-                if(document.getElementById('companyPlace')) document.getElementById('companyPlace').value = data.complace || '';
-                if(document.getElementById('companyPhone1')) document.getElementById('companyPhone1').value = data.comphone1 || '';
-                if(document.getElementById('companyPhone2')) document.getElementById('companyPhone2').value = data.comphone2 || '';
-                if(document.getElementById('companyShortName')) document.getElementById('companyShortName').value = data.comsn || '';
-                if(document.getElementById('companyTin')) document.getElementById('companyTin').value = data.comtin || '';
-                if(document.getElementById('companyCst')) document.getElementById('companyCst').value = data.comcst || '';
-                if(document.getElementById('companyBotMsg')) document.getElementById('companyBotMsg').value = data.mbotmes || '';
+        let data = null;
+        try {
+            const raw = localStorage.getItem('KANIMC_OFFLINE_DB_v1');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.company && typeof parsed.company === 'object') {
+                    if (parsed.company.comname && String(parsed.company.comname).trim()) {
+                        data = parsed.company;
+                    }
+                }
             }
+        } catch(e) {}
+
+        try {
+            const res = await fetch('/api/company');
+            if (res.ok) {
+                const remoteData = await res.json();
+                if (remoteData && (remoteData.comname || remoteData.complace || remoteData.comphone1)) {
+                    data = remoteData;
+                }
+            }
+        } catch(e) {}
+
+        if (data && (data.comname || data.complace || data.comphone1 || data.comsn)) {
+            window.companyData = data;
+            if(document.getElementById('companyName')) document.getElementById('companyName').value = data.comname || '';
+            if(document.getElementById('companyAdd1')) document.getElementById('companyAdd1').value = data.comadd1 || '';
+            if(document.getElementById('companyAdd2')) document.getElementById('companyAdd2').value = data.comadd2 || '';
+            if(document.getElementById('companyAdd3')) document.getElementById('companyAdd3').value = data.comadd3 || '';
+            if(document.getElementById('companyAdd4')) document.getElementById('companyAdd4').value = data.comadd4 || '';
+            if(document.getElementById('companyAdd5')) document.getElementById('companyAdd5').value = data.comadd5 || '';
+            if(document.getElementById('companyPlace')) document.getElementById('companyPlace').value = data.complace || '';
+            if(document.getElementById('companyPhone1')) document.getElementById('companyPhone1').value = data.comphone1 || '';
+            if(document.getElementById('companyPhone2')) document.getElementById('companyPhone2').value = data.comphone2 || '';
+            if(document.getElementById('companyShortName')) document.getElementById('companyShortName').value = data.comsn || '';
+            if(document.getElementById('companyTin')) document.getElementById('companyTin').value = data.comtin || '';
+            if(document.getElementById('companyCst')) document.getElementById('companyCst').value = data.comcst || '';
+            if(document.getElementById('companyBotMsg')) document.getElementById('companyBotMsg').value = data.mbotmes || '';
+
+            const titleBarSpan = document.querySelector('.title-bar span');
+            if (titleBarSpan && data.comname) {
+                titleBarSpan.textContent = (data.comname) + (data.complace ? '_' + data.complace : '');
+            }
+        } else {
+            const domName = document.getElementById('companyName')?.value || 'MAM';
+            const domPlace = document.getElementById('companyPlace')?.value || 'KAMARAJ NAGAR';
+            const domPhone1 = document.getElementById('companyPhone1')?.value || '9791836555';
+            const domPhone2 = document.getElementById('companyPhone2')?.value || '9789125900';
+            const domSn = document.getElementById('companyShortName')?.value || 'MA';
+            window.companyData = {
+                comname: domName,
+                complace: domPlace,
+                comphone1: domPhone1,
+                comphone2: domPhone2,
+                comsn: domSn,
+                comadd1: document.getElementById('companyAdd1')?.value || '',
+                comadd2: document.getElementById('companyAdd2')?.value || '',
+                comadd3: document.getElementById('companyAdd3')?.value || '',
+                comadd4: document.getElementById('companyAdd4')?.value || '',
+                comadd5: document.getElementById('companyAdd5')?.value || '',
+                comtin: document.getElementById('companyTin')?.value || '',
+                comcst: document.getElementById('companyCst')?.value || '',
+                mbotmes: document.getElementById('companyBotMsg')?.value || ''
+            };
         }
     } catch (e) {
         console.error('Error loading company master:', e);
@@ -46,6 +163,23 @@ async function saveCompanyMaster() {
         comcst: document.getElementById('companyCst')?.value || '',
         mbotmes: document.getElementById('companyBotMsg')?.value || ''
     };
+    window.companyData = data;
+    try {
+        const raw = localStorage.getItem('KANIMC_OFFLINE_DB_v1');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed) {
+                parsed.company = data;
+                localStorage.setItem('KANIMC_OFFLINE_DB_v1', JSON.stringify(parsed));
+            }
+        }
+    } catch(e) {}
+
+    const titleBarSpan = document.querySelector('.title-bar span');
+    if (titleBarSpan && data.comname) {
+        titleBarSpan.textContent = (data.comname) + (data.complace ? '_' + data.complace : '');
+    }
+
     try {
         const res = await fetch('/api/company', {
             method: 'POST',
@@ -55,11 +189,20 @@ async function saveCompanyMaster() {
         if (res.ok) {
             showToast('Company details saved successfully.');
         } else {
-            showToast('Error saving company details.');
+            showToast('Company details saved locally.');
         }
     } catch(e) {
         console.error(e);
-        showToast('Network error saving company details.');
+        showToast('Company details saved locally.');
+    }
+}
+
+// Auto-load company data on startup
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => loadCompanyMaster());
+    } else {
+        setTimeout(() => loadCompanyMaster(), 50);
     }
 }
 
