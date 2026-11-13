@@ -60,10 +60,134 @@
         settings: {}
     };
 
-    function saveDb() {
+    // =========================================================================
+    // UNIVERSAL REAL-TIME CLOUD DATABASE SYNC (CROSS-DEVICE SINGLE DB)
+    // =========================================================================
+    const CLOUD_SYNC_OBJECT_ID = 'ff808181a09d98f701a1d554134c2210';
+    const CLOUD_SYNC_ENDPOINT = 'https://api.restful-api.dev/objects/' + CLOUD_SYNC_OBJECT_ID;
+
+    let lastCloudVersion = 0;
+    let isCloudSyncing = false;
+    let cloudPushTimer = null;
+
+    function schedulePushToCloud() {
+        if (cloudPushTimer) clearTimeout(cloudPushTimer);
+        cloudPushTimer = setTimeout(() => {
+            pushToCloud();
+        }, 800);
+    }
+
+    async function pushToCloud() {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+        try {
+            const newVer = Date.now();
+            lastCloudVersion = newVer;
+            const payload = {
+                name: 'kanimc_central_cloud_db',
+                data: {
+                    version: newVer,
+                    chittas: db.chittas || [],
+                    purchases: db.purchases || [],
+                    purchasePayments: db.purchasePayments || [],
+                    salesBills: db.salesBills || [],
+                    cashVouchers: db.cashVouchers || [],
+                    receiptVouchers: db.receiptVouchers || []
+                }
+            };
+            await originalFetch(CLOUD_SYNC_ENDPOINT, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            console.log('[KANIMC Cloud Sync] Successfully pushed ' + (db.chittas ? db.chittas.length : 0) + ' chittas to Cloud DB');
+        } catch(err) {
+            console.warn('[KANIMC Cloud Sync] Push failed:', err);
+        }
+    }
+
+    async function syncFromCloud() {
+        if (isCloudSyncing) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+        try {
+            isCloudSyncing = true;
+            const res = await originalFetch(CLOUD_SYNC_ENDPOINT, { cache: 'no-store' });
+            if (!res.ok) {
+                isCloudSyncing = false;
+                return;
+            }
+            const obj = await res.json();
+            if (obj && obj.data) {
+                const cloud = obj.data;
+                const cloudVer = cloud.version || 0;
+                if (cloudVer > lastCloudVersion) {
+                    lastCloudVersion = cloudVer;
+                    let changed = false;
+
+                    // 1. Merge Chittas
+                    if (Array.isArray(cloud.chittas)) {
+                        const local = db.chittas || [];
+                        const map = new Map();
+                        local.forEach(c => {
+                            const key = String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10);
+                            map.set(key, c);
+                        });
+                        cloud.chittas.forEach(c => {
+                            const key = String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10);
+                            const existing = map.get(key);
+                            if (!existing || (c.paid && !existing.paid) || (c.auditInfo && c.auditInfo !== existing.auditInfo)) {
+                                map.set(key, c);
+                                changed = true;
+                            }
+                        });
+                        if (map.size !== local.length) changed = true;
+                        if (changed) {
+                            db.chittas = Array.from(map.values()).sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
+                        }
+                    }
+
+                    // 2. Merge Purchases
+                    if (Array.isArray(cloud.purchases)) {
+                        const local = db.purchases || [];
+                        const map = new Map();
+                        local.forEach(p => map.set(String(p.purchaseNo || p.id), p));
+                        cloud.purchases.forEach(p => {
+                            const existing = map.get(String(p.purchaseNo || p.id));
+                            if (!existing || (p.paid && !existing.paid)) {
+                                map.set(String(p.purchaseNo || p.id), p);
+                                changed = true;
+                            }
+                        });
+                        if (map.size !== local.length) changed = true;
+                        if (changed) {
+                            db.purchases = Array.from(map.values());
+                        }
+                    }
+
+                    if (changed) {
+                        saveDb(false);
+                        if (typeof fetchChittas === 'function') await fetchChittas(false);
+                        if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
+                        if (typeof updateLiveSyncBadge === 'function') updateLiveSyncBadge(true);
+                        if (typeof showLiveSyncToast === 'function') {
+                            showLiveSyncToast('🟢 Data synced: Chitta updated from other device');
+                        }
+                    }
+                }
+            }
+        } catch(err) {
+            console.warn('[KANIMC Cloud Sync] Poll failed:', err);
+        } finally {
+            isCloudSyncing = false;
+        }
+    }
+
+    function saveDb(shouldPush = true) {
         try {
             db.version = (db.version || 1000) + 1;
             localStorage.setItem(DB_KEY, JSON.stringify(db));
+            if (shouldPush) {
+                schedulePushToCloud();
+            }
         } catch(e) {
             console.warn('[KANIMC] LocalStorage quota exceeded, keeping in-memory:', e);
         }
@@ -486,6 +610,11 @@
         console.log('[KANIMC] Database initialized successfully (' + (db.accounts ? db.accounts.length : 0) + ' accounts, ' + db.chittas.length + ' chittas)');
     })();
 
+    initPromise.then(() => {
+        syncFromCloud();
+        setInterval(syncFromCloud, 3000);
+    });
+
     // Intercept window.fetch for /api/ calls
     window.fetch = async function(resource, init) {
         let url = typeof resource === 'string' ? resource : resource.url;
@@ -620,7 +749,7 @@
                     chittaCount: (db.chittas || []).length,
                     paidCount: (db.chittas || []).filter(c => c.paid).length,
                     accountCount: (db.accounts || []).length,
-                    status: isCentralServerAlive ? 'ONLINE' : 'OFFLINE_STANDALONE',
+                    status: (isCentralServerAlive || (typeof navigator !== 'undefined' && navigator.onLine)) ? 'ONLINE' : 'OFFLINE_STANDALONE',
                     offlinePending: window.getOfflineQueueLength()
                 });
             }
