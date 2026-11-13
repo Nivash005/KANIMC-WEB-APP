@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_no_mixed_content_v8';
+const CACHE_NAME = 'kanimc-cache-v20261113_purge_insecure_v9';
 const STATIC_ASSETS = [
     './',
     './index.html',

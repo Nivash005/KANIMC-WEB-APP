@@ -262,17 +262,17 @@
             return window.location.origin;
         }
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
-        // Clear dead / expired Cloudflare tunnel domains from localStorage
-        if (cs && (cs.includes('lake-divine-independent-emacs') || cs.includes('meets-epson-kentucky-stats') || cs.includes('piece-oxygen-vendors-adopt'))) {
-            cs = '';
-            try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
+        if (cs) {
+            // Clean up any double http:// or malformed protocols
+            cs = cs.replace(/^http:\/\/(https?:\/\/)/i, '$1').replace(/^http:\/\/http\/\//i, 'http://').replace('http//', 'http://');
         }
-        // If page is loaded over HTTPS (like GitHub Pages), NEVER attempt insecure http:// to prevent Mixed Content blocking!
+        // If page is loaded over HTTPS (like GitHub Pages), strictly purge any insecure http:// to prevent Mixed Content blocking!
         if (window.location.protocol === 'https:') {
-            if (cs && cs.startsWith('https://')) {
-                return cs;
+            if (cs && !cs.startsWith('https://')) {
+                try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
+                cs = '';
             }
-            return ''; // Pure HTTPS Cloud DB sync will be used instead
+            return cs || ''; // On HTTPS, only https:// servers or pure Cloud DB sync are allowed
         }
         if (!cs) {
             // Default to desktop Wi-Fi server for local HTTP/LAN
@@ -657,10 +657,14 @@
 
         // 1. CIRCUIT BREAKER: Determine whether to attempt central server
         let shouldTryCentral = false;
-        if (navigator.onLine !== false && centralServer) {
-            // Strictly prevent Mixed Content: on HTTPS, never fetch http://
-            if (window.location.protocol === 'https:' && centralServer.startsWith('http://')) {
-                shouldTryCentral = false;
+        if (navigator.onLine !== false && centralServer && centralServer.trim() !== '') {
+            // Strictly prevent Mixed Content: on HTTPS, only allow https:// remote servers!
+            if (window.location.protocol === 'https:') {
+                if (centralServer.startsWith('https://')) {
+                    shouldTryCentral = true;
+                } else {
+                    shouldTryCentral = false;
+                }
             } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                 shouldTryCentral = true;
             } else if (isCentralServerAlive) {
@@ -674,8 +678,7 @@
             try {
                 let targetUrl = url;
                 if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                    const hostUrl = centralServer || ((window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://192.168.1.4:8080');
-                    targetUrl = hostUrl.replace(/\/$/, '') + path + urlObj.search;
+                    targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
                 }
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
                     'Bypass-Tunnel-Reminder': 'true'

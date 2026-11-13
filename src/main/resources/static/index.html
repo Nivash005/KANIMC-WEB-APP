@@ -6024,6 +6024,7 @@ function saveTabletServerUrl() {
         showToast('Saved: Pure Offline Mode');
         return;
     }
+    url = url.replace(/^http:\/\/(https?:\/\/)/i, '$1').replace(/^http:\/\/http\/\//i, 'http://').replace('http//', 'http://');
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'http://' + url;
     }
