@@ -61,133 +61,161 @@
     };
 
     // =========================================================================
-    // UNIVERSAL REAL-TIME CLOUD DATABASE SYNC (CROSS-DEVICE SINGLE DB)
+    // UNIVERSAL REAL-TIME RELAY SYNC (CROSS-DEVICE SINGLE DB)
     // =========================================================================
-    const CLOUD_SYNC_OBJECT_ID = 'ff808181a09d98f701a1d554134c2210';
-    const CLOUD_SYNC_ENDPOINT = 'https://api.restful-api.dev/objects/' + CLOUD_SYNC_OBJECT_ID;
+    const SYNC_RELAY_TOPIC = 'kanimc_sync_hub_mam26';
+    const SYNC_RELAY_URL = 'https://ntfy.sh/' + SYNC_RELAY_TOPIC;
+    const MY_DEVICE_ID = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 
-    let lastCloudVersion = 0;
-    let isCloudSyncing = false;
-    let cloudPushTimer = null;
+    let sseSource = null;
+    const processedMsgIds = new Set();
 
-    function schedulePushToCloud() {
-        if (cloudPushTimer) clearTimeout(cloudPushTimer);
-        cloudPushTimer = setTimeout(() => {
-            pushToCloud();
-        }, 800);
-    }
-
-    async function pushToCloud() {
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    function initRealtimeSync() {
+        if (typeof EventSource === 'undefined') return;
         try {
-            const newVer = Date.now();
-            lastCloudVersion = newVer;
-            const payload = {
-                name: 'kanimc_central_cloud_db',
-                data: {
-                    version: newVer,
-                    chittas: db.chittas || [],
-                    purchases: db.purchases || [],
-                    purchasePayments: db.purchasePayments || [],
-                    salesBills: db.salesBills || [],
-                    cashVouchers: db.cashVouchers || [],
-                    receiptVouchers: db.receiptVouchers || []
-                }
+            if (sseSource) {
+                try { sseSource.close(); } catch(e) {}
+            }
+            sseSource = new EventSource(SYNC_RELAY_URL + '/sse');
+            sseSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data && data.event === 'message' && data.id && !processedMsgIds.has(data.id)) {
+                        processedMsgIds.add(data.id);
+                        if (processedMsgIds.size > 2000) processedMsgIds.clear();
+                        const payload = JSON.parse(data.message);
+                        if (payload && payload.deviceId !== MY_DEVICE_ID) {
+                            handleIncomingSyncMessage(payload, false);
+                        }
+                    }
+                } catch(e) {}
             };
-            await originalFetch(CLOUD_SYNC_ENDPOINT, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            console.log('[KANIMC Cloud Sync] Successfully pushed ' + (db.chittas ? db.chittas.length : 0) + ' chittas to Cloud DB');
+            sseSource.onerror = function() {
+                setTimeout(initRealtimeSync, 10000);
+            };
         } catch(err) {
-            console.warn('[KANIMC Cloud Sync] Push failed:', err);
+            console.warn('[KANIMC Sync] SSE setup failed:', err);
         }
     }
 
-    async function syncFromCloud() {
-        if (isCloudSyncing) return;
+    async function catchupSync() {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         try {
-            isCloudSyncing = true;
-            const res = await originalFetch(CLOUD_SYNC_ENDPOINT, { cache: 'no-store' });
-            if (!res.ok) {
-                isCloudSyncing = false;
-                return;
-            }
-            const obj = await res.json();
-            if (obj && obj.data) {
-                const cloud = obj.data;
-                const cloudVer = cloud.version || 0;
-                if (cloudVer > lastCloudVersion) {
-                    lastCloudVersion = cloudVer;
-                    let changed = false;
-
-                    // 1. Merge Chittas
-                    if (Array.isArray(cloud.chittas)) {
-                        const local = db.chittas || [];
-                        const map = new Map();
-                        local.forEach(c => {
-                            const key = String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10);
-                            map.set(key, c);
-                        });
-                        cloud.chittas.forEach(c => {
-                            const key = String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10);
-                            const existing = map.get(key);
-                            if (!existing || (c.paid && !existing.paid) || (c.auditInfo && c.auditInfo !== existing.auditInfo)) {
-                                map.set(key, c);
-                                changed = true;
-                            }
-                        });
-                        if (map.size !== local.length) changed = true;
-                        if (changed) {
-                            db.chittas = Array.from(map.values()).sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
+            const res = await originalFetch(SYNC_RELAY_URL + '/json?poll=1&since=24h', { cache: 'no-store' });
+            if (!res.ok) return;
+            const text = await res.text();
+            const lines = text.trim().split('\n');
+            let anyChange = false;
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                try {
+                    const data = JSON.parse(line);
+                    if (data && data.event === 'message' && data.id && !processedMsgIds.has(data.id)) {
+                        processedMsgIds.add(data.id);
+                        const payload = JSON.parse(data.message);
+                        if (payload && payload.deviceId !== MY_DEVICE_ID) {
+                            handleIncomingSyncMessage(payload, true);
+                            anyChange = true;
                         }
                     }
-
-                    // 2. Merge Purchases
-                    if (Array.isArray(cloud.purchases)) {
-                        const local = db.purchases || [];
-                        const map = new Map();
-                        local.forEach(p => map.set(String(p.purchaseNo || p.id), p));
-                        cloud.purchases.forEach(p => {
-                            const existing = map.get(String(p.purchaseNo || p.id));
-                            if (!existing || (p.paid && !existing.paid)) {
-                                map.set(String(p.purchaseNo || p.id), p);
-                                changed = true;
-                            }
-                        });
-                        if (map.size !== local.length) changed = true;
-                        if (changed) {
-                            db.purchases = Array.from(map.values());
-                        }
-                    }
-
-                    if (changed) {
-                        saveDb(false);
-                        if (typeof fetchChittas === 'function') await fetchChittas(false);
-                        if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
-                        if (typeof updateLiveSyncBadge === 'function') updateLiveSyncBadge(true);
-                        if (typeof showLiveSyncToast === 'function') {
-                            showLiveSyncToast('🟢 Data synced: Chitta updated from other device');
-                        }
-                    }
-                }
+                } catch(e) {}
+            });
+            if (anyChange) {
+                if (typeof fetchChittas === 'function') await fetchChittas(false);
+                if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
             }
         } catch(err) {
-            console.warn('[KANIMC Cloud Sync] Poll failed:', err);
-        } finally {
-            isCloudSyncing = false;
+            console.warn('[KANIMC Sync] Catch-up poll failed:', err);
         }
     }
 
-    function saveDb(shouldPush = true) {
+    async function broadcastSyncEvent(type, data) {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+        try {
+            const msg = {
+                deviceId: MY_DEVICE_ID,
+                type: type,
+                timestamp: Date.now(),
+                ...data
+            };
+            await originalFetch(SYNC_RELAY_URL, {
+                method: 'POST',
+                headers: { 'Title': 'KANIMC_SYNC' },
+                body: JSON.stringify(msg)
+            });
+            console.log('[KANIMC Sync] Broadcasted ' + type + ' to relay');
+        } catch(err) {
+            console.warn('[KANIMC Sync] Broadcast error:', err);
+        }
+    }
+
+    async function handleIncomingSyncMessage(payload, isCatchup = false) {
+        if (!payload || !payload.type) return;
+        let changed = false;
+
+        // 1. CHITTA SAVED (Created or Updated)
+        if (payload.type === 'CHITTA_SAVED' && payload.chitta) {
+            db.chittas = db.chittas || [];
+            const newC = payload.chitta;
+            const key = String(newC.chittaNo || '') + '_' + String(newC.chittaDate || '').substring(0, 10);
+            const idx = db.chittas.findIndex(c => (String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)) === key || c.id == newC.id);
+            if (idx >= 0) {
+                db.chittas[idx] = { ...db.chittas[idx], ...newC };
+            } else {
+                db.chittas.push(newC);
+            }
+            db.chittas.sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
+            changed = true;
+        }
+
+        // 2. CHITTA PAYMENT
+        if (payload.type === 'CHITTA_PAYMENT' && payload.id) {
+            db.chittas = db.chittas || [];
+            const c = db.chittas.find(x => x.id == payload.id || String(x.chittaNo) === String(payload.chittaNo));
+            if (c) {
+                c.paid = true;
+                c.payDate = payload.payDate || c.payDate;
+                c.paidTo = payload.paidTo || c.paidTo;
+                c.paidAmount = payload.paidAmount != null ? payload.paidAmount : (c.netPayable || c.paidAmount);
+                changed = true;
+            }
+        }
+
+        // 3. CHITTA DELETED
+        if (payload.type === 'CHITTA_DELETED' && (payload.id || payload.chittaNo)) {
+            db.chittas = db.chittas || [];
+            const prevLen = db.chittas.length;
+            db.chittas = db.chittas.filter(c => c.id != payload.id && String(c.chittaNo) !== String(payload.chittaNo));
+            if (db.chittas.length !== prevLen) changed = true;
+        }
+
+        // 4. SALES BILL SAVED
+        if (payload.type === 'BILL_SAVED' && payload.bill) {
+            db.salesBills = db.salesBills || [];
+            const idx = db.salesBills.findIndex(b => b.id == payload.bill.id || String(b.billNo) === String(payload.bill.billNo));
+            if (idx >= 0) {
+                db.salesBills[idx] = { ...db.salesBills[idx], ...payload.bill };
+            } else {
+                db.salesBills.push(payload.bill);
+            }
+            changed = true;
+        }
+
+        if (changed) {
+            saveDb();
+            if (typeof fetchChittas === 'function') await fetchChittas(false);
+            if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
+            if (typeof updateLiveSyncBadge === 'function') updateLiveSyncBadge(true);
+            if (!isCatchup && typeof showLiveSyncToast === 'function') {
+                showLiveSyncToast('🟢 Live Sync: Data updated from other device');
+            }
+        }
+    }
+
+    function saveDb() {
         try {
             db.version = (db.version || 1000) + 1;
             localStorage.setItem(DB_KEY, JSON.stringify(db));
-            if (shouldPush) {
-                schedulePushToCloud();
-            }
         } catch(e) {
             console.warn('[KANIMC] LocalStorage quota exceeded, keeping in-memory:', e);
         }
@@ -618,8 +646,8 @@
     })();
 
     initPromise.then(() => {
-        syncFromCloud();
-        setInterval(syncFromCloud, 3000);
+        initRealtimeSync();
+        catchupSync();
     });
 
     // Intercept window.fetch for /api/ calls
@@ -895,6 +923,7 @@
                     found.payDate = payDate;
                     found.status = 'PAID';
                     saveDb();
+                    broadcastSyncEvent('CHITTA_PAYMENT', { id: id, paidTo: paidTo, paymentMethod: paymentMethod, payDate: payDate, paidAmount: found.paidAmount });
                     window.enqueueOfflineAction('POST', path + urlObj.search, null, { localId: id, type: 'chittaPayment' });
                     return jsonResponse(found, 200);
                 } else if (method === 'DELETE') {
@@ -945,6 +974,7 @@
                             updatedAt: new Date().toISOString()
                         };
                         saveDb();
+                        broadcastSyncEvent('CHITTA_SAVED', { chitta: db.chittas[idx] });
                         window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'chitta' });
                         return jsonResponse(db.chittas[idx], 200);
                     }
@@ -953,6 +983,7 @@
                     if (idx >= 0) {
                         db.chittas.splice(idx, 1);
                         saveDb();
+                        broadcastSyncEvent('CHITTA_DELETED', { id: id });
                         window.enqueueOfflineAction('DELETE', path, null, { localId: id, type: 'chitta' });
                         return jsonResponse({ status: 'DELETED' }, 200);
                     }
@@ -1018,6 +1049,7 @@
 
                     db.chittas.push(newC);
                     saveDb();
+                    broadcastSyncEvent('CHITTA_SAVED', { chitta: newC });
                     window.enqueueOfflineAction('POST', '/api/chittas', newC, { localId: newId, chittaNo: newC.chittaNo });
                     return jsonResponse(newC, 201);
                 }
