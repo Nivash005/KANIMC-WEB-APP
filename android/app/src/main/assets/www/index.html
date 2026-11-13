@@ -3552,24 +3552,26 @@ function renderKaniPreprintedBill(opts) {
         `;
     }
 
+    const comp = (typeof getCompanyDetails === 'function') ? getCompanyDetails() : { name: 'MAM', fullAddress: '', phones: '', shortName: 'MAM' };
+
     return `
     <div class="kani-bill-sheet" style="width:140mm; min-height:198mm; max-height:205mm; background:#fff; margin:0 auto; padding:4mm 5mm; box-sizing:border-box; position:relative; font-family:'Segoe UI', Tahoma, Arial, sans-serif; color:#000;">
         <!-- TOP YELLOW HEADER BANNER (PRE-PRINTED ARTWORK) -->
         <div class="preprinted-artwork" style="background:#fff470; border:2px solid #287733; border-radius:12px; padding:5px 8px 4px 8px; margin-bottom:2mm; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
             <div style="display:flex; justify-content:space-between; font-size:9.5px; font-weight:bold; color:#111;">
-                <div>Cell : 9791836555, 9789125900</div>
-                <div>Ph : 04639 - 261781</div>
+                <div>Cell / Ph : ${comp.phones || '9791836555, 9789125900'}</div>
+                <div>${comp.tin ? 'TIN: ' + comp.tin : ''} ${comp.cst ? 'CST: ' + comp.cst : ''}</div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
                 <div style="flex:1;">
-                    <div style="font-size:16px; font-weight:900; color:#185a23; line-height:1.2; letter-spacing:0.3px;">கனி முருங்கைக்காய் கமிஷன் கடை</div>
-                    <div style="font-size:12.5px; font-weight:800; color:#226f2f; letter-spacing:0.8px; margin-top:1px;">KANI DRUMSTICK AGENCIES</div>
-                    <div style="font-size:9px; font-weight:bold; color:#333; margin-top:1px;">காமராஜ் நகர், சாத்தான்குளம் தாலுகா / Kamaraj Nagar, Sathankulam Tk</div>
-                    <div style="font-size:10px; font-weight:bold; color:#b00; margin-top:1px;">Prop : A. BALAMURUGAN B.A.,</div>
+                    <div style="font-size:17px; font-weight:900; color:#185a23; line-height:1.2; letter-spacing:0.3px; text-transform:uppercase;">${comp.name}</div>
+                    <div style="font-size:12px; font-weight:800; color:#226f2f; letter-spacing:0.8px; margin-top:1px;">${comp.shortName ? comp.shortName + ' - ' : ''}COMMISSION AGENT</div>
+                    <div style="font-size:9.5px; font-weight:bold; color:#333; margin-top:1px;">${comp.fullAddress || comp.place || ''}</div>
+                    ${comp.botMsg ? `<div style="font-size:10px; font-weight:bold; color:#b00; margin-top:1px;">${comp.botMsg}</div>` : ''}
                 </div>
                 <div style="width:44px; height:44px; border-radius:50%; background:#287733; color:#ffeb3b; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:900; font-size:10px; border:2px solid #ffd700; flex-shrink:0;">
-                    <span>🦚</span>
-                    <span style="font-size:9px;">M.A.M</span>
+                    <img src="logo.png" style="width:24px; height:24px; object-fit:contain;">
+                    <span style="font-size:9px; margin-top:1px;">${comp.shortName || 'MAM'}</span>
                 </div>
             </div>
         </div>
@@ -6171,6 +6173,7 @@ function printChitta(autoPrint = true, targetChitta = null) {
         showToast("Please select a Chitta to " + (autoPrint ? "print" : "view") + ".");
         return;
     }
+    const comp = (typeof getCompanyDetails === 'function') ? getCompanyDetails() : { name: 'MAM', fullAddress: '', phones: '' };
     const farmerName = (c.farmerAccount && c.farmerAccount.accountName) ? c.farmerAccount.accountName : (c.farmerName || '');
     const dateFormatted = c.chittaDate ? (typeof c.chittaDate === 'string' ? c.chittaDate.substring(0, 10) : new Date(c.chittaDate).toLocaleDateString('en-GB')) : '';
     const payDateFormatted = c.payDate ? (typeof c.payDate === 'string' ? c.payDate.substring(0, 10) : new Date(c.payDate).toLocaleDateString('en-GB')) : '';
@@ -6216,11 +6219,26 @@ function printChitta(autoPrint = true, targetChitta = null) {
         `;
     }
 
-    const previewHtml = `
-        <div style="margin-bottom:15px; border-bottom:2px dashed #000; padding-bottom:10px;">
-            <div style="text-align:center; font-size:18px; font-weight:bold;">SRI KANNIAMMAN TRADERS</div>
-            <div style="text-align:center; font-size:13px; margin-top:3px;">COMMISSION AGENT & WHOLESALE MANDY - CHITTA BILL / PAYMENT VOUCHER</div>
+    let compHeaderHtml = `
+        <div style="margin-bottom:14px; border-bottom:2px dashed #000; padding-bottom:8px; text-align:center;">
+            <div style="font-size:20px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">${comp.name}</div>
+    `;
+    if (comp.fullAddress) {
+        compHeaderHtml += `<div style="font-size:12px; margin-top:2px; color:#222;">${comp.fullAddress}</div>`;
+    }
+    if (comp.phones) {
+        compHeaderHtml += `<div style="font-size:12px; margin-top:2px; font-weight:bold; color:#111;">Cell / Ph: ${comp.phones}</div>`;
+    }
+    if (comp.tin || comp.cst) {
+        compHeaderHtml += `<div style="font-size:11px; margin-top:1px; color:#444;">${comp.tin ? 'TIN: ' + comp.tin : ''} ${comp.cst ? ' CST: ' + comp.cst : ''}</div>`;
+    }
+    compHeaderHtml += `
+            <div style="font-size:12px; margin-top:5px; font-weight:bold; color:#333; border-top:1px dotted #888; padding-top:2px; display:inline-block; min-width:60%;">CHITTA BILL / PAYMENT VOUCHER</div>
         </div>
+    `;
+
+    const previewHtml = `
+        ${compHeaderHtml}
         <table style="width:100%; margin-bottom:15px; font-size:13px;">
             <tr>
                 <td style="width:50%;"><strong>Chitta No:</strong> ${c.chittaNo || ''}</td>
@@ -6271,8 +6289,9 @@ function printChitta(autoPrint = true, targetChitta = null) {
             </tr>
         </table>
         ${paymentStatusSection}
+        ${comp.botMsg ? `<div style="margin-top:14px; text-align:center; font-size:11px; font-style:italic; color:#555; border-top:1px dotted #ccc; padding-top:4px;">${comp.botMsg}</div>` : ''}
     `;
-    openVfpReportPreview('Chitta Payment Bill - ' + (c.chittaNo || ''), previewHtml, autoPrint);
+    openVfpReportPreview('Chitta Bill - ' + (c.chittaNo || ''), previewHtml, autoPrint);
 }
 
 function printBill(autoPrint = true) {
@@ -6281,6 +6300,7 @@ function printBill(autoPrint = true) {
         alert("Please select a Bill to " + (autoPrint ? "print" : "view") + ".");
         return;
     }
+    const comp = (typeof getCompanyDetails === 'function') ? getCompanyDetails() : { name: 'MAM', fullAddress: '', phones: '' };
     const buyerName = (b.buyerAccount && b.buyerAccount.accountName) ? b.buyerAccount.accountName : (b.buyerName || '');
     const dateFormatted = b.billDate ? (typeof b.billDate === 'string' ? b.billDate.substring(0, 10) : new Date(b.billDate).toLocaleDateString('en-GB')) : '';
     
@@ -6310,11 +6330,26 @@ function printBill(autoPrint = true) {
     const discount = parseFloat(b.discount) || 0;
     const net = parseFloat(b.netAmount) || 0;
 
-    const previewHtml = `
-        <div style="margin-bottom:15px; border-bottom:2px dashed #000; padding-bottom:10px;">
-            <div style="text-align:center; font-size:18px; font-weight:bold;">SRI KANNIAMMAN TRADERS</div>
-            <div style="text-align:center; font-size:13px; margin-top:3px;">WHOLESALE MANDY - SALES BILL</div>
+    let compHeaderHtml = `
+        <div style="margin-bottom:14px; border-bottom:2px dashed #000; padding-bottom:8px; text-align:center;">
+            <div style="font-size:20px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">${comp.name}</div>
+    `;
+    if (comp.fullAddress) {
+        compHeaderHtml += `<div style="font-size:12px; margin-top:2px; color:#222;">${comp.fullAddress}</div>`;
+    }
+    if (comp.phones) {
+        compHeaderHtml += `<div style="font-size:12px; margin-top:2px; font-weight:bold; color:#111;">Cell / Ph: ${comp.phones}</div>`;
+    }
+    if (comp.tin || comp.cst) {
+        compHeaderHtml += `<div style="font-size:11px; margin-top:1px; color:#444;">${comp.tin ? 'TIN: ' + comp.tin : ''} ${comp.cst ? ' CST: ' + comp.cst : ''}</div>`;
+    }
+    compHeaderHtml += `
+            <div style="font-size:12px; margin-top:5px; font-weight:bold; color:#333; border-top:1px dotted #888; padding-top:2px; display:inline-block; min-width:60%;">WHOLESALE MANDY - SALES BILL</div>
         </div>
+    `;
+
+    const previewHtml = `
+        ${compHeaderHtml}
         <table style="width:100%; margin-bottom:15px; font-size:13px;">
             <tr>
                 <td style="width:50%;"><strong>Bill No:</strong> ${b.billNo || ''}</td>
@@ -6422,9 +6457,13 @@ function printRegisterTable(containerId, title = 'Report', autoPrint = true) {
         }
     }
 
+    const comp = (typeof getCompanyDetails === 'function') ? getCompanyDetails() : { name: 'MAM', fullAddress: '', phones: '', place: '' };
     const contentHtml = `
-        <div style="text-align:center; font-size:18px; font-weight:bold; margin-bottom:5px;">SRI KANNIAMMAN TRADERS</div>
-        <div style="text-align:center; font-size:13px; margin-bottom:15px; border-bottom:2px dashed #000; padding-bottom:5px; font-weight:bold;">${title.toUpperCase()}</div>
+        <div style="text-align:center; margin-bottom:12px; border-bottom:2px dashed #000; padding-bottom:6px;">
+            <div style="font-size:18px; font-weight:bold; text-transform:uppercase;">${comp.name}</div>
+            ${comp.place ? `<div style="font-size:11px; color:#444;">${comp.place}${comp.phones ? ' | Cell: ' + comp.phones : ''}</div>` : ''}
+            <div style="font-size:13px; margin-top:4px; font-weight:bold;">${title.toUpperCase()}</div>
+        </div>
         ${table.outerHTML}
         ${footerSummary}
     `;
@@ -11378,10 +11417,12 @@ let obRegisterData = [];
 
         const netDiff = totalDebit - totalCredit;
         const diffText = Math.abs(netDiff).toFixed(2) + (netDiff >= 0 ? ' DR' : ' CR');
+        const comp = (typeof getCompanyDetails === 'function') ? getCompanyDetails() : { name: 'MAM', fullAddress: '', phones: '', place: '' };
 
         const previewHtml = `
         <div style="text-align:center; margin-bottom:15px; border-bottom:2px dashed #333; padding-bottom:8px;">
-            <div style="font-size:18px; font-weight:bold;">SRI KANNIAMMAN TRADERS</div>
+            <div style="font-size:18px; font-weight:bold; text-transform:uppercase;">${comp.name}</div>
+            ${comp.place ? `<div style="font-size:11px; color:#444;">${comp.place}${comp.phones ? ' | Cell: ' + comp.phones : ''}</div>` : ''}
             <div style="font-size:13px; margin-top:3px; font-weight:bold;">OPENING BALANCE REGISTER</div>
             <div style="font-size:11px; color:#555; margin-top:3px;">As of Date: ${regDate} ${filterSummaryText}</div>
         </div>
@@ -11421,8 +11462,9 @@ let obRegisterData = [];
         }
 
         const regDate = document.getElementById('obRegDate')?.value || '2023-04-26';
+        const comp = (typeof getCompanyDetails === 'function') ? getCompanyDetails() : { name: 'MAM' };
         let csv = [];
-        csv.push('"SRI KANNIAMMAN TRADERS"');
+        csv.push('"' + comp.name + '"');
         csv.push('"OPENING BALANCE REGISTER - ' + regDate + '"');
         csv.push('');
         csv.push('"S.No","Code","Account Name","Group","Debit","Credit"');
