@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_ntfy_realtime_v10';
+const CACHE_NAME = 'kanimc-cache-v20261113_universal_user_admin_sync_v11';
 const STATIC_ASSETS = [
     './',
     './index.html',
