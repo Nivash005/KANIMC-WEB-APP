@@ -65,11 +65,59 @@ if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
     }
 }
+
+// GLOBAL AUTO-CAPITALIZE: automatically transforms all typed/pasted text to uppercase across all forms/inputs
+(function() {
+    function toUpperInput(e) {
+        const t = e.target;
+        if (!t) return;
+        const tag = t.tagName;
+        if (tag === 'INPUT') {
+            const type = (t.type || 'text').toLowerCase();
+            // Capitalize text and search inputs; omit passwords, numbers, dates, times, checkboxes, etc.
+            if (type === 'text' || type === 'search' || !t.type) {
+                if (typeof t.value === 'string') {
+                    const upper = t.value.toUpperCase();
+                    if (t.value !== upper) {
+                        const start = t.selectionStart;
+                        const end = t.selectionEnd;
+                        t.value = upper;
+                        if (start !== null && end !== null) {
+                            try { t.setSelectionRange(start, end); } catch (err) {}
+                        }
+                    }
+                }
+            }
+        } else if (tag === 'TEXTAREA') {
+            if (typeof t.value === 'string') {
+                const upper = t.value.toUpperCase();
+                if (t.value !== upper) {
+                    const start = t.selectionStart;
+                    const end = t.selectionEnd;
+                    t.value = upper;
+                    if (start !== null && end !== null) {
+                        try { t.setSelectionRange(start, end); } catch (err) {}
+                    }
+                }
+            }
+        }
+    }
+    document.addEventListener('input', toUpperInput, true);
+    document.addEventListener('change', toUpperInput, true);
+})();
 </script>
 <style>
 
 *{box-sizing:border-box;font-family:Tahoma,Arial,sans-serif}
 body{margin:0;background:#e9ffff}
+
+/* AUTO-CAPITALIZE ALL TYPED TEXT GLOBALLY */
+input[type="text"],
+input[type="search"],
+input:not([type]),
+textarea {
+    text-transform: uppercase;
+}
 
 /* ================= LOGIN ================= */
 #app{filter:blur(3px);pointer-events:none}
@@ -302,7 +350,12 @@ input:focus, select:focus { background: #ffff00; outline: none; }
 <div class="tool" onclick="openWin('itemRegister');event.stopPropagation()"><div class="tool-icon">📈</div>Item Register</div>
 <div class="tool" onclick="openWin('itemSummaryReport');event.stopPropagation()"><div class="tool-icon">📦</div>Item Summary</div>
 </div>
-<div class="workspace" style="position:relative;"></div>
+<div class="workspace" style="position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+    <div style="text-align:center; opacity:0.18; pointer-events:none; user-select:none;">
+        <img src="logo.png" style="max-height:260px; max-width:80%; object-fit:contain;" alt="KANIMC Logo">
+        <div style="font-weight:bold; font-size:15px; color:#1a365d; margin-top:8px; letter-spacing:1px;">KANIMC</div>
+    </div>
+</div>
 <div class="status-bar">
     <div style="display:flex; align-items:center; gap:10px;">
         <span>©Nivash</span>
@@ -6228,8 +6281,12 @@ function printChitta(autoPrint = true, targetChitta = null) {
     }
 
     let compHeaderHtml = `
-        <div style="margin-bottom:14px; border-bottom:2px dashed #000; padding-bottom:8px; text-align:center;">
-            <div style="font-size:20px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">${comp.name}</div>
+        <div style="margin-bottom:14px; border-bottom:2px dashed #000; padding-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="flex-shrink:0; width:52px; text-align:left;">
+                <img src="logo.png" style="width:48px; height:48px; object-fit:contain;" alt="Logo">
+            </div>
+            <div style="flex:1; text-align:center;">
+                <div style="font-size:20px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">${comp.name}</div>
     `;
     if (comp.fullAddress) {
         compHeaderHtml += `<div style="font-size:12px; margin-top:2px; color:#222;">${comp.fullAddress}</div>`;
@@ -6241,7 +6298,9 @@ function printChitta(autoPrint = true, targetChitta = null) {
         compHeaderHtml += `<div style="font-size:11px; margin-top:1px; color:#444;">${comp.tin ? 'TIN: ' + comp.tin : ''} ${comp.cst ? ' CST: ' + comp.cst : ''}</div>`;
     }
     compHeaderHtml += `
-            <div style="font-size:12px; margin-top:5px; font-weight:bold; color:#333; border-top:1px dotted #888; padding-top:2px; display:inline-block; min-width:60%;">CHITTA BILL / PAYMENT VOUCHER</div>
+                <div style="font-size:12px; margin-top:5px; font-weight:bold; color:#333; border-top:1px dotted #888; padding-top:2px; display:inline-block; min-width:60%;">CHITTA BILL / PAYMENT VOUCHER</div>
+            </div>
+            <div style="flex-shrink:0; width:52px;"></div>
         </div>
     `;
 
@@ -6339,8 +6398,12 @@ function printBill(autoPrint = true) {
     const net = parseFloat(b.netAmount) || 0;
 
     let compHeaderHtml = `
-        <div style="margin-bottom:14px; border-bottom:2px dashed #000; padding-bottom:8px; text-align:center;">
-            <div style="font-size:20px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">${comp.name}</div>
+        <div style="margin-bottom:14px; border-bottom:2px dashed #000; padding-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="flex-shrink:0; width:52px; text-align:left;">
+                <img src="logo.png" style="width:48px; height:48px; object-fit:contain;" alt="Logo">
+            </div>
+            <div style="flex:1; text-align:center;">
+                <div style="font-size:20px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">${comp.name}</div>
     `;
     if (comp.fullAddress) {
         compHeaderHtml += `<div style="font-size:12px; margin-top:2px; color:#222;">${comp.fullAddress}</div>`;
@@ -6352,7 +6415,9 @@ function printBill(autoPrint = true) {
         compHeaderHtml += `<div style="font-size:11px; margin-top:1px; color:#444;">${comp.tin ? 'TIN: ' + comp.tin : ''} ${comp.cst ? ' CST: ' + comp.cst : ''}</div>`;
     }
     compHeaderHtml += `
-            <div style="font-size:12px; margin-top:5px; font-weight:bold; color:#333; border-top:1px dotted #888; padding-top:2px; display:inline-block; min-width:60%;">WHOLESALE MANDY - SALES BILL</div>
+                <div style="font-size:12px; margin-top:5px; font-weight:bold; color:#333; border-top:1px dotted #888; padding-top:2px; display:inline-block; min-width:60%;">WHOLESALE MANDY - SALES BILL</div>
+            </div>
+            <div style="flex-shrink:0; width:52px;"></div>
         </div>
     `;
 

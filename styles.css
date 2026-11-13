@@ -117,3 +117,12 @@ td input {
     text-align: right;
     margin-left: 20px;
 }
+
+/* AUTO-CAPITALIZE ALL TYPED TEXT GLOBALLY */
+input[type="text"],
+input[type="search"],
+input:not([type]),
+textarea {
+    text-transform: uppercase;
+}
+
