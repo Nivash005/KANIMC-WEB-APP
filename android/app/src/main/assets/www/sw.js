@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_postsave_chitta_payment_y_v1';
+const CACHE_NAME = 'kanimc-cache-v20261113_peacock_vel_logo_v1';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -7,6 +7,11 @@ const STATIC_ASSETS = [
     './app.js',
     './gh_pages_adapter.js',
     './modal_logic.js',
+    './logo.png',
+    './favicon.ico',
+    './favicon-32.png',
+    './favicon-192.png',
+    './apple-touch-icon.png',
     './data/accounts.json',
     './data/periods.json',
     './data/items.json',
