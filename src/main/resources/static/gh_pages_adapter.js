@@ -267,8 +267,15 @@
             cs = '';
             try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
         }
+        // If page is loaded over HTTPS (like GitHub Pages), NEVER attempt insecure http:// to prevent Mixed Content blocking!
+        if (window.location.protocol === 'https:') {
+            if (cs && cs.startsWith('https://')) {
+                return cs;
+            }
+            return ''; // Pure HTTPS Cloud DB sync will be used instead
+        }
         if (!cs) {
-            // Default to desktop Wi-Fi server
+            // Default to desktop Wi-Fi server for local HTTP/LAN
             cs = 'http://192.168.1.4:8080';
         }
         return cs;
@@ -651,7 +658,10 @@
         // 1. CIRCUIT BREAKER: Determine whether to attempt central server
         let shouldTryCentral = false;
         if (navigator.onLine !== false && centralServer) {
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            // Strictly prevent Mixed Content: on HTTPS, never fetch http://
+            if (window.location.protocol === 'https:' && centralServer.startsWith('http://')) {
+                shouldTryCentral = false;
+            } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                 shouldTryCentral = true;
             } else if (isCentralServerAlive) {
                 shouldTryCentral = true;
