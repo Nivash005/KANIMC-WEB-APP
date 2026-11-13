@@ -7256,6 +7256,10 @@ async function saveChitta() {
                     auditEl.style.display = 'block';
                 }
             }
+
+            // Prompt user: Press 'Y' to Move to Chitta Payment
+            const finalSavedObj = (targetIdx >= 0 && chittas[targetIdx]) ? chittas[targetIdx] : (savedChitta || data);
+            promptPostSavePayment(savedNo, finalSavedObj, targetIdx >= 0 ? targetIdx : currentChittaIndex);
         } else if (res.status === 400) {
             let errMsg = "This Chitta Number already exists on this date! Please choose a different number.";
             try {
@@ -7280,30 +7284,55 @@ async function saveChitta() {
 // Post-save Payment Prompt State & Helper
 let awaitingPaymentPrompt = false;
 let pendingPaymentChittaNo = null;
+let pendingPaymentChitta = null;
+let pendingPaymentReturnIdx = -1;
 
-function promptPostSavePayment(chittaNo) {
+function promptPostSavePayment(chittaNo, chittaObj, returnIdx) {
     awaitingPaymentPrompt = true;
     pendingPaymentChittaNo = chittaNo;
-    showToast(`Chitta ${chittaNo} Saved! Press 'Y' to Move to Payment (or Any Key to continue)`);
+    pendingPaymentChitta = chittaObj || null;
+    pendingPaymentReturnIdx = (typeof returnIdx === 'number' && returnIdx >= 0) ? returnIdx : (typeof currentChittaIndex === 'number' ? currentChittaIndex : -1);
     
-    // Auto clear prompt after 8 seconds if no key pressed
+    showToast(`✅ Chitta #${chittaNo} Saved! Press 'Y' to Move to Payment (or any other key to continue)`);
+    
+    // Auto clear prompt after 15 seconds if no key pressed
     setTimeout(() => {
         if(awaitingPaymentPrompt && pendingPaymentChittaNo === chittaNo) {
             awaitingPaymentPrompt = false;
             pendingPaymentChittaNo = null;
+            pendingPaymentChitta = null;
         }
-    }, 8000);
+    }, 15000);
 }
 
 function moveToChittaPayment(chittaNo) {
     awaitingPaymentPrompt = false;
     pendingPaymentChittaNo = null;
     const target = (typeof pendingPaymentChitta !== 'undefined' && pendingPaymentChitta) ? pendingPaymentChitta : chittaNo;
+    if (typeof pendingPaymentReturnIdx === 'number' && pendingPaymentReturnIdx >= 0) {
+        window.lastChittaReturnIndex = pendingPaymentReturnIdx;
+    } else if (typeof currentChittaIndex === 'number' && currentChittaIndex >= 0) {
+        window.lastChittaReturnIndex = currentChittaIndex;
+    }
     openWin('chittaPayment', target);
 }
 
 // Rapid FoxPro Style Keyboard Navigation
 document.addEventListener("keydown", function(e) {
+
+    // 0. POST-SAVE PAYMENT PROMPT: If user saved a Chitta and presses 'Y' or 'y'
+    if (awaitingPaymentPrompt) {
+        if (e.key === 'y' || e.key === 'Y') {
+            e.preventDefault();
+            e.stopPropagation();
+            moveToChittaPayment(pendingPaymentChittaNo);
+            return;
+        } else if (e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Alt') {
+            awaitingPaymentPrompt = false;
+            pendingPaymentChittaNo = null;
+            pendingPaymentChitta = null;
+        }
+    }
 
     // 1. ESCAPE: Close active search dialog or topmost modal
     if (e.key === "Escape") {
@@ -7510,6 +7539,11 @@ document.addEventListener("keydown", function(e) {
         if ((e.altKey && keyLower === 'e') || (!isEditingField && e.key === 'PageDown')) {
             e.preventDefault();
             loadNextChitta();
+            return;
+        }
+        if (keyLower === 'y' && (!isEditingField || chittaMode === 'VIEW')) {
+            e.preventDefault();
+            openChittaPaymentFromCurrent();
             return;
         }
         if ((e.altKey && keyLower === 'b') || (!isEditingField && e.key === 'End')) {
@@ -9178,7 +9212,7 @@ function openChittaPaymentFromCurrent() {
             chittaNo: cNo,
             chittaDate: cDate,
             farmerName: fName,
-            paidTo: fName,
+            paidTo: '',
             farmerAccount: { id: fId, accountName: fName }
         };
     }
