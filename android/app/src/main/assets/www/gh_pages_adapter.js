@@ -120,22 +120,22 @@
     };
 
     window.hasConfiguredCentralServer = function() {
+        if (window.location.port !== '' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.')) {
+            return true;
+        }
         const cs = localStorage.getItem('KANIMC_SERVER_URL');
         if (!cs || cs.trim() === '') return false;
-        if (window.location.protocol.startsWith('http') && window.location.hostname.includes('github.io')) {
-            return false;
-        }
         return true;
     };
 
     function getCentralServerUrl() {
         // If running in Android WebView or file: scheme
         if (window.location.protocol === 'file:') {
-            return localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.3:8080';
+            return localStorage.getItem('KANIMC_SERVER_URL') || 'http://192.168.1.4:8080';
         }
-        // If running locally, route to local origin
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return (window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:8080';
+        // If running on any local IP or origin with explicit port (e.g. 192.168.1.4:8080, localhost:8080)
+        if (window.location.origin && window.location.origin !== 'null' && window.location.port !== '') {
+            return window.location.origin;
         }
         let cs = localStorage.getItem('KANIMC_SERVER_URL');
         // Clear dead / expired Cloudflare tunnel domains from localStorage
@@ -144,11 +144,8 @@
             try { localStorage.removeItem('KANIMC_SERVER_URL'); } catch(e) {}
         }
         if (!cs) {
-            if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('github.io') && window.location.port !== '') {
-                cs = window.location.origin;
-            } else {
-                cs = '';
-            }
+            // Default to desktop Wi-Fi server
+            cs = 'http://192.168.1.4:8080';
         }
         return cs;
     }
@@ -538,11 +535,8 @@
             try {
                 let targetUrl = url;
                 if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                    if (centralServer && !window.location.host.includes('trycloudflare.com') && !window.location.host.includes('192.168.1.7')) {
-                        targetUrl = centralServer.replace(/\/$/, '') + path + urlObj.search;
-                    } else {
-                        targetUrl = ((window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:8080') + path + urlObj.search;
-                    }
+                    const hostUrl = centralServer || ((window.location.origin && window.location.origin !== 'null' && window.location.origin.startsWith('http')) ? window.location.origin : 'http://192.168.1.4:8080');
+                    targetUrl = hostUrl.replace(/\/$/, '') + path + urlObj.search;
                 }
                 const newHeaders = Object.assign({}, (init && init.headers) || {}, {
                     'Bypass-Tunnel-Reminder': 'true'
