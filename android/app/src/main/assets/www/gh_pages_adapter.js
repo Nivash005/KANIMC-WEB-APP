@@ -741,6 +741,10 @@
                 if (!found) return jsonResponse({ error: 'Chitta not found with ID: ' + id }, 404);
                 
                 if (method === 'POST') {
+                    const activeUser = (typeof window !== 'undefined' && window.currentUser) ? window.currentUser : 'ADMIN';
+                    if (activeUser !== 'ADMIN') {
+                        return jsonResponse({ error: "Access Denied: Only ADMIN can make Chitta Payments." }, 403);
+                    }
                     const paidToRaw = search.get('paidTo');
                     const paidTo = paidToRaw ? paidToRaw.trim() : '';
                     if (!paidTo) {
@@ -758,6 +762,10 @@
                     window.enqueueOfflineAction('POST', path + urlObj.search, null, { localId: id, type: 'chittaPayment' });
                     return jsonResponse(found, 200);
                 } else if (method === 'DELETE') {
+                    const activeUser = (typeof window !== 'undefined' && window.currentUser) ? window.currentUser : 'ADMIN';
+                    if (activeUser !== 'ADMIN') {
+                        return jsonResponse({ error: "Access Denied: Only ADMIN can delete Chitta Payments." }, 403);
+                    }
                     found.paid = false;
                     found.paidTo = null;
                     found.paymentMethod = null;
