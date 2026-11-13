@@ -69,6 +69,7 @@
 
     let sseSource = null;
     const processedMsgIds = new Set();
+    let lastSnapshotRequestTime = 0;
 
     function initRealtimeSync() {
         if (typeof EventSource === 'undefined') return;
@@ -82,7 +83,7 @@
                     const data = JSON.parse(event.data);
                     if (data && data.event === 'message' && data.id && !processedMsgIds.has(data.id)) {
                         processedMsgIds.add(data.id);
-                        if (processedMsgIds.size > 2000) processedMsgIds.clear();
+                        if (processedMsgIds.size > 3000) processedMsgIds.clear();
                         const payload = JSON.parse(data.message);
                         if (payload && payload.deviceId !== MY_DEVICE_ID) {
                             handleIncomingSyncMessage(payload, false);
@@ -91,7 +92,8 @@
                 } catch(e) {}
             };
             sseSource.onerror = function() {
-                setTimeout(initRealtimeSync, 10000);
+                try { if (sseSource) sseSource.close(); } catch(e) {}
+                setTimeout(initRealtimeSync, 6000);
             };
         } catch(err) {
             console.warn('[KANIMC Sync] SSE setup failed:', err);
@@ -106,34 +108,47 @@
             const text = await res.text();
             const lines = text.trim().split('\n');
             let anyChange = false;
-            lines.forEach(line => {
-                if (!line.trim()) return;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
                 try {
                     const data = JSON.parse(line);
                     if (data && data.event === 'message' && data.id && !processedMsgIds.has(data.id)) {
                         processedMsgIds.add(data.id);
                         const payload = JSON.parse(data.message);
                         if (payload && payload.deviceId !== MY_DEVICE_ID) {
-                            handleIncomingSyncMessage(payload, true);
+                            await handleIncomingSyncMessage(payload, true);
                             anyChange = true;
                         }
                     }
                 } catch(e) {}
-            });
+            }
             if (anyChange) {
                 if (typeof fetchChittas === 'function') await fetchChittas(false);
                 if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
             }
+            // Request peer snapshot if needed
+            requestFullSyncFromPeers();
         } catch(err) {
             console.warn('[KANIMC Sync] Catch-up poll failed:', err);
         }
     }
 
+    function requestFullSyncFromPeers() {
+        if (Date.now() - lastSnapshotRequestTime < 25000) return;
+        lastSnapshotRequestTime = Date.now();
+        broadcastSyncEvent('SYNC_REQUEST', {
+            chittaCount: (db.chittas || []).length
+        });
+    }
+
     async function broadcastSyncEvent(type, data) {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         try {
+            const activeUser = (typeof window !== 'undefined' && window.currentUser) ? window.currentUser : 'USER';
             const msg = {
                 deviceId: MY_DEVICE_ID,
+                user: activeUser,
                 type: type,
                 timestamp: Date.now(),
                 ...data
@@ -143,7 +158,7 @@
                 headers: { 'Title': 'KANIMC_SYNC' },
                 body: JSON.stringify(msg)
             });
-            console.log('[KANIMC Sync] Broadcasted ' + type + ' to relay');
+            console.log('[KANIMC Sync] Broadcasted ' + type + ' to relay by ' + activeUser);
         } catch(err) {
             console.warn('[KANIMC Sync] Broadcast error:', err);
         }
@@ -153,12 +168,45 @@
         if (!payload || !payload.type) return;
         let changed = false;
 
+        // 0. SYNC REQUEST (Peer asks for current data)
+        if (payload.type === 'SYNC_REQUEST') {
+            if (Array.isArray(db.chittas) && db.chittas.length > 0 && db.chittas.length >= (payload.chittaCount || 0)) {
+                broadcastSyncEvent('SYNC_SNAPSHOT', {
+                    chittas: db.chittas
+                });
+            }
+            return;
+        }
+
+        // 0.1 SYNC SNAPSHOT (Received from peer)
+        if (payload.type === 'SYNC_SNAPSHOT' && Array.isArray(payload.chittas)) {
+            db.chittas = db.chittas || [];
+            let merged = false;
+            payload.chittas.forEach(remoteC => {
+                const rKey = String(remoteC.chittaNo || '') + '_' + String(remoteC.chittaDate || '').substring(0, 10);
+                const localIdx = db.chittas.findIndex(c => (String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)) === rKey || (c.id != null && c.id == remoteC.id));
+                if (localIdx >= 0) {
+                    if (remoteC.paid && !db.chittas[localIdx].paid) {
+                        db.chittas[localIdx] = { ...db.chittas[localIdx], ...remoteC };
+                        merged = true;
+                    }
+                } else {
+                    db.chittas.push(remoteC);
+                    merged = true;
+                }
+            });
+            if (merged) {
+                db.chittas.sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
+                changed = true;
+            }
+        }
+
         // 1. CHITTA SAVED (Created or Updated)
         if (payload.type === 'CHITTA_SAVED' && payload.chitta) {
             db.chittas = db.chittas || [];
             const newC = payload.chitta;
             const key = String(newC.chittaNo || '') + '_' + String(newC.chittaDate || '').substring(0, 10);
-            const idx = db.chittas.findIndex(c => (String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)) === key || c.id == newC.id);
+            const idx = db.chittas.findIndex(c => (String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)) === key || (c.id != null && c.id == newC.id));
             if (idx >= 0) {
                 db.chittas[idx] = { ...db.chittas[idx], ...newC };
             } else {
@@ -169,30 +217,31 @@
         }
 
         // 2. CHITTA PAYMENT
-        if (payload.type === 'CHITTA_PAYMENT' && payload.id) {
+        if (payload.type === 'CHITTA_PAYMENT' && (payload.id != null || payload.chittaNo != null)) {
             db.chittas = db.chittas || [];
-            const c = db.chittas.find(x => x.id == payload.id || String(x.chittaNo) === String(payload.chittaNo));
+            const c = db.chittas.find(x => (payload.id != null && x.id == payload.id) || (payload.chittaNo != null && String(x.chittaNo) === String(payload.chittaNo)));
             if (c) {
                 c.paid = true;
                 c.payDate = payload.payDate || c.payDate;
                 c.paidTo = payload.paidTo || c.paidTo;
+                c.paymentMethod = payload.paymentMethod || c.paymentMethod;
                 c.paidAmount = payload.paidAmount != null ? payload.paidAmount : (c.netPayable || c.paidAmount);
                 changed = true;
             }
         }
 
         // 3. CHITTA DELETED
-        if (payload.type === 'CHITTA_DELETED' && (payload.id || payload.chittaNo)) {
+        if (payload.type === 'CHITTA_DELETED' && (payload.id != null || payload.chittaNo != null)) {
             db.chittas = db.chittas || [];
             const prevLen = db.chittas.length;
-            db.chittas = db.chittas.filter(c => c.id != payload.id && String(c.chittaNo) !== String(payload.chittaNo));
+            db.chittas = db.chittas.filter(c => (payload.id != null && c.id != payload.id) && (payload.chittaNo != null && String(c.chittaNo) !== String(payload.chittaNo)));
             if (db.chittas.length !== prevLen) changed = true;
         }
 
         // 4. SALES BILL SAVED
         if (payload.type === 'BILL_SAVED' && payload.bill) {
             db.salesBills = db.salesBills || [];
-            const idx = db.salesBills.findIndex(b => b.id == payload.bill.id || String(b.billNo) === String(payload.bill.billNo));
+            const idx = db.salesBills.findIndex(b => (payload.bill.id != null && b.id == payload.bill.id) || String(b.billNo) === String(payload.bill.billNo));
             if (idx >= 0) {
                 db.salesBills[idx] = { ...db.salesBills[idx], ...payload.bill };
             } else {
@@ -205,9 +254,23 @@
             saveDb();
             if (typeof fetchChittas === 'function') await fetchChittas(false);
             if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
+
+            // If openingChitta modal is open and currently in VIEW mode, refresh display immediately
+            const chittaModal = document.getElementById('openingChitta');
+            if (chittaModal && chittaModal.style.display !== 'none' && typeof chittaMode !== 'undefined' && chittaMode === 'VIEW') {
+                if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
+                    if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && currentChittaIndex < chittas.length) {
+                        if (typeof displayChitta === 'function') displayChitta(currentChittaIndex);
+                    } else if (typeof displayChitta === 'function') {
+                        displayChitta(chittas.length - 1);
+                    }
+                }
+            }
+
             if (typeof updateLiveSyncBadge === 'function') updateLiveSyncBadge(true);
-            if (!isCatchup && typeof showLiveSyncToast === 'function') {
-                showLiveSyncToast('🟢 Live Sync: Data updated from other device');
+            if (!isCatchup && typeof showToast === 'function') {
+                const label = payload.type === 'CHITTA_PAYMENT' ? 'Payment Recorded' : (payload.type === 'CHITTA_DELETED' ? 'Chitta Deleted' : (payload.type === 'SYNC_SNAPSHOT' ? 'Database Synced' : 'Chitta #' + (payload.chitta?.chittaNo || '') + ' Saved'));
+                showToast('🟢 Live Sync: ' + label + ' (' + (payload.user || 'Peer') + ')');
             }
         }
     }
@@ -746,6 +809,33 @@
                                     else if ((path === '/api/cash-vouchers' || path === '/api/cash-payments') && Array.isArray(data)) db.cashVouchers = data;
                                     else if ((path === '/api/receipt-vouchers' || path === '/api/receipts') && Array.isArray(data)) db.receiptVouchers = data;
                                     saveDb();
+                                }
+                            }).catch(() => {});
+                        } catch(e) {}
+                    }
+
+                    // Broadcast mutation events from central server to relay
+                    if (remoteRes.ok && (method === 'POST' || method === 'PUT' || method === 'DELETE')) {
+                        try {
+                            const clone = remoteRes.clone();
+                            clone.json().then(data => {
+                                if (path === '/api/chittas') {
+                                    if (method === 'POST' || method === 'PUT') {
+                                        broadcastSyncEvent('CHITTA_SAVED', { chitta: data || reqBody });
+                                    }
+                                } else if (path.startsWith('/api/chittas/') && path.endsWith('/payment')) {
+                                    const m = path.match(/\/api\/chittas\/(\d+)\/payment/);
+                                    const cId = m ? m[1] : (data ? data.id : null);
+                                    broadcastSyncEvent('CHITTA_PAYMENT', { id: cId, ...(data || reqBody) });
+                                } else if (path.startsWith('/api/chittas/')) {
+                                    if (method === 'DELETE') {
+                                        const m = path.match(/\/api\/chittas\/(\d+)/);
+                                        broadcastSyncEvent('CHITTA_DELETED', { id: m ? m[1] : null });
+                                    } else if (method === 'PUT') {
+                                        broadcastSyncEvent('CHITTA_SAVED', { chitta: data || reqBody });
+                                    }
+                                } else if (path === '/api/sales-bills' || path === '/api/bills') {
+                                    broadcastSyncEvent('BILL_SAVED', { bill: data || reqBody });
                                 }
                             }).catch(() => {});
                         } catch(e) {}

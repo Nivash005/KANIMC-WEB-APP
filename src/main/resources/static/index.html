@@ -771,7 +771,7 @@ Commission % <input id="commRatePct" value="10.00%">
         
         <!-- Header Info -->
         <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:60px 120px 100px 150px 50px 1fr; gap:5px; align-items:center;">
-            <label>Date</label> <input type="date" id="cpPayDate" value="2026-11-02">
+            <label>Date</label> <input type="date" id="cpPayDate">
             <label>Farmer Code</label> 
             <div style="display:flex;"><input id="cpPayFarmerCode" maxlength="4" style="text-transform:uppercase;" onchange="onCpFarmerCodeChange()"><button type="button" style="width:20px;padding:0;cursor:pointer;" onclick="findAccount()">v</button></div>
             <label style="text-align:right;">Phone</label> <input id="cpPayPhone">
@@ -1550,8 +1550,8 @@ Commission % <input id="commRatePct" value="10.00%">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="billRegFromDate" value="2026-04-26" style="width:100px;">
-            <label>To</label> <input type="date" id="billRegToDate" value="2026-11-02" style="width:100px;">
+            <label>From</label> <input type="date" id="billRegFromDate" style="width:100px;">
+            <label>To</label> <input type="date" id="billRegToDate" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
             <button style="padding:2px 10px;" onclick="loadBillRegister()"><u>O</u>k</button>
@@ -1600,8 +1600,8 @@ Commission % <input id="commRatePct" value="10.00%">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="chittaRegFromDate" value="2026-04-26" style="width:100px; background:#ccffff;">
-            <label>To</label> <input type="date" id="chittaRegToDate" value="2026-11-02" style="width:100px;">
+            <label>From</label> <input type="date" id="chittaRegFromDate" style="width:100px; background:#ccffff;">
+            <label>To</label> <input type="date" id="chittaRegToDate" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
             <button style="padding:2px 10px;" onclick="loadChittaRegister()"><u>O</u>k</button>
@@ -1657,7 +1657,7 @@ Commission % <input id="commRatePct" value="10.00%">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>Date</label> <input type="date" id="chittaPendingRegDate" value="2026-11-02" style="width:100px;">
+            <label>Date</label> <input type="date" id="chittaPendingRegDate" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
             <button style="padding:2px 10px;" onclick="loadChittaPendingRegister()"><u>O</u>k</button>
@@ -5162,7 +5162,7 @@ function applyPeriodDateDefaults(forceReset) {
     singleDateInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            if (forceReset || !el.value || el.value.startsWith('2023-') || el.value.startsWith('2024-') || el.value === '2025-04-25') {
+            if (forceReset || !el.value || el.value.startsWith('2023-') || el.value.startsWith('2024-') || el.value === '2025-04-25' || el.value === '2026-11-02') {
                 el.value = curDate;
             }
         }
@@ -5188,10 +5188,10 @@ function applyPeriodDateDefaults(forceReset) {
     rangeInputs.forEach(pair => {
         const f = document.getElementById(pair.from);
         const t = document.getElementById(pair.to);
-        if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26')) {
+        if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26' || f.value === '2026-11-02')) {
             f.value = fromDate;
         }
-        if (t && (forceReset || !t.value || t.value.startsWith('2023-') || t.value.startsWith('2024-') || t.value === '2025-04-25')) {
+        if (t && (forceReset || !t.value || t.value.startsWith('2023-') || t.value.startsWith('2024-') || t.value === '2025-04-25' || t.value === '2026-11-02' || t.value < curDate)) {
             t.value = toDate;
         }
     });
@@ -5326,8 +5326,20 @@ function openWin(id, targetParam){
         el.style.display='flex'; 
         if (id === 'openingChitta') {
             const chittaDateEl = document.getElementById('chittaDate');
-            if (chittaDateEl && !chittaDateEl.value) chittaDateEl.value = getTodayDateStr();
-            if (targetParam !== 'preserve' && targetParam !== 'view') {
+            if (chittaDateEl && (!chittaDateEl.value || chittaDateEl.value < getTodayDateStr())) chittaDateEl.value = getTodayDateStr();
+            if (typeof fetchChittas === 'function') {
+                fetchChittas(false).then(() => {
+                    if (targetParam === 'last' && chittas.length > 0) {
+                        displayChitta(chittas.length - 1);
+                    } else if (targetParam !== 'preserve' && targetParam !== 'view') {
+                        chittaActionNew();
+                    } else if (currentChittaIndex >= 0 && currentChittaIndex < chittas.length) {
+                        displayChitta(currentChittaIndex);
+                    } else if (chittas.length > 0) {
+                        displayChitta(chittas.length - 1);
+                    }
+                });
+            } else if (targetParam !== 'preserve' && targetParam !== 'view') {
                 chittaActionNew();
             }
         }
@@ -5647,24 +5659,28 @@ function login() {
     }
     
     currentUser = u;
+    window.currentUser = u;
     if (err) err.innerText = '';
     
     const info = document.getElementById('userInfo');
     if (info) info.innerText = `${currentUser} | ${period}`;
     
     applyUserPermissions(currentUser);
+    applyPeriodDateDefaults(true);
     
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('app').style.filter = 'none';
     document.getElementById('app').style.pointerEvents = 'auto';
     if (typeof fetchAccounts === 'function') fetchAccounts(false);
     if (typeof fetchItems === 'function') fetchItems();
+    if (typeof fetchChittas === 'function') fetchChittas(false);
     showToast(`Logged in as ${currentUser}`);
 }
 
 function logout() {
     closeAll();
     currentUser = 'ADMIN';
+    window.currentUser = 'ADMIN';
     document.getElementById('app').style.filter = 'blur(3px)';
     document.getElementById('app').style.pointerEvents = 'none';
     const overlay = document.getElementById('loginOverlay');
@@ -5805,10 +5821,12 @@ async function fetchItems() {
     } catch(e) { console.error(e); }
 }
 
-// Call fetchItems when page loads
+// Call fetchItems and fetchChittas when page loads
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof fetchAccounts === 'function') fetchAccounts(false);
     if (typeof fetchItems === 'function') fetchItems();
+    if (typeof fetchChittas === 'function') fetchChittas(false);
+    if (typeof applyPeriodDateDefaults === 'function') applyPeriodDateDefaults(false);
 });
 
 // --- CHITTA LOGIC ---
