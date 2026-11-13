@@ -1,5 +1,5 @@
 // KANIMC Offline Service Worker
-const CACHE_NAME = 'kanimc-cache-v20261113_purge_insecure_v9';
+const CACHE_NAME = 'kanimc-cache-v20261113_ntfy_realtime_v10';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -44,10 +44,15 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+    // Only handle standard HTTP and HTTPS requests; ignore chrome-extension, file, etc.
+    if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) {
+        return;
+    }
+
     const url = new URL(event.request.url);
 
-    // Bypass Service Worker for /api/ requests so backend / gh_pages_adapter can handle them
-    if (url.pathname.includes('/api/')) {
+    // Bypass Service Worker for /api/ and external sync relay requests
+    if (url.pathname.includes('/api/') || url.hostname.includes('ntfy.sh')) {
         return;
     }
 
