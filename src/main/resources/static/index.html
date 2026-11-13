@@ -565,8 +565,8 @@ Commission % <input id="commRatePct" value="10.00%">
                 <button type="button" class="chitta-field" style="white-space:nowrap; padding:2px 10px; color:#555;" onclick="openWin('account')">Account Master</button>
             </div>
             
-            <label>Paid on</label> <input type="date" class="chitta-field" tabindex="6">
-            <label>Paid to</label> <input type="text" class="chitta-field" style="grid-column: span 3;" tabindex="7">
+            <label>Paid on</label> <input type="date" id="chittaPaidOn" class="chitta-field" tabindex="6" readonly style="background:#eee; cursor:not-allowed;" title="Payment is recorded via Chitta Payment">
+            <label>Paid to</label> <input type="text" id="chittaPaidTo" class="chitta-field" style="grid-column: span 3; background:#eee; cursor:not-allowed;" tabindex="7" readonly title="Payment is recorded via Chitta Payment">
         </div>
         
         <!-- Grid -->
@@ -693,7 +693,7 @@ Commission % <input id="commRatePct" value="10.00%">
 <!-- ================= 9. CHITTA PAYMENT ================= -->
 <div class="modal-overlay" id="chittaPayment">
 <div class="modal orange" style="width:1150px; display:flex; flex-direction:column;">
-<div class="modal-title">Chitta payment - New<span onclick="closeAll()">✖</span></div>
+<div class="modal-title">Chitta payment - New<span onclick="closeChittaPayment()">✖</span></div>
 
 <div style="display:flex; padding:5px; gap:5px; flex:1;">
     <!-- LEFT SIDE -->
@@ -812,7 +812,7 @@ Commission % <input id="commRatePct" value="10.00%">
         <button style="font-weight:bold;" onclick="saveChittaPaymentSettlement()"><u>S</u>ave</button>
         <button style="color:#777;" onclick="saveChittaPaymentSettlement()">Change</button>
         <button style="color:#777;" onclick="deleteChittaPaymentSettlement()">Delete</button>
-        <button onclick="closeAll()" style="font-weight:bold;"><u>C</u>ancel</button>
+        <button onclick="closeChittaPayment()" style="font-weight:bold;"><u>C</u>ancel</button>
         <button style="color:#000;" onclick="printChitta(true)">Print</button>
         <button style="color:#000;" onclick="printChitta(false)">View</button>
         <button style="color:#777;" onclick="saveChittaPaymentSettlement()">Payment</button>
@@ -6873,6 +6873,32 @@ async function saveChittaPaymentSettlement() {
             if (typeof fetchChittas === 'function') await fetchChittas();
             clearChittaPaymentForm();
             await loadAllPendingChittasForPayment();
+
+            // Come back to Chitta screen displaying the last processed Chitta
+            const processedId = (updated && updated.id) || (selectedCpChitta && selectedCpChitta.id);
+            const processedNo = (updated && updated.chittaNo) || (selectedCpChitta && selectedCpChitta.chittaNo);
+
+            openWin('openingChitta', 'preserve');
+
+            let targetIdx = -1;
+            if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
+                if (processedId != null) {
+                    targetIdx = chittas.findIndex(x => String(x.id) === String(processedId));
+                }
+                if (targetIdx === -1 && processedNo != null) {
+                    targetIdx = chittas.findIndex(x => String(x.chittaNo) === String(processedNo));
+                }
+            }
+
+            if (targetIdx !== -1) {
+                if (chittas[targetIdx]) {
+                    Object.assign(chittas[targetIdx], chittaToPrint);
+                }
+                displayChitta(targetIdx);
+            } else if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
+                displayChitta(chittas.length - 1);
+            }
+            setChittaMode('VIEW');
         } else {
             const err = await res.text();
             showToast("Failed to record payment: " + err);
@@ -6891,6 +6917,14 @@ function displayChitta(index) {
     document.getElementById('chittaNo').value = c.chittaNo || '';
     if (c.chittaDate) {
         document.getElementById('chittaDate').value = c.chittaDate.substring(0, 10);
+    }
+    const paidOnEl = document.getElementById('chittaPaidOn');
+    if (paidOnEl) {
+        paidOnEl.value = c.payDate ? String(c.payDate).substring(0, 10) : '';
+    }
+    const paidToEl = document.getElementById('chittaPaidTo');
+    if (paidToEl) {
+        paidToEl.value = c.paidTo || (c.paid ? (c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '')) : '');
     }
     
     if (c.farmerAccount) {
@@ -6937,6 +6971,10 @@ function displayChitta(index) {
             let dtShort = c.chittaDate ? c.chittaDate.substring(0, 10).split('-').reverse().join('/') : '';
             stamp = `Created by :ADMIN*${dtShort}*00:00:00*DESKTOP-8J0TBBG # CHITTA`;
         }
+        if (c.paid) {
+            let pDate = c.payDate ? String(c.payDate).substring(0, 10).split('-').reverse().join('/') : '';
+            stamp += ` | PAID: ₹${(parseFloat(c.netPayable) || 0).toFixed(2)}${pDate ? ' on ' + pDate : ''}${c.paidTo ? ' to ' + c.paidTo : ''}`;
+        }
         if (c.changedInfo) stamp += ' | ' + c.changedInfo;
         auditEl.innerText = stamp;
         auditEl.style.display = 'block';
@@ -6961,9 +6999,9 @@ function clearChitta() {
     if (fName) fName.value = '';
     const fPhone = document.getElementById('farmerPhone');
     if (fPhone) fPhone.value = '';
-    const paidTo = document.getElementById('paidTo') || document.querySelector('#openingChitta input[tabindex="7"]');
+    const paidTo = document.getElementById('chittaPaidTo') || document.getElementById('paidTo') || document.querySelector('#openingChitta input[tabindex="7"]');
     if (paidTo) paidTo.value = '';
-    const paidOn = document.getElementById('paidOn') || document.querySelector('#openingChitta input[tabindex="6"]');
+    const paidOn = document.getElementById('chittaPaidOn') || document.getElementById('paidOn') || document.querySelector('#openingChitta input[tabindex="6"]');
     if (paidOn) paidOn.value = '';
 
     const f9Save = document.getElementById('chittaF9SaveIndicator');
@@ -8911,7 +8949,20 @@ function openChittaPaymentFromCurrent() {
         };
     }
 
+    window.lastChittaReturnIndex = currentChittaIndex;
     openWin('chittaPayment', currentChittaObj);
+}
+
+function closeChittaPayment() {
+    closeWin('chittaPayment');
+    const returnIdx = (typeof window.lastChittaReturnIndex === 'number' && window.lastChittaReturnIndex >= 0)
+        ? window.lastChittaReturnIndex
+        : (typeof currentChittaIndex === 'number' && currentChittaIndex >= 0 ? currentChittaIndex : -1);
+    if (returnIdx >= 0 && typeof chittas !== 'undefined' && chittas && chittas[returnIdx]) {
+        openWin('openingChitta', 'preserve');
+        displayChitta(returnIdx);
+        setChittaMode('VIEW');
+    }
 }
 
 async function openChittaByDocNo(docNo) {
