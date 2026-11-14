@@ -279,14 +279,19 @@
             if (typeof fetchChittas === 'function') await fetchChittas(false);
             if (typeof refreshOpenRegistersSilently === 'function') refreshOpenRegistersSilently();
 
-            // If openingChitta modal is open and currently in VIEW mode, refresh display immediately
+            // If openingChitta modal is open and currently in VIEW mode, refresh display safely
             const chittaModal = document.getElementById('openingChitta');
             if (chittaModal && chittaModal.style.display !== 'none' && typeof chittaMode !== 'undefined' && chittaMode === 'VIEW') {
                 if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
-                    if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && currentChittaIndex < chittas.length) {
+                    if (payload && payload.chitta) {
+                        const targetId = payload.chitta.id;
+                        const targetNo = payload.chitta.chittaNo;
+                        const fIdx = chittas.findIndex(c => (targetId != null && c.id == targetId) || (targetNo != null && String(c.chittaNo).trim() === String(targetNo).trim()));
+                        if (fIdx >= 0 && typeof displayChitta === 'function') {
+                            displayChitta(fIdx);
+                        }
+                    } else if (typeof currentChittaIndex !== 'undefined' && currentChittaIndex >= 0 && currentChittaIndex < chittas.length) {
                         if (typeof displayChitta === 'function') displayChitta(currentChittaIndex);
-                    } else if (typeof displayChitta === 'function') {
-                        displayChitta(chittas.length - 1);
                     }
                 }
             }

@@ -7219,7 +7219,8 @@ async function saveChittaPaymentSettlement() {
                     Object.assign(chittas[targetIdx], chittaToPrint);
                 }
                 displayChitta(targetIdx);
-            } else if (typeof chittas !== 'undefined' && chittas && chittas.length > 0) {
+            } else if (chittaToPrint) {
+                chittas.push(chittaToPrint);
                 displayChitta(chittas.length - 1);
             }
             setChittaMode('VIEW');
@@ -7398,13 +7399,13 @@ async function saveChitta() {
 
     let matchedAccount = null;
     if (fId && typeof accounts !== 'undefined' && accounts) {
-        matchedAccount = accounts.find(a => String(a.partyId) === fId || String(a.id) === fId);
+        matchedAccount = accounts.find(a => String(a.partyId).trim() === fId.trim() || String(a.id).trim() === fId.trim());
     }
     if (!matchedAccount && fName && typeof accounts !== 'undefined' && accounts) {
         matchedAccount = accounts.find(a => (a.accountName || '').trim().toLowerCase() === fName.toLowerCase());
     }
     if (!matchedAccount && fName && typeof accounts !== 'undefined' && accounts) {
-        matchedAccount = accounts.find(a => (a.accountName || '').toLowerCase().includes(fName.toLowerCase()));
+        matchedAccount = accounts.find(a => (a.accountName || '').trim().toLowerCase().startsWith(fName.toLowerCase()));
     }
     if (!matchedAccount) {
         matchedAccount = {
@@ -7545,33 +7546,47 @@ async function saveChitta() {
             showToast("✅ Chitta #" + savedNo + " Saved Successfully!");
             await fetchChittas(false);
 
-            // Stay on saved chitta in read-only / view mode until Change button is clicked
+            // Construct full representation of the saved Chitta
+            const recordToDisplay = (savedChitta && savedChitta.id != null) ? savedChitta : {
+                ...data,
+                id: (savedChitta && savedChitta.id) || Date.now(),
+                chittaNo: savedNo,
+                chittaDate: dateVal,
+                farmerAccount: farmerAccObj,
+                farmerName: farmerAccObj.accountName
+            };
+
+            // Locate newly saved chitta in chittas array
             let targetIdx = -1;
-            if (savedChitta && savedChitta.id) {
-                targetIdx = chittas.findIndex(c => c.id == savedChitta.id);
+            if (savedChitta && savedChitta.id != null) {
+                targetIdx = chittas.findIndex(c => String(c.id) === String(savedChitta.id));
             }
             if (targetIdx === -1 && savedNo) {
-                targetIdx = chittas.findIndex(c => String(c.chittaNo).trim() === String(savedNo).trim() && String(c.chittaDate).substring(0, 10) === dateVal);
+                targetIdx = chittas.findIndex(c => String(c.chittaNo).trim() === String(savedNo).trim() && String(c.chittaDate || '').substring(0, 10) === dateVal);
             }
-            if (targetIdx === -1 && chittas.length > 0) {
-                targetIdx = chittas.length - 1;
-            }
-            if (targetIdx >= 0) {
-                displayChitta(targetIdx);
-            } else {
-                setChittaMode('VIEW');
-                const f9Save = document.getElementById('chittaF9SaveIndicator');
-                const auditEl = document.getElementById('chittaAuditLine');
-                if (f9Save) f9Save.style.display = 'none';
-                if (auditEl) {
-                    auditEl.innerText = data.auditInfo || getLiveAuditStamp('CHITTA');
-                    if (data.changedInfo) auditEl.innerText += ' | ' + data.changedInfo;
-                    auditEl.style.display = 'block';
-                }
+            if (targetIdx === -1 && savedNo) {
+                targetIdx = chittas.findIndex(c => String(c.chittaNo).trim() === String(savedNo).trim());
             }
 
+            if (targetIdx >= 0) {
+                // Ensure local chittas[targetIdx] retains correct farmerAccount and farmerName
+                if (!chittas[targetIdx].farmerAccount && farmerAccObj) {
+                    chittas[targetIdx].farmerAccount = farmerAccObj;
+                }
+                if (!chittas[targetIdx].farmerName && farmerAccObj.accountName) {
+                    chittas[targetIdx].farmerName = farmerAccObj.accountName;
+                }
+                displayChitta(targetIdx);
+            } else {
+                // Guarantee the saved Chitta is added to the local array and displayed
+                chittas.push(recordToDisplay);
+                targetIdx = chittas.length - 1;
+                displayChitta(targetIdx);
+            }
+            setChittaMode('VIEW');
+
             // Prompt user: Press 'Y' to Move to Chitta Payment
-            const finalSavedObj = (targetIdx >= 0 && chittas[targetIdx]) ? chittas[targetIdx] : (savedChitta || data);
+            const finalSavedObj = (targetIdx >= 0 && chittas[targetIdx]) ? chittas[targetIdx] : (savedChitta || recordToDisplay);
             promptPostSavePayment(savedNo, finalSavedObj, targetIdx >= 0 ? targetIdx : currentChittaIndex);
         } else if (res.status === 400) {
             let errMsg = "This Chitta Number already exists on this date! Please choose a different number.";
