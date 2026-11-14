@@ -144,6 +144,20 @@ textarea {
 .window{width:100vw;height:100vh;display:flex;flex-direction:column;background:#fff}
 .title-bar{background:linear-gradient(#dbe9f7,#a9c7e6);padding:6px 10px;font-weight:bold}
 
+/* Chitta footer buttons focus style for keyboard arrow navigation */
+#openingChitta .modal-footer button:focus {
+    outline: 2px solid #002244 !important;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.6) !important;
+    background: #ffff99 !important;
+    color: #002244 !important;
+    transform: scale(1.05);
+}
+
+#chittaGrid input:focus {
+    outline: 2px solid #0055aa !important;
+    background-color: #ffffcc !important;
+}
+
 /* ================= MENU BAR ================= */
 .menu-bar{display:flex;gap:20px;padding:6px 12px;background:#f3f3f3;border-bottom:1px solid #c0c0c0;font-size:13px}
 .menu-item{position:relative;padding:2px 6px;cursor:pointer}
@@ -4259,6 +4273,13 @@ function handleFarmerNameKey(e) {
                 firstItem.focus();
                 if (typeof firstItem.select === 'function') firstItem.select();
             }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
+            if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
+                firstItem.focus();
+                if (typeof firstItem.select === 'function') firstItem.select();
+            }
         }
         return;
     }
@@ -4514,6 +4535,13 @@ function handleFarmerCodeKey(e) {
         if (next) {
             next.focus();
             if (typeof next.select === 'function') next.select();
+        }
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
+        if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
+            firstItem.focus();
+            if (typeof firstItem.select === 'function') firstItem.select();
         }
     }
 }
@@ -7614,6 +7642,221 @@ function moveToChittaPayment(chittaNo) {
     openWin('chittaPayment', target);
 }
 
+// Full Arrow Key Navigation for Opening Chitta (Item, Rate, Qty & Footer Buttons)
+function handleChittaArrowNavigation(e) {
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return false;
+
+    const openingChittaModal = document.getElementById('openingChitta');
+    if (!openingChittaModal || openingChittaModal.style.display === 'none') return false;
+
+    const activeEl = document.activeElement;
+    if (!activeEl || !openingChittaModal.contains(activeEl)) return false;
+
+    // Do not interfere if Chitta Find dialog or popup is open
+    const chittaFind = document.getElementById('chittaFindDialog');
+    if (chittaFind && chittaFind.style.display === 'block') return false;
+
+    const footerBtns = Array.from(openingChittaModal.querySelectorAll('.modal-footer button'));
+
+    // CASE 1: Focused on any of the footer buttons below
+    const btnIdx = footerBtns.indexOf(activeEl);
+    if (btnIdx !== -1) {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextIdx = (btnIdx + 1) % footerBtns.length;
+            if (footerBtns[nextIdx]) footerBtns[nextIdx].focus();
+            return true;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            const prevIdx = (btnIdx - 1 + footerBtns.length) % footerBtns.length;
+            if (footerBtns[prevIdx]) footerBtns[prevIdx].focus();
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            // Move back UP into the grid
+            const rows = Array.from(openingChittaModal.querySelectorAll('#chittaGrid tbody tr')).filter(r => r.querySelector('.grid-item'));
+            let targetInput = null;
+            for (let i = rows.length - 1; i >= 0; i--) {
+                const itemInp = rows[i].querySelector('.grid-item');
+                const qtyInp = rows[i].querySelector('.grid-qty');
+                if (itemInp && itemInp.value.trim() !== '') {
+                    targetInput = qtyInp || itemInp;
+                    break;
+                }
+            }
+            if (!targetInput && rows.length > 0) {
+                targetInput = rows[0].querySelector('.grid-item');
+            }
+            if (targetInput) {
+                targetInput.focus();
+                if (typeof targetInput.select === 'function') targetInput.select();
+            }
+            return true;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextIdx = (btnIdx + 1) % footerBtns.length;
+            if (footerBtns[nextIdx]) footerBtns[nextIdx].focus();
+            return true;
+        }
+    }
+
+    // CASE 2: Focused inside the Item Grid (#chittaGrid: Item, Rate, Qty)
+    const isGridInput = activeEl.classList.contains('grid-item') ||
+                        activeEl.classList.contains('grid-rate') ||
+                        activeEl.classList.contains('grid-qty');
+
+    if (isGridInput) {
+        const tr = activeEl.closest('tr');
+        const tbody = tr ? tr.closest('tbody') : null;
+        if (!tr || !tbody) return false;
+
+        const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.grid-item'));
+        const rowIndex = rows.indexOf(tr);
+        if (rowIndex === -1) return false;
+
+        const itemInp = tr.querySelector('.grid-item');
+        const rateInp = tr.querySelector('.grid-rate');
+        const qtyInp = tr.querySelector('.grid-qty');
+
+        // HORIZONTAL NAVIGATION: ArrowRight
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl === itemInp) {
+                if (rateInp) { rateInp.focus(); if (typeof rateInp.select === 'function') rateInp.select(); }
+            } else if (activeEl === rateInp) {
+                if (qtyInp) { qtyInp.focus(); if (typeof qtyInp.select === 'function') qtyInp.select(); }
+            } else if (activeEl === qtyInp) {
+                if (rowIndex < rows.length - 1) {
+                    const nextItem = rows[rowIndex + 1].querySelector('.grid-item');
+                    if (nextItem) { nextItem.focus(); if (typeof nextItem.select === 'function') nextItem.select(); }
+                } else {
+                    const nextBtn = document.getElementById('btnChittaNew') || footerBtns[0];
+                    if (nextBtn) nextBtn.focus();
+                }
+            }
+            return true;
+        }
+
+        // HORIZONTAL NAVIGATION: ArrowLeft
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl === qtyInp) {
+                if (rateInp) { rateInp.focus(); if (typeof rateInp.select === 'function') rateInp.select(); }
+            } else if (activeEl === rateInp) {
+                if (itemInp) { itemInp.focus(); if (typeof itemInp.select === 'function') itemInp.select(); }
+            } else if (activeEl === itemInp) {
+                if (rowIndex > 0) {
+                    const prevQty = rows[rowIndex - 1].querySelector('.grid-qty');
+                    if (prevQty) { prevQty.focus(); if (typeof prevQty.select === 'function') prevQty.select(); }
+                } else {
+                    const fName = document.getElementById('farmerName');
+                    if (fName) { fName.focus(); if (typeof fName.select === 'function') fName.select(); }
+                }
+            }
+            return true;
+        }
+
+        // VERTICAL NAVIGATION: ArrowDown
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (rowIndex < rows.length - 1) {
+                const nextRow = rows[rowIndex + 1];
+                let target = null;
+                if (activeEl === itemInp) target = nextRow.querySelector('.grid-item');
+                else if (activeEl === rateInp) target = nextRow.querySelector('.grid-rate');
+                else if (activeEl === qtyInp) target = nextRow.querySelector('.grid-qty');
+                
+                if (target) {
+                    target.focus();
+                    if (typeof target.select === 'function') target.select();
+                }
+            } else {
+                const targetBtn = document.getElementById('btnChittaNew') || footerBtns[0];
+                if (targetBtn) targetBtn.focus();
+            }
+            return true;
+        }
+
+        // VERTICAL NAVIGATION: ArrowUp
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (rowIndex > 0) {
+                const prevRow = rows[rowIndex - 1];
+                let target = null;
+                if (activeEl === itemInp) target = prevRow.querySelector('.grid-item');
+                else if (activeEl === rateInp) target = prevRow.querySelector('.grid-rate');
+                else if (activeEl === qtyInp) target = prevRow.querySelector('.grid-qty');
+                
+                if (target) {
+                    target.focus();
+                    if (typeof target.select === 'function') target.select();
+                }
+            } else {
+                const fName = document.getElementById('farmerName') || document.getElementById('farmerAccountId');
+                if (fName) {
+                    fName.focus();
+                    if (typeof fName.select === 'function') fName.select();
+                }
+            }
+            return true;
+        }
+    }
+
+    // CASE 3: In header fields (chittaDate, farmerAccountId, farmerPhone, chittaNo, farmerName)
+    const headerFields = ['chittaDate', 'farmerAccountId', 'farmerPhone', 'chittaNo', 'farmerName'];
+    if (headerFields.includes(activeEl.id)) {
+        if (e.key === 'ArrowDown') {
+            const box = document.getElementById('farmerNameSuggestBox');
+            if (activeEl.id === 'farmerName' && box && box.style.display !== 'none') {
+                return false;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const firstItem = openingChittaModal.querySelector('#chittaGrid tbody tr:first-child .grid-item');
+            if (firstItem) {
+                firstItem.focus();
+                if (typeof firstItem.select === 'function') firstItem.select();
+            }
+            return true;
+        }
+    }
+
+    // CASE 4: In totals / deduction fields (chittaCommPct, chittaAdvance, chittaFreight)
+    const totalFields = ['chittaCommPct', 'chittaAdvance', 'chittaFreight'];
+    if (totalFields.includes(activeEl.id)) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetBtn = document.getElementById('btnChittaNew') || footerBtns[0];
+            if (targetBtn) targetBtn.focus();
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            const rows = Array.from(openingChittaModal.querySelectorAll('#chittaGrid tbody tr')).filter(r => r.querySelector('.grid-item'));
+            if (rows.length > 0) {
+                const lastQty = rows[rows.length - 1].querySelector('.grid-qty');
+                if (lastQty) { lastQty.focus(); lastQty.select(); }
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Rapid FoxPro Style Keyboard Navigation
 document.addEventListener("keydown", function(e) {
 
@@ -7625,23 +7868,61 @@ document.addEventListener("keydown", function(e) {
         awaitingPaymentPrompt = false;
         pendingPaymentChittaNo = null;
         pendingPaymentChitta = null;
-        chittaActionNew();
+        const newBtn = document.getElementById('btnChittaNew');
+        if (newBtn) {
+            newBtn.click();
+        } else {
+            chittaActionNew();
+        }
         return;
     }
 
-    if (activeId === 'openingChitta' && typeof chittaMode !== 'undefined' && chittaMode === 'VIEW' && e.key === 'Enter') {
+    if (activeId === 'openingChitta') {
         const chittaFindOpen = document.getElementById('chittaFindDialog')?.style?.display === 'block';
         const vfpMsg = document.getElementById('vfpMessageBoxModal')?.style?.display !== 'none';
         const activeEl = document.activeElement;
-        const isOtherBtn = activeEl && activeEl.tagName === 'BUTTON' && activeEl.id !== 'chittaSaveBtn' && activeEl.id !== 'chittaNewBtn';
-        if (!chittaFindOpen && !vfpMsg && !isOtherBtn) {
+
+        // If focus is specifically on the New button, Enter always clicks it
+        if (e.key === 'Enter' && activeEl && (activeEl.id === 'btnChittaNew' || activeEl.id === 'chittaNewBtn')) {
             e.preventDefault();
             e.stopPropagation();
             window.awaitingNextChittaOnEnter = false;
             awaitingPaymentPrompt = false;
-            pendingPaymentChittaNo = null;
-            pendingPaymentChitta = null;
             chittaActionNew();
+            return;
+        }
+
+        // When in VIEW mode or post-save: pressing Enter clicks the New button
+        if (e.key === 'Enter' && !chittaFindOpen && !vfpMsg) {
+            if (window.awaitingNextChittaOnEnter || (typeof chittaMode !== 'undefined' && chittaMode === 'VIEW')) {
+                const otherSpecificBtns = [
+                    'btnChittaChange', 'btnChittaDelete', 'btnChittaFind',
+                    'btnChittaCloseCancel', 'btnChittaPrint', 'btnChittaView',
+                    'btnChittaPayment', 'btnChittaSMS', 'btnChittaTop',
+                    'btnChittaPrev', 'btnChittaNext', 'btnChittaBottom'
+                ];
+                if (activeEl && otherSpecificBtns.includes(activeEl.id)) {
+                    // Let explicit click handle it
+                    return;
+                }
+                e.preventDefault();
+                e.stopPropagation();
+                window.awaitingNextChittaOnEnter = false;
+                awaitingPaymentPrompt = false;
+                pendingPaymentChittaNo = null;
+                pendingPaymentChitta = null;
+                const newBtn = document.getElementById('btnChittaNew');
+                if (newBtn) {
+                    newBtn.click();
+                } else {
+                    chittaActionNew();
+                }
+                return;
+            }
+        }
+
+        // Arrow Key Navigation for Opening Chitta (Grid, Buttons, Fields)
+        if (handleChittaArrowNavigation(e)) {
             return;
         }
     }
@@ -8186,8 +8467,8 @@ document.addEventListener("keydown", function(e) {
         }
     }
     
-    // Grid Arrow Navigation
-    if((e.key === "ArrowUp" || e.key === "ArrowDown") && e.target.tagName === 'INPUT') {
+    // Grid Arrow Navigation (for non-chitta tables)
+    if(activeId !== 'openingChitta' && (e.key === "ArrowUp" || e.key === "ArrowDown") && e.target.tagName === 'INPUT') {
         const td = e.target.closest('td');
         if(td) {
             const tr = td.closest('tr');
