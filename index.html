@@ -7061,7 +7061,7 @@ async function populateChittaIntoPaymentForm(c) {
     // Paid To must NOT be automatically filled with farmer name; it must be entered manually by the user
     const pToEl = document.getElementById('cpPayPaidTo');
     if(pToEl) {
-        pToEl.value = c.paidTo || '';
+        pToEl.value = c.paid ? (c.paidTo || '') : '';
         pToEl.style.borderColor = '';
         if (!c.paid) {
             setTimeout(() => { pToEl.focus(); }, 60);
@@ -7166,14 +7166,18 @@ async function saveChittaPaymentSettlement() {
     const pToInput = document.getElementById('cpPayPaidTo');
     const paidTo = pToInput ? pToInput.value.trim() : '';
     if (!paidTo) {
-        showToast("⚠️ 'Paid to' is required. Please enter who received the payment before saving.");
+        showToast("⚠️ 'Paid to' is required! Enter recipient name to validate payment.");
         if (pToInput) {
             pToInput.style.borderColor = '#d9534f';
+            pToInput.style.outline = '2px solid #d9534f';
             pToInput.focus();
         }
         return;
     }
-    if (pToInput) pToInput.style.borderColor = '';
+    if (pToInput) {
+        pToInput.style.borderColor = '';
+        pToInput.style.outline = '';
+    }
     const payDate = document.getElementById('cpPayPaidOn')?.value || (typeof getPeriodCurrentDate === 'function' ? getPeriodCurrentDate() : new Date().toISOString().substring(0, 10));
     const pm = "CASH";
     
@@ -7244,11 +7248,11 @@ function displayChitta(index) {
     }
     const paidOnEl = document.getElementById('chittaPaidOn');
     if (paidOnEl) {
-        paidOnEl.value = c.payDate ? String(c.payDate).substring(0, 10) : '';
+        paidOnEl.value = (c.paid && c.payDate) ? String(c.payDate).substring(0, 10) : '';
     }
     const paidToEl = document.getElementById('chittaPaidTo');
     if (paidToEl) {
-        paidToEl.value = c.paidTo || (c.paid ? (c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '')) : '');
+        paidToEl.value = (c.paid && c.paidTo) ? c.paidTo : '';
     }
     
     if (c.farmerAccount) {
@@ -7552,8 +7556,16 @@ async function saveChitta() {
                 chittaNo: savedNo,
                 chittaDate: dateVal,
                 farmerAccount: farmerAccObj,
-                farmerName: farmerAccObj.accountName
+                farmerName: farmerAccObj.accountName,
+                paid: !!isPaidRecord,
+                paidTo: isPaidRecord ? (chittas[currentChittaIndex]?.paidTo || null) : null,
+                payDate: isPaidRecord ? (chittas[currentChittaIndex]?.payDate || null) : null
             };
+            if (!isPaidRecord) {
+                recordToDisplay.paid = false;
+                recordToDisplay.paidTo = null;
+                recordToDisplay.payDate = null;
+            }
 
             // Locate newly saved chitta in chittas array (strictly by id or chittaNo on the same date)
             let targetIdx = -1;
@@ -7565,6 +7577,12 @@ async function saveChitta() {
             }
 
             if (targetIdx >= 0) {
+                // Ensure newly saved unpaid chitta never carries an old/default paidTo
+                if (!isPaidRecord) {
+                    chittas[targetIdx].paid = false;
+                    chittas[targetIdx].paidTo = null;
+                    chittas[targetIdx].payDate = null;
+                }
                 // Ensure local chittas[targetIdx] retains correct farmerAccount and farmerName
                 if (!chittas[targetIdx].farmerAccount && farmerAccObj) {
                     chittas[targetIdx].farmerAccount = farmerAccObj;
