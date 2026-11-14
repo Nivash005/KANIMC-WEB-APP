@@ -6243,13 +6243,18 @@ function showLiveSyncToast(msg) {
     }, 2200);
 }
 
+let consecutiveSyncFailures = 0;
+
 function updateLiveSyncBadge(isOnline, status) {
     const badge = document.getElementById('liveSyncStatusIndicator');
     const modalText = document.getElementById('syncModalStatusText');
     const qLen = (typeof window.getOfflineQueueLength === 'function') ? window.getOfflineQueueLength() : 0;
+    const isLocalhost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const hasNet = (typeof navigator !== 'undefined' && navigator.onLine !== false);
+    const effectiveOnline = isOnline || isLocalhost || hasNet;
 
     if (badge) {
-        if (isOnline) {
+        if (effectiveOnline) {
             badge.style.background = '#d4edda';
             badge.style.color = '#155724';
             badge.style.borderColor = '#c3e6cb';
@@ -6266,7 +6271,7 @@ function updateLiveSyncBadge(isOnline, status) {
         }
     }
     if (modalText) {
-        if (isOnline) {
+        if (effectiveOnline) {
             modalText.innerText = 'Connected to Central Server • Chittas: ' + ((status && status.chittaCount) || 0) + ' (' + ((status && status.paidCount) || 0) + ' Paid) • Accounts: ' + ((status && status.accountCount) || 0) + (qLen > 0 ? ' • ' + qLen + ' syncing' : '');
             modalText.style.color = '#28a745';
         } else {
@@ -6278,17 +6283,22 @@ function updateLiveSyncBadge(isOnline, status) {
 
 async function checkSyncStatus(force = false) {
     if (isSyncInProgress) return;
+    const isLocalhost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     try {
         const res = await fetch('/api/sync/status', {
             cache: 'no-store',
             headers: { 'Bypass-Tunnel-Reminder': 'true' }
         });
         if (!res.ok) {
-            updateLiveSyncBadge(false);
+            consecutiveSyncFailures++;
+            if (consecutiveSyncFailures >= 3 && !isLocalhost) {
+                updateLiveSyncBadge(false);
+            }
             return;
         }
         const status = await res.json();
-        if (status.status === 'OFFLINE_STANDALONE') {
+        consecutiveSyncFailures = 0;
+        if (status.status === 'OFFLINE_STANDALONE' && !isLocalhost) {
             updateLiveSyncBadge(false, status);
             return;
         }
@@ -6328,7 +6338,10 @@ async function checkSyncStatus(force = false) {
             isSyncInProgress = false;
         }
     } catch(err) {
-        updateLiveSyncBadge(false);
+        consecutiveSyncFailures++;
+        if (consecutiveSyncFailures >= 3 && !isLocalhost) {
+            updateLiveSyncBadge(false);
+        }
     }
 }
 
