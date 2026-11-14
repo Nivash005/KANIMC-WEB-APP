@@ -7712,10 +7712,18 @@ function handleChittaTableEnter(e) {
         const rateInp = tr.querySelector('.grid-rate');
         const qtyInp = tr.querySelector('.grid-qty');
 
-        // On Item description: Move to Rate
+        // On Item description: If empty, move straight to Save button! Otherwise move to Rate.
         if (activeEl === itemInp) {
             e.preventDefault();
             e.stopPropagation();
+            const val = (itemInp.value || '').trim();
+            if (!val) {
+                const saveBtn = document.getElementById('btnChittaSave') || document.getElementById('btnChittaNew');
+                if (saveBtn) {
+                    saveBtn.focus();
+                }
+                return true;
+            }
             if (rateInp) {
                 rateInp.focus();
                 if (typeof rateInp.select === 'function') rateInp.select();
@@ -7734,7 +7742,7 @@ function handleChittaTableEnter(e) {
             return true;
         }
 
-        // On Qty: Move to Next Row Item, or if at end move to Save button
+        // On Qty: Move to Next Row Item description, or if at end move to Save button
         if (activeEl === qtyInp) {
             e.preventDefault();
             e.stopPropagation();
@@ -7745,7 +7753,7 @@ function handleChittaTableEnter(e) {
                     if (typeof nextItem.select === 'function') nextItem.select();
                 }
             } else {
-                const saveBtn = document.getElementById('btnChittaSave');
+                const saveBtn = document.getElementById('btnChittaSave') || document.getElementById('btnChittaNew');
                 if (saveBtn) saveBtn.focus();
             }
             return true;
@@ -7769,12 +7777,12 @@ function handleChittaArrowNavigation(e) {
     const chittaFind = document.getElementById('chittaFindDialog');
     if (chittaFind && chittaFind.style.display === 'block') return false;
 
-    const footerBtns = Array.from(openingChittaModal.querySelectorAll('.modal-footer button'));
+    const footerBtns = Array.from(openingChittaModal.querySelectorAll('.modal-footer button')).filter(b => b.offsetParent !== null && !b.disabled && b.style.display !== 'none');
 
     // CASE 1: Focused on any of the footer buttons below
     const btnIdx = footerBtns.indexOf(activeEl);
     if (btnIdx !== -1) {
-        if (e.key === 'ArrowRight') {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
             e.preventDefault();
             e.stopPropagation();
             const nextIdx = (btnIdx + 1) % footerBtns.length;
@@ -7811,13 +7819,6 @@ function handleChittaArrowNavigation(e) {
             }
             return true;
         }
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            e.stopPropagation();
-            const nextIdx = (btnIdx + 1) % footerBtns.length;
-            if (footerBtns[nextIdx]) footerBtns[nextIdx].focus();
-            return true;
-        }
     }
 
     // CASE 2: Focused inside the Item Grid (#chittaGrid: Item, Rate, Qty)
@@ -7843,6 +7844,11 @@ function handleChittaArrowNavigation(e) {
             e.preventDefault();
             e.stopPropagation();
             if (activeEl === itemInp) {
+                const val = (itemInp.value || '').trim();
+                if (!val) {
+                    const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
+                    if (saveBtn) { saveBtn.focus(); return true; }
+                }
                 if (rateInp) { rateInp.focus(); if (typeof rateInp.select === 'function') rateInp.select(); }
             } else if (activeEl === rateInp) {
                 if (qtyInp) { qtyInp.focus(); if (typeof qtyInp.select === 'function') qtyInp.select(); }
@@ -7851,8 +7857,8 @@ function handleChittaArrowNavigation(e) {
                     const nextItem = rows[rowIndex + 1].querySelector('.grid-item');
                     if (nextItem) { nextItem.focus(); if (typeof nextItem.select === 'function') nextItem.select(); }
                 } else {
-                    const nextBtn = document.getElementById('btnChittaNew') || footerBtns[0];
-                    if (nextBtn) nextBtn.focus();
+                    const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
+                    if (saveBtn) saveBtn.focus();
                 }
             }
             return true;
@@ -7882,6 +7888,11 @@ function handleChittaArrowNavigation(e) {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             e.stopPropagation();
+            const val = (itemInp?.value || '').trim();
+            if (activeEl === itemInp && !val) {
+                const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
+                if (saveBtn) { saveBtn.focus(); return true; }
+            }
             if (rowIndex < rows.length - 1) {
                 const nextRow = rows[rowIndex + 1];
                 let target = null;
@@ -7894,8 +7905,8 @@ function handleChittaArrowNavigation(e) {
                     if (typeof target.select === 'function') target.select();
                 }
             } else {
-                const targetBtn = document.getElementById('btnChittaNew') || footerBtns[0];
-                if (targetBtn) targetBtn.focus();
+                const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
+                if (saveBtn) saveBtn.focus();
             }
             return true;
         }
@@ -7997,32 +8008,44 @@ document.addEventListener("keydown", function(e) {
         return;
     }
 
-    if (activeId === 'openingChitta') {
+    const openingChittaModal = document.getElementById('openingChitta');
+    const isChittaOpen = openingChittaModal && openingChittaModal.style.display !== 'none';
+    const isInsideChitta = isChittaOpen && (activeId === 'openingChitta' || (activeEl && openingChittaModal.contains(activeEl)));
+
+    if (isInsideChitta) {
         const chittaFindOpen = document.getElementById('chittaFindDialog')?.style?.display === 'block';
         const vfpMsg = document.getElementById('vfpMessageBoxModal')?.style?.display !== 'none';
-        const activeEl = document.activeElement;
 
-        // If focus is specifically on the New button, Enter always clicks it
-        if (e.key === 'Enter' && activeEl && (activeEl.id === 'btnChittaNew' || activeEl.id === 'chittaNewBtn')) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.awaitingNextChittaOnEnter = false;
-            awaitingPaymentPrompt = false;
-            chittaActionNew();
+        // 1. Enter key navigation on buttons:
+        if (e.key === 'Enter' && activeEl && activeEl.tagName === 'BUTTON') {
+            if (activeEl.id === 'btnChittaSave') {
+                e.preventDefault();
+                e.stopPropagation();
+                saveChitta();
+                return;
+            }
+            if (activeEl.id === 'btnChittaNew' || activeEl.id === 'chittaNewBtn') {
+                e.preventDefault();
+                e.stopPropagation();
+                window.awaitingNextChittaOnEnter = false;
+                awaitingPaymentPrompt = false;
+                chittaActionNew();
+                return;
+            }
+            // Allow other buttons to trigger natively
             return;
         }
 
-        // When in VIEW mode or post-save: pressing Enter clicks the New button
+        // When in VIEW mode or post-save: pressing Enter clicks the New button (unless user is focused on a button)
         if (e.key === 'Enter' && !chittaFindOpen && !vfpMsg) {
             if (window.awaitingNextChittaOnEnter || (typeof chittaMode !== 'undefined' && chittaMode === 'VIEW')) {
                 const otherSpecificBtns = [
-                    'btnChittaChange', 'btnChittaDelete', 'btnChittaFind',
+                    'btnChittaSave', 'btnChittaChange', 'btnChittaDelete', 'btnChittaFind',
                     'btnChittaCloseCancel', 'btnChittaPrint', 'btnChittaView',
                     'btnChittaPayment', 'btnChittaSMS', 'btnChittaTop',
                     'btnChittaPrev', 'btnChittaNext', 'btnChittaBottom'
                 ];
-                if (activeEl && otherSpecificBtns.includes(activeEl.id)) {
-                    // Let explicit click handle it
+                if (activeEl && (otherSpecificBtns.includes(activeEl.id) || activeEl.tagName === 'BUTTON')) {
                     return;
                 }
                 e.preventDefault();
