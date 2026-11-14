@@ -138,7 +138,8 @@
         if (Date.now() - lastSnapshotRequestTime < 25000) return;
         lastSnapshotRequestTime = Date.now();
         broadcastSyncEvent('SYNC_REQUEST', {
-            chittaCount: (db.chittas || []).length
+            chittaCount: (db.chittas || []).length,
+            accountCount: (db.accounts || []).length
         });
     }
 
@@ -172,32 +173,50 @@
         if (payload.type === 'SYNC_REQUEST') {
             if (Array.isArray(db.chittas) && db.chittas.length > 0 && db.chittas.length >= (payload.chittaCount || 0)) {
                 broadcastSyncEvent('SYNC_SNAPSHOT', {
-                    chittas: db.chittas
+                    chittas: db.chittas,
+                    accounts: (Array.isArray(db.accounts) && db.accounts.length > (payload.accountCount || 0)) ? db.accounts : undefined
                 });
             }
             return;
         }
 
         // 0.1 SYNC SNAPSHOT (Received from peer)
-        if (payload.type === 'SYNC_SNAPSHOT' && Array.isArray(payload.chittas)) {
-            db.chittas = db.chittas || [];
-            let merged = false;
-            payload.chittas.forEach(remoteC => {
-                const rKey = String(remoteC.chittaNo || '') + '_' + String(remoteC.chittaDate || '').substring(0, 10);
-                const localIdx = db.chittas.findIndex(c => (String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)) === rKey || (c.id != null && c.id == remoteC.id));
-                if (localIdx >= 0) {
-                    if (remoteC.paid && !db.chittas[localIdx].paid) {
-                        db.chittas[localIdx] = { ...db.chittas[localIdx], ...remoteC };
+        if (payload.type === 'SYNC_SNAPSHOT') {
+            if (Array.isArray(payload.chittas)) {
+                db.chittas = db.chittas || [];
+                let merged = false;
+                payload.chittas.forEach(remoteC => {
+                    const rKey = String(remoteC.chittaNo || '') + '_' + String(remoteC.chittaDate || '').substring(0, 10);
+                    const localIdx = db.chittas.findIndex(c => (String(c.chittaNo || '') + '_' + String(c.chittaDate || '').substring(0, 10)) === rKey || (c.id != null && c.id == remoteC.id));
+                    if (localIdx >= 0) {
+                        if (remoteC.paid && !db.chittas[localIdx].paid) {
+                            db.chittas[localIdx] = { ...db.chittas[localIdx], ...remoteC };
+                            merged = true;
+                        }
+                    } else {
+                        db.chittas.push(remoteC);
                         merged = true;
                     }
-                } else {
-                    db.chittas.push(remoteC);
-                    merged = true;
+                });
+                if (merged) {
+                    db.chittas.sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
+                    changed = true;
                 }
-            });
-            if (merged) {
-                db.chittas.sort((a, b) => (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0));
-                changed = true;
+            }
+
+            if (Array.isArray(payload.accounts) && payload.accounts.length > 0) {
+                db.accounts = db.accounts || [];
+                let accMerged = false;
+                payload.accounts.forEach(remoteA => {
+                    const idx = db.accounts.findIndex(a => (remoteA.id != null && a.id == remoteA.id) || (remoteA.partyId && String(a.partyId).trim() === String(remoteA.partyId).trim()));
+                    if (idx >= 0) {
+                        db.accounts[idx] = { ...db.accounts[idx], ...remoteA };
+                    } else {
+                        db.accounts.push(remoteA);
+                        accMerged = true;
+                    }
+                });
+                if (accMerged) changed = true;
             }
         }
 
@@ -272,6 +291,20 @@
                 db.salesBills.push(payload.bill);
             }
             changed = true;
+        }
+
+        // 5. ACCOUNT SAVED
+        if (payload.type === 'ACCOUNT_SAVED' && payload.account) {
+            db.accounts = db.accounts || [];
+            const acc = payload.account;
+            const idx = db.accounts.findIndex(a => (acc.id != null && a.id == acc.id) || (acc.partyId && String(a.partyId).trim() === String(acc.partyId).trim()));
+            if (idx >= 0) {
+                db.accounts[idx] = { ...db.accounts[idx], ...acc };
+            } else {
+                db.accounts.push(acc);
+            }
+            changed = true;
+            if (typeof fetchAccounts === 'function') fetchAccounts(false);
         }
 
         if (changed) {
@@ -885,6 +918,8 @@
                                     }
                                 } else if (path === '/api/sales-bills' || path === '/api/bills') {
                                     broadcastSyncEvent('BILL_SAVED', { bill: data || reqBody });
+                                } else if (path === '/api/accounts' && (method === 'POST' || method === 'PUT')) {
+                                    broadcastSyncEvent('ACCOUNT_SAVED', { account: data || reqBody });
                                 }
                             }).catch(() => {});
                         } catch(e) {}
@@ -974,6 +1009,7 @@
                     db.accounts = db.accounts || [];
                     db.accounts.push(newAcc);
                     saveDb();
+                    broadcastSyncEvent('ACCOUNT_SAVED', { account: newAcc });
                     window.enqueueOfflineAction('POST', path, newAcc, { localId: nextId, type: 'account' });
                     return jsonResponse(newAcc, 201);
                 }
@@ -990,6 +1026,7 @@
                     if (idx >= 0) {
                         db.accounts[idx] = { ...db.accounts[idx], ...reqBody, id: id, updatedAt: new Date().toISOString() };
                         saveDb();
+                        broadcastSyncEvent('ACCOUNT_SAVED', { account: db.accounts[idx] });
                         window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'account' });
                         return jsonResponse(db.accounts[idx], 200);
                     }

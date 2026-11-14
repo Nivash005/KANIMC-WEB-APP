@@ -2088,35 +2088,25 @@ Commission % <input id="commRatePct" value="10.00%">
 <div style="padding:15px; display:flex; flex-direction:column; gap:12px; font-size:13px;">
     <div style="background:#e8f4fd; border:1px solid #b8daff; padding:12px; border-radius:4px;">
         <div style="font-weight:bold; color:#004085; font-size:14px; margin-bottom:5px;">🌐 All Devices Connected to a Single Central Database</div>
-        <div>Every change made from any device (laptop, mobile phone, tablet) automatically syncs in real time across all open screens without manual page reloads.</div>
+        <div>Every device (Desktop .exe, Tablet APK, Web App) connects automatically to the shared real-time database. <b>You do NOT need to enter or use the same URL across devices.</b></div>
     </div>
 
-    <div style="border:1px solid #ccc; background:#fff; padding:12px; border-radius:4px;">
-        <div style="font-weight:bold; color:#222; margin-bottom:6px;">Desktop Server Wi-Fi Address (Sync with PC)</div>
-        <div style="color:#555; margin-bottom:8px;">Open this link in Chrome/Safari on your Phone/Tablet (or enter in Tablet APK) while connected to the same Wi-Fi:</div>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <input type="text" id="wifiServerUrl" placeholder="http://192.168.1.4:8080" value="http://192.168.1.4:8080" style="font-size:14px; font-weight:bold; color:#0055aa; padding:6px; flex:1; background:#fff; border:1px solid #0055aa; border-radius:3px;">
-            <button type="button" onclick="copyWifiUrl()" style="padding:6px 14px; cursor:pointer; background:#28a745; color:#fff; border:none; border-radius:3px; font-weight:bold;">Copy URL</button>
-            <button type="button" onclick="saveTabletServerUrl()" style="padding:6px 14px; cursor:pointer; background:#0055aa; color:#fff; border:none; border-radius:3px; font-weight:bold;">Save & Connect</button>
-        </div>
-    </div>
-
-    <div style="border:1px solid #ccc; background:#fff; padding:12px; border-radius:4px;">
-        <div style="font-weight:bold; color:#222; margin-bottom:6px;">Option 2: Connect via Cloud / Internet / GitHub Pages</div>
-        <div style="color:#555; margin-bottom:8px;">Access anywhere over mobile data (4G/5G) or outside the office:</div>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <input type="text" id="cloudServerUrl" readonly value="https://lake-divine-independent-emacs.trycloudflare.com" style="font-size:13px; font-weight:bold; color:#28a745; padding:6px; flex:1; background:#f9f9f9; border:1px solid #ccc;">
-            <button type="button" onclick="copyCloudUrl()" style="padding:6px 14px; cursor:pointer;">Copy URL</button>
-        </div>
-    </div>
-
-    <div style="border:1px solid #ccc; background:#fff; padding:12px; border-radius:4px;">
+    <div style="border:1px solid #c3e6cb; background:#d4edda; padding:12px; border-radius:4px;">
+        <div style="font-weight:bold; color:#155724; font-size:14px; margin-bottom:5px;">⚡ Automatic Live Cloud Sync (Active)</div>
+        <div style="color:#155724; margin-bottom:8px;">Zero configuration required! Desktop, Tablet, and Mobile automatically discover and synchronize Chitta, Sales Bills, and Payments in real time.</div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <div style="font-weight:bold; color:#222;">⚡ Live Auto-Sync Status</div>
-                <div id="syncModalStatusText" style="color:#28a745; font-size:12px; margin-top:2px;">Connected • Checking updates every 2.5s</div>
-            </div>
-            <button type="button" onclick="forceSyncNow()" style="padding:6px 16px; cursor:pointer;">Sync Now</button>
+            <div id="syncModalStatusText" style="color:#155724; font-size:12px; font-weight:bold;">Status: Connected & Synchronized</div>
+            <button type="button" onclick="forceSyncNow()" style="padding:6px 16px; cursor:pointer; background:#28a745; color:#fff; border:none; border-radius:3px; font-weight:bold;">Sync Now</button>
+        </div>
+    </div>
+
+    <div style="border:1px solid #ccc; background:#fff; padding:12px; border-radius:4px;">
+        <div style="font-weight:bold; color:#222; margin-bottom:6px;">Custom Local Server / LAN URL (Optional)</div>
+        <div style="color:#555; margin-bottom:8px;">Only needed if you are on an offline local Wi-Fi network without internet:</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <input type="text" id="wifiServerUrl" placeholder="http://192.168.1.4:8080" value="http://192.168.1.4:8080" style="font-size:13px; font-weight:bold; color:#0055aa; padding:6px; flex:1; background:#fff; border:1px solid #0055aa; border-radius:3px;">
+            <button type="button" onclick="copyWifiUrl()" style="padding:6px 14px; cursor:pointer; background:#6c757d; color:#fff; border:none; border-radius:3px;">Copy URL</button>
+            <button type="button" onclick="saveTabletServerUrl()" style="padding:6px 14px; cursor:pointer; background:#0055aa; color:#fff; border:none; border-radius:3px; font-weight:bold;">Save URL</button>
         </div>
     </div>
 </div>
