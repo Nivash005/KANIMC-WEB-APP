@@ -633,7 +633,7 @@ Commission % <input id="commRatePct" value="10.00%">
         
         <!-- Header Info -->
         <div style="border:1px solid #fff; padding:8px; display:grid; grid-template-columns:60px 120px 100px 150px 50px 1fr; gap:5px; align-items:center;">
-            <label>Date</label> <input type="date" id="chittaDate" class="chitta-field" tabindex="1" onchange="if(currentChittaIndex===-1) autoAssignNextChittaNo()">
+            <label>Date</label> <input type="date" id="chittaDate" class="chitta-field" tabindex="1" onchange="onChittaDateChange()">
             <label>Farmer Code</label> 
             <div style="display:flex;"><input id="farmerAccountId" class="chitta-field" maxlength="4" style="text-transform:uppercase;" tabindex="2" onchange="onFarmerCodeChange()" onkeydown="handleFarmerCodeKey(event)"><button class="chitta-field" style="width:20px;padding:0;">v</button></div>
             <label style="text-align:right;">Phone</label> <input id="farmerPhone" class="chitta-field" tabindex="3">
@@ -6005,11 +6005,18 @@ async function autoAssignNextChittaNo() {
     hideChittaNoDupPopup();
 }
 
+async function onChittaDateChange() {
+    if (typeof currentChittaIndex === 'number' && currentChittaIndex === -1) {
+        await autoAssignNextChittaNo();
+    }
+    checkChittaNoDuplicate(true);
+}
+
 function checkChittaNoDuplicate(showPopup = true) {
     const input = document.getElementById('chittaNo');
     if (!input) return false;
     const noStr = (input.value || '').trim();
-    const curDate = document.getElementById('chittaDate')?.value || getTodayDateStr();
+    const curDate = (document.getElementById('chittaDate')?.value || getTodayDateStr()).substring(0, 10);
     const popup = document.getElementById('chittaNoDupPopup');
 
     if (!noStr) {
@@ -6023,7 +6030,8 @@ function checkChittaNoDuplicate(showPopup = true) {
     const duplicate = pool.find((c, idx) => {
         if (isEditMode && idx === currentChittaIndex) return false;
         if (!c.chittaNo) return false;
-        return String(c.chittaNo).trim() === noStr;
+        const cDate = String(c.chittaDate || '').substring(0, 10);
+        return String(c.chittaNo).trim() === noStr && cDate === curDate;
     });
 
     if (duplicate) {
@@ -6045,7 +6053,7 @@ function checkChittaNoDuplicate(showPopup = true) {
                             Chitta <b>#${noStr}</b> already exists on <b>${dupDate || curDate}</b> for <b>${dupFarmer}</b> ${dupAmt ? '(' + dupAmt + ')' : ''}.
                         </div>
                         <div style="margin-top:4px; font-size:11px; color:#a71d2a; font-weight:bold;">
-                            Please enter another unique number.
+                            Chitta numbers must be unique on ${curDate}. Please enter another number.
                         </div>
                     </div>
                     <button type="button" onclick="hideChittaNoDupPopup()" style="background:transparent; border:none; cursor:pointer; color:#777; font-weight:bold; font-size:13px; line-height:1; padding:0 2px;">✖</button>
@@ -6080,7 +6088,8 @@ function handleChittaNoKey(e) {
         e.stopPropagation();
         const isDup = checkChittaNoDuplicate(true);
         if (isDup) {
-            showToast("⚠️ Chitta #" + (document.getElementById('chittaNo')?.value || '') + " already exists!");
+            const curDate = (document.getElementById('chittaDate')?.value || getTodayDateStr()).substring(0, 10);
+            showToast("⚠️ Chitta #" + (document.getElementById('chittaNo')?.value || '') + " already exists on " + curDate + "!");
             const input = document.getElementById('chittaNo');
             if (input) {
                 input.focus();
@@ -7556,16 +7565,13 @@ async function saveChitta() {
                 farmerName: farmerAccObj.accountName
             };
 
-            // Locate newly saved chitta in chittas array
+            // Locate newly saved chitta in chittas array (strictly by id or chittaNo on the same date)
             let targetIdx = -1;
             if (savedChitta && savedChitta.id != null) {
                 targetIdx = chittas.findIndex(c => String(c.id) === String(savedChitta.id));
             }
             if (targetIdx === -1 && savedNo) {
                 targetIdx = chittas.findIndex(c => String(c.chittaNo).trim() === String(savedNo).trim() && String(c.chittaDate || '').substring(0, 10) === dateVal);
-            }
-            if (targetIdx === -1 && savedNo) {
-                targetIdx = chittas.findIndex(c => String(c.chittaNo).trim() === String(savedNo).trim());
             }
 
             if (targetIdx >= 0) {

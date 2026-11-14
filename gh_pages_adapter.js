@@ -230,7 +230,7 @@
         // 2. CHITTA PAYMENT
         if (payload.type === 'CHITTA_PAYMENT' && (payload.id != null || payload.chittaNo != null)) {
             db.chittas = db.chittas || [];
-            const c = db.chittas.find(x => (payload.id != null && x.id == payload.id) || (payload.chittaNo != null && String(x.chittaNo) === String(payload.chittaNo)));
+            const c = db.chittas.find(x => (payload.id != null && x.id == payload.id) || (payload.chittaNo != null && String(x.chittaNo) === String(payload.chittaNo) && (!payload.chittaDate || String(x.chittaDate || '').substring(0, 10) === String(payload.chittaDate).substring(0, 10))));
             if (c) {
                 c.paid = true;
                 c.payDate = payload.payDate || c.payDate;
@@ -286,7 +286,8 @@
                     if (payload && payload.chitta) {
                         const targetId = payload.chitta.id;
                         const targetNo = payload.chitta.chittaNo;
-                        const fIdx = chittas.findIndex(c => (targetId != null && c.id == targetId) || (targetNo != null && String(c.chittaNo).trim() === String(targetNo).trim()));
+                        const targetDate = String(payload.chitta.chittaDate || '').substring(0, 10);
+                        const fIdx = chittas.findIndex(c => (targetId != null && c.id == targetId) || (targetNo != null && String(c.chittaNo).trim() === String(targetNo).trim() && String(c.chittaDate || '').substring(0, 10) === targetDate));
                         if (fIdx >= 0 && typeof displayChitta === 'function') {
                             displayChitta(fIdx);
                         }
