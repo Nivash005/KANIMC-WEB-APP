@@ -625,7 +625,11 @@ Commission % <input id="commRatePct" value="10.00%">
             <label style="text-align:right;">Phone</label> <input id="farmerPhone" class="chitta-field" tabindex="3">
             
             <label>No</label> 
-            <div style="display:flex;"><input id="chittaNo" class="chitta-field" style="background:#ccffff;" tabindex="4"><button class="chitta-field" style="width:20px;padding:0;">v</button></div>
+            <div style="display:flex; position:relative;">
+                <input id="chittaNo" class="chitta-field" style="background:#ccffff;" tabindex="4" oninput="checkChittaNoDuplicate(true)" onchange="checkChittaNoDuplicate(true)" onblur="checkChittaNoDuplicate(true)" onkeydown="handleChittaNoKey(event)">
+                <button class="chitta-field" style="width:20px;padding:0;" onclick="findChitta(); event.stopPropagation();">v</button>
+                <div id="chittaNoDupPopup" style="display:none; position:absolute; left:0; top:calc(100% + 4px); z-index:36000; min-width:280px; max-width:350px; background:#fff3cd; border:2px solid #dc3545; border-radius:5px; padding:6px 10px; box-shadow:0 6px 18px rgba(220,53,69,0.35); font-size:12px; color:#721c24;"></div>
+            </div>
             <label>Farmer Name</label> 
             <div style="display:flex; grid-column: span 3; gap:5px;">
                 <div style="flex:1; position:relative; display:flex;">
@@ -5955,6 +5959,7 @@ async function autoAssignNextChittaNo() {
             const data = await res.json();
             if (data && data.nextNo) {
                 document.getElementById('chittaNo').value = data.nextNo;
+                hideChittaNoDupPopup();
                 return;
             }
         }
@@ -5969,10 +5974,108 @@ async function autoAssignNextChittaNo() {
         }
     });
     document.getElementById('chittaNo').value = String(max + 1);
+    hideChittaNoDupPopup();
+}
+
+function checkChittaNoDuplicate(showPopup = true) {
+    const input = document.getElementById('chittaNo');
+    if (!input) return false;
+    const noStr = (input.value || '').trim();
+    const curDate = document.getElementById('chittaDate')?.value || getTodayDateStr();
+    const popup = document.getElementById('chittaNoDupPopup');
+
+    if (!noStr) {
+        hideChittaNoDupPopup();
+        return false;
+    }
+
+    const pool = (typeof chittas !== 'undefined' && Array.isArray(chittas)) ? chittas : [];
+    const isEditMode = (typeof chittaMode !== 'undefined' && chittaMode === 'EDIT' && typeof currentChittaIndex === 'number' && currentChittaIndex >= 0 && pool[currentChittaIndex]);
+
+    const duplicate = pool.find((c, idx) => {
+        if (isEditMode && idx === currentChittaIndex) return false;
+        if (!c.chittaNo) return false;
+        return String(c.chittaNo).trim() === noStr;
+    });
+
+    if (duplicate) {
+        input.style.border = '2px solid #dc3545';
+        input.style.backgroundColor = '#ffe6e6';
+        input.setAttribute('data-is-duplicate', 'true');
+
+        if (showPopup && popup) {
+            const dupDate = duplicate.chittaDate ? String(duplicate.chittaDate).substring(0, 10) : '';
+            const dupFarmer = duplicate.farmerName || (duplicate.farmerAccount ? (duplicate.farmerAccount.accountName || duplicate.farmerAccount.name) : '') || 'Unknown';
+            const dupAmt = duplicate.netPayable != null ? `₹${duplicate.netPayable}` : '';
+
+            popup.innerHTML = `
+                <div style="display:flex; align-items:flex-start; gap:6px;">
+                    <span style="font-size:15px; line-height:1;">⚠️</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; color:#dc3545; font-size:12px;">Duplicate Chitta Number!</div>
+                        <div style="margin-top:2px; font-size:11.5px; color:#222; line-height:1.3;">
+                            Chitta <b>#${noStr}</b> already exists on <b>${dupDate || curDate}</b> for <b>${dupFarmer}</b> ${dupAmt ? '(' + dupAmt + ')' : ''}.
+                        </div>
+                        <div style="margin-top:4px; font-size:11px; color:#a71d2a; font-weight:bold;">
+                            Please enter another unique number.
+                        </div>
+                    </div>
+                    <button type="button" onclick="hideChittaNoDupPopup()" style="background:transparent; border:none; cursor:pointer; color:#777; font-weight:bold; font-size:13px; line-height:1; padding:0 2px;">✖</button>
+                </div>
+            `;
+            popup.style.display = 'block';
+        }
+        return true;
+    } else {
+        hideChittaNoDupPopup();
+        return false;
+    }
+}
+
+function hideChittaNoDupPopup() {
+    const input = document.getElementById('chittaNo');
+    if (input) {
+        input.style.border = '';
+        input.style.backgroundColor = '#ccffff';
+        input.removeAttribute('data-is-duplicate');
+    }
+    const popup = document.getElementById('chittaNoDupPopup');
+    if (popup) {
+        popup.style.display = 'none';
+        popup.innerHTML = '';
+    }
+}
+
+function handleChittaNoKey(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const isDup = checkChittaNoDuplicate(true);
+        if (isDup) {
+            showToast("⚠️ Chitta #" + (document.getElementById('chittaNo')?.value || '') + " already exists!");
+            const input = document.getElementById('chittaNo');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+            return;
+        }
+        hideChittaNoDupPopup();
+        const next = document.getElementById('farmerAccountId') || document.getElementById('farmerName');
+        if (next) {
+            next.focus();
+            if (typeof next.select === 'function') next.select();
+        }
+    } else if (e.key === 'Escape') {
+        hideChittaNoDupPopup();
+    }
 }
 
 async function chittaActionNew() {
     // Always cleanly initialize a fresh new Chitta entry
+    currentChittaIndex = -1;
+    hideChittaNoDupPopup();
+    window.awaitingNextChittaOnEnter = false;
     clearChitta();
     setChittaMode('EDIT');
     await autoAssignNextChittaNo();
@@ -7371,13 +7474,19 @@ async function saveChitta() {
     data.netPayable = Math.round((calcGrossTotal - commAmt - advAmt - frtAmt) * 100) / 100;
     
     // DUPLICATE CHITTA NUMBER CHECK
+    if (checkChittaNoDuplicate(true)) {
+        showToast(`⚠️ DUPLICATE ERROR: Chitta #${chittaNoStr} already exists!`);
+        const cNoInput = document.getElementById('chittaNo');
+        if (cNoInput) { cNoInput.focus(); cNoInput.select(); }
+        return;
+    }
     const isExisting = (currentChittaIndex >= 0 && chittas[currentChittaIndex] && String(chittas[currentChittaIndex].chittaNo).trim() === chittaNoStr && String(chittas[currentChittaIndex].chittaDate).substring(0, 10) === dateVal);
     const duplicateChitta = (chittas || []).find((c, idx) => {
         if (isExisting && idx === currentChittaIndex) return false;
         return String(c.chittaNo).trim() === chittaNoStr && String(c.chittaDate).substring(0, 10) === dateVal;
     });
     if (duplicateChitta) {
-        alert(`DUPLICATE ERROR: Chitta #${chittaNoStr} already exists on ${dateVal}!\nPlease enter a unique Chitta Number.`);
+        showToast(`⚠️ DUPLICATE ERROR: Chitta #${chittaNoStr} already exists on ${dateVal}!`);
         const cNoInput = document.getElementById('chittaNo');
         if (cNoInput) { cNoInput.focus(); cNoInput.select(); }
         return;
@@ -7404,6 +7513,7 @@ async function saveChitta() {
         if(res.ok) {
             const savedChitta = await res.json().catch(() => null);
             const savedNo = (savedChitta && savedChitta.chittaNo) ? savedChitta.chittaNo : chittaNoStr;
+            window.awaitingNextChittaOnEnter = true;
             showToast("✅ Chitta #" + savedNo + " Saved Successfully!");
             await fetchChittas(false);
 
@@ -7464,9 +7574,10 @@ let pendingPaymentReturnIdx = -1;
 
 function promptPostSavePayment(chittaNo, chittaObj, returnIdx) {
     const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
+    window.awaitingNextChittaOnEnter = true;
     if (user !== 'ADMIN') {
         // In user login: only creation of Chitta is allowed, no payment prompt
-        showToast(`✅ Chitta #${chittaNo} Saved!`);
+        showToast(`✅ Chitta #${chittaNo} Saved! Press [Enter] for Next Chitta`);
         return;
     }
     awaitingPaymentPrompt = true;
@@ -7474,7 +7585,7 @@ function promptPostSavePayment(chittaNo, chittaObj, returnIdx) {
     pendingPaymentChitta = chittaObj || null;
     pendingPaymentReturnIdx = (typeof returnIdx === 'number' && returnIdx >= 0) ? returnIdx : (typeof currentChittaIndex === 'number' ? currentChittaIndex : -1);
     
-    showToast(`✅ Chitta #${chittaNo} Saved! Press 'Y' to Move to Payment (or any other key to continue)`);
+    showToast(`✅ Chitta #${chittaNo} Saved! Press [Enter] for Next Chitta (or 'Y' for Payment)`);
     
     // Auto clear prompt after 15 seconds if no key pressed
     setTimeout(() => {
@@ -7506,11 +7617,40 @@ function moveToChittaPayment(chittaNo) {
 // Rapid FoxPro Style Keyboard Navigation
 document.addEventListener("keydown", function(e) {
 
-    // 0. POST-SAVE PAYMENT PROMPT: If user saved a Chitta and presses 'Y' or 'y'
+    // 0. POST-SAVE NAVIGATION & PAYMENT PROMPT
+    if (window.awaitingNextChittaOnEnter && e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.awaitingNextChittaOnEnter = false;
+        awaitingPaymentPrompt = false;
+        pendingPaymentChittaNo = null;
+        pendingPaymentChitta = null;
+        chittaActionNew();
+        return;
+    }
+
+    if (activeId === 'openingChitta' && typeof chittaMode !== 'undefined' && chittaMode === 'VIEW' && e.key === 'Enter') {
+        const chittaFindOpen = document.getElementById('chittaFindDialog')?.style?.display === 'block';
+        const vfpMsg = document.getElementById('vfpMessageBoxModal')?.style?.display !== 'none';
+        const activeEl = document.activeElement;
+        const isOtherBtn = activeEl && activeEl.tagName === 'BUTTON' && activeEl.id !== 'chittaSaveBtn' && activeEl.id !== 'chittaNewBtn';
+        if (!chittaFindOpen && !vfpMsg && !isOtherBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.awaitingNextChittaOnEnter = false;
+            awaitingPaymentPrompt = false;
+            pendingPaymentChittaNo = null;
+            pendingPaymentChitta = null;
+            chittaActionNew();
+            return;
+        }
+    }
+
     if (awaitingPaymentPrompt) {
         if (e.key === 'y' || e.key === 'Y') {
             e.preventDefault();
             e.stopPropagation();
+            window.awaitingNextChittaOnEnter = false;
             moveToChittaPayment(pendingPaymentChittaNo);
             return;
         } else if (e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Alt') {
