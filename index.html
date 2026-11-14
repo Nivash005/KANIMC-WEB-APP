@@ -7990,6 +7990,7 @@ function getActiveModalId() {
 // Rapid FoxPro Style Keyboard Navigation
 document.addEventListener("keydown", function(e) {
     const activeId = getActiveModalId();
+    const activeEl = document.activeElement;
 
     // 0. POST-SAVE NAVIGATION & PAYMENT PROMPT
     if (window.awaitingNextChittaOnEnter && e.key === 'Enter') {
