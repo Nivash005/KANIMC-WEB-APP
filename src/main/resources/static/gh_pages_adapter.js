@@ -767,6 +767,12 @@
         db.cashVouchers = db.cashVouchers || [];
         db.receiptVouchers = db.receiptVouchers || [];
         db.openingBalances = db.openingBalances || [];
+        (db.chittas || []).forEach(c => {
+            if (!c.paid) {
+                c.paidTo = null;
+                c.payDate = null;
+            }
+        });
         saveDb();
         console.log('[KANIMC] Database initialized successfully (' + (db.accounts ? db.accounts.length : 0) + ' accounts, ' + db.chittas.length + ' chittas)');
     })();
@@ -1156,6 +1162,10 @@
                             netPayable: net,
                             updatedAt: new Date().toISOString()
                         };
+                        if (!db.chittas[idx].paid) {
+                            db.chittas[idx].paidTo = null;
+                            db.chittas[idx].payDate = null;
+                        }
                         saveDb();
                         broadcastSyncEvent('CHITTA_SAVED', { chitta: db.chittas[idx] });
                         window.enqueueOfflineAction('PUT', path, reqBody, { localId: id, type: 'chitta' });
@@ -1179,6 +1189,12 @@
                     const date = search.get('date');
                     const chittaNo = search.get('chittaNo');
                     let list = db.chittas || [];
+                    list.forEach(c => {
+                        if (!c.paid) {
+                            c.paidTo = null;
+                            c.payDate = null;
+                        }
+                    });
                     if (date) {
                         list = list.filter(c => c.chittaDate && c.chittaDate.substring(0, 10) === date);
                     }

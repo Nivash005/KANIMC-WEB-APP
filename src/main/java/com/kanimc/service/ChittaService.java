@@ -162,10 +162,12 @@ public class ChittaService {
     @Transactional
     public Chitta recordPayment(Long id, String paidTo, String paymentMethod, LocalDate payDate) {
         Chitta chitta = chittaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Chitta not found with ID: " + id));
+        if (paidTo == null || paidTo.trim().isEmpty()) {
+            throw new IllegalArgumentException("Paid to is required and cannot be empty.");
+        }
         chitta.setPaid(true);
         chitta.setPayDate(payDate != null ? payDate : LocalDate.now());
-        String recipient = (paidTo != null && !paidTo.trim().isEmpty()) ? paidTo.trim() : (chitta.getFarmerAccount() != null ? chitta.getFarmerAccount().getAccountName() : "");
-        chitta.setPaidTo(recipient);
+        chitta.setPaidTo(paidTo.trim());
         chitta.setPaymentMethod((paymentMethod != null && !paymentMethod.trim().isEmpty()) ? paymentMethod.trim() : "CASH");
 
         Account cashAccount = accountRepository.findById(1L).orElse(null);

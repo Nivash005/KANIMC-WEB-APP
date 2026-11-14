@@ -91,7 +91,10 @@ public class ChittaController {
             @RequestParam(required = false) String paymentMethod,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate payDate) {
         try {
-            Chitta updated = chittaService.recordPayment(id, paidTo, paymentMethod, payDate);
+            if (paidTo == null || paidTo.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("error", "Paid to is required and cannot be empty."));
+            }
+            Chitta updated = chittaService.recordPayment(id, paidTo.trim(), paymentMethod, payDate);
             SyncController.bumpVersion();
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
@@ -116,7 +119,7 @@ public class ChittaController {
 
     private void hydrateReferences(Chitta chitta) {
         if (chitta.getFarmerAccount() == null && (chitta.getPaidTo() == null || chitta.getPaidTo().trim().isEmpty())) {
-            throw new IllegalArgumentException("Farmer account or paidTo is required");
+            throw new IllegalArgumentException("Farmer account is required");
         }
         com.kanimc.entity.Account account = null;
         if (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getId() != null) {
@@ -128,14 +131,11 @@ public class ChittaController {
         if (account == null && chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getAccountName() != null && !chitta.getFarmerAccount().getAccountName().trim().isEmpty()) {
             account = accountRepository.findByAccountNameIgnoreCase(chitta.getFarmerAccount().getAccountName().trim()).orElse(null);
         }
-        if (account == null && chitta.getPaidTo() != null && !chitta.getPaidTo().trim().isEmpty()) {
-            account = accountRepository.findByAccountNameIgnoreCase(chitta.getPaidTo().trim()).orElse(null);
-        }
         if (account == null) {
             account = new com.kanimc.entity.Account();
             String fName = (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getAccountName() != null && !chitta.getFarmerAccount().getAccountName().trim().isEmpty())
                 ? chitta.getFarmerAccount().getAccountName().trim()
-                : (chitta.getPaidTo() != null && !chitta.getPaidTo().trim().isEmpty() ? chitta.getPaidTo().trim() : "GENERAL FARMER");
+                : "GENERAL FARMER";
             account.setAccountName(fName);
             
             String pId = (chitta.getFarmerAccount() != null && chitta.getFarmerAccount().getPartyId() != null) 
@@ -167,8 +167,14 @@ public class ChittaController {
             account = accountRepository.save(account);
         }
         chitta.setFarmerAccount(account);
-        if (chitta.getPaidTo() == null || chitta.getPaidTo().trim().isEmpty()) {
-            chitta.setPaidTo(account.getAccountName());
+
+        // Paid To is NEVER automatically filled on Chitta creation or update.
+        // It must remain null until explicitly settled in Chitta Payment.
+        if (!Boolean.TRUE.equals(chitta.getPaid())) {
+            chitta.setPaid(false);
+            chitta.setPaidTo(null);
+            chitta.setPayDate(null);
+            chitta.setPaymentMethod(null);
         }
 
         if (chitta.getItems() != null) {
