@@ -7642,6 +7642,98 @@ function moveToChittaPayment(chittaNo) {
     openWin('chittaPayment', target);
 }
 
+// Dedicated Enter Key Navigation for Chitta Item Grid (Item -> Rate -> Qty -> Next Row Item / Save)
+function handleChittaTableEnter(e) {
+    if (e.key !== 'Enter') return false;
+
+    const openingChittaModal = document.getElementById('openingChitta');
+    if (!openingChittaModal || openingChittaModal.style.display === 'none') return false;
+
+    const activeEl = document.activeElement;
+    if (!activeEl || !openingChittaModal.contains(activeEl)) return false;
+
+    // Do not interfere if Chitta Find dialog or popup is open
+    const chittaFind = document.getElementById('chittaFindDialog');
+    if (chittaFind && chittaFind.style.display === 'block') return false;
+
+    // Header: Farmer Name Enter
+    if (activeEl.id === 'farmerName') {
+        const box = document.getElementById('farmerNameSuggestBox');
+        if (box && box.style.display !== 'none' && typeof currentFarmerSuggestMatches !== 'undefined' && currentFarmerSuggestMatches.length > 0) {
+            return false; // let suggestion selection handle it
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof onFarmerNameChange === 'function') onFarmerNameChange();
+        const firstItem = openingChittaModal.querySelector('#chittaGrid tbody tr:first-child .grid-item');
+        if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
+            firstItem.focus();
+            if (typeof firstItem.select === 'function') firstItem.select();
+        }
+        return true;
+    }
+
+    // Grid inputs (Item, Rate, Qty)
+    const isGridInput = activeEl.classList.contains('grid-item') ||
+                        activeEl.classList.contains('grid-rate') ||
+                        activeEl.classList.contains('grid-qty');
+
+    if (isGridInput) {
+        const tr = activeEl.closest('tr');
+        const tbody = tr ? tr.closest('tbody') : null;
+        if (!tr || !tbody) return false;
+
+        const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.grid-item'));
+        const rowIndex = rows.indexOf(tr);
+        if (rowIndex === -1) return false;
+
+        const itemInp = tr.querySelector('.grid-item');
+        const rateInp = tr.querySelector('.grid-rate');
+        const qtyInp = tr.querySelector('.grid-qty');
+
+        // On Item description: Move to Rate
+        if (activeEl === itemInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (rateInp) {
+                rateInp.focus();
+                if (typeof rateInp.select === 'function') rateInp.select();
+            }
+            return true;
+        }
+
+        // On Rate: Move to Qty
+        if (activeEl === rateInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (qtyInp) {
+                qtyInp.focus();
+                if (typeof qtyInp.select === 'function') qtyInp.select();
+            }
+            return true;
+        }
+
+        // On Qty: Move to Next Row Item, or if at end move to Save button
+        if (activeEl === qtyInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (rowIndex < rows.length - 1) {
+                const nextItem = rows[rowIndex + 1].querySelector('.grid-item');
+                if (nextItem) {
+                    nextItem.focus();
+                    if (typeof nextItem.select === 'function') nextItem.select();
+                }
+            } else {
+                const saveBtn = document.getElementById('btnChittaSave');
+                if (saveBtn) saveBtn.focus();
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // Full Arrow Key Navigation for Opening Chitta (Item, Rate, Qty & Footer Buttons)
 function handleChittaArrowNavigation(e) {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return false;
@@ -7857,8 +7949,15 @@ function handleChittaArrowNavigation(e) {
     return false;
 }
 
+// Helper to get active visible modal ID
+function getActiveModalId() {
+    const openModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(m => m.style.display !== 'none' && m.id !== 'loginOverlay');
+    return openModals.length > 0 ? openModals[openModals.length - 1].id : null;
+}
+
 // Rapid FoxPro Style Keyboard Navigation
 document.addEventListener("keydown", function(e) {
+    const activeId = getActiveModalId();
 
     // 0. POST-SAVE NAVIGATION & PAYMENT PROMPT
     if (window.awaitingNextChittaOnEnter && e.key === 'Enter') {
@@ -7921,6 +8020,11 @@ document.addEventListener("keydown", function(e) {
             }
         }
 
+        // Dedicated Chitta Table & Field Enter Navigation (Item -> Rate -> Qty -> Next Row Item / Save)
+        if (handleChittaTableEnter(e)) {
+            return;
+        }
+
         // Arrow Key Navigation for Opening Chitta (Grid, Buttons, Fields)
         if (handleChittaArrowNavigation(e)) {
             return;
@@ -7979,16 +8083,9 @@ document.addEventListener("keydown", function(e) {
         }
     }
 
-    // Helper to get active visible modal ID
-    function getActiveModalId() {
-        const openModals = Array.from(document.querySelectorAll('.modal-overlay')).filter(m => m.style.display !== 'none' && m.id !== 'loginOverlay');
-        return openModals.length > 0 ? openModals[openModals.length - 1].id : null;
-    }
-
     // 2. F2: New Record
     if (e.key === "F2") {
         e.preventDefault();
-        const activeId = getActiveModalId();
         if (activeId === 'openingChitta') chittaActionNew();
         else if (activeId === 'bill') clearBill();
         else if (activeId === 'cashPayment') clearCashPayment();
@@ -8003,7 +8100,6 @@ document.addEventListener("keydown", function(e) {
     // 3. F5: Save Record
     if (e.key === "F5") {
         e.preventDefault();
-        const activeId = getActiveModalId();
         if (activeId === 'openingChitta') {
             if (typeof chittaMode !== 'undefined' && chittaMode === 'EDIT') saveChitta();
             else chittaActionFindSave();
@@ -8026,7 +8122,6 @@ document.addEventListener("keydown", function(e) {
     // 4. F8: Find / Search
     if (e.key === "F8") {
         e.preventDefault();
-        const activeId = getActiveModalId();
         if (activeId === 'openingChitta') findChitta();
         else if (activeId === 'bill') findBill();
         else if (activeId === 'cashPayment') findCashPayment();
@@ -8038,7 +8133,6 @@ document.addEventListener("keydown", function(e) {
     }
 
     // --- COMPREHENSIVE FOXPRO SHORTCUTS DISPATCHER ---
-    const activeId = getActiveModalId();
     const isEditingField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
     const keyLower = (e.key || '').toLowerCase();
 
