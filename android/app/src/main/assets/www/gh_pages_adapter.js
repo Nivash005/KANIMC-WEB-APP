@@ -39,7 +39,7 @@
     // Circuit breaker state
     let isCentralServerAlive = true;
     let lastServerProbeTime = 0;
-    const PROBE_TIMEOUT_MS = 2000;
+    const PROBE_TIMEOUT_MS = 6000;
     const SERVER_DOWN_COOLDOWN_MS = 15000;
 
     // In-memory / LocalStorage Database
@@ -68,6 +68,7 @@
     const MY_DEVICE_ID = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
 
     let sseSource = null;
+    let isRelayConnected = false;
     const processedMsgIds = new Set();
     let lastSnapshotRequestTime = 0;
 
@@ -78,7 +79,12 @@
                 try { sseSource.close(); } catch(e) {}
             }
             sseSource = new EventSource(SYNC_RELAY_URL + '/sse');
+            sseSource.onopen = function() {
+                isRelayConnected = true;
+                if (typeof updateLiveSyncBadge === 'function') updateLiveSyncBadge(true);
+            };
             sseSource.onmessage = function(event) {
+                isRelayConnected = true;
                 try {
                     const data = JSON.parse(event.data);
                     if (data && data.event === 'message' && data.id && !processedMsgIds.has(data.id)) {
@@ -92,6 +98,7 @@
                 } catch(e) {}
             };
             sseSource.onerror = function() {
+                isRelayConnected = false;
                 try { if (sseSource) sseSource.close(); } catch(e) {}
                 setTimeout(initRealtimeSync, 6000);
             };
@@ -815,21 +822,17 @@
 
         const centralServer = getCentralServerUrl();
 
+        const isLocalhost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
         // 1. CIRCUIT BREAKER: Determine whether to attempt central server
         let shouldTryCentral = false;
-        if (navigator.onLine !== false && centralServer && centralServer.trim() !== '') {
+        if (isLocalhost) {
+            shouldTryCentral = true;
+        } else if (navigator.onLine !== false && centralServer && centralServer.trim() !== '') {
             // Strictly prevent Mixed Content: on HTTPS, only allow https:// remote servers!
             if (window.location.protocol === 'https:') {
-                if (centralServer.startsWith('https://')) {
-                    shouldTryCentral = true;
-                } else {
-                    shouldTryCentral = false;
-                }
-            } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                shouldTryCentral = true;
-            } else if (isCentralServerAlive) {
-                shouldTryCentral = true;
-            } else if (Date.now() - lastServerProbeTime > SERVER_DOWN_COOLDOWN_MS) {
+                shouldTryCentral = centralServer.startsWith('https://');
+            } else if (isCentralServerAlive || (Date.now() - lastServerProbeTime > SERVER_DOWN_COOLDOWN_MS)) {
                 shouldTryCentral = true;
             }
         }
@@ -845,7 +848,8 @@
                 });
                 const remoteInit = Object.assign({}, init, { headers: newHeaders });
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+                const timeoutMs = isLocalhost ? 12000 : PROBE_TIMEOUT_MS;
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
                 remoteInit.signal = controller.signal;
                 
                 const remoteRes = await originalFetch(targetUrl, remoteInit);
@@ -854,8 +858,10 @@
                 // Any 5xx error means server/tunnel down -> trigger circuit breaker and fall back
                 if (remoteRes.status >= 500) {
                     console.warn(`[KANIMC] Server responded with status ${remoteRes.status}. Engaging offline fallback.`);
-                    isCentralServerAlive = false;
-                    lastServerProbeTime = Date.now();
+                    if (!isLocalhost) {
+                        isCentralServerAlive = false;
+                        lastServerProbeTime = Date.now();
+                    }
                 } else {
                     isCentralServerAlive = true;
 
@@ -945,9 +951,11 @@
                     return remoteRes;
                 }
             } catch(remoteErr) {
-                console.warn('[KANIMC] Central server unreachable / offline. Falling back to local DB:', remoteErr.message || remoteErr);
-                isCentralServerAlive = false;
-                lastServerProbeTime = Date.now();
+                console.warn('[KANIMC] Central server call failed / timeout:', remoteErr.message || remoteErr);
+                if (!isLocalhost) {
+                    isCentralServerAlive = false;
+                    lastServerProbeTime = Date.now();
+                }
             }
         }
 
@@ -972,12 +980,14 @@
             
             // SYNC STATUS
             if (path === '/api/sync/status') {
+                const isOnline = isCentralServerAlive || isRelayConnected || (typeof navigator !== 'undefined' && navigator.onLine !== false) || isLocalhost;
                 return jsonResponse({
                     version: db.version || 1000,
                     chittaCount: (db.chittas || []).length,
                     paidCount: (db.chittas || []).filter(c => c.paid).length,
                     accountCount: (db.accounts || []).length,
-                    status: (isCentralServerAlive || (typeof navigator !== 'undefined' && navigator.onLine)) ? 'ONLINE' : 'OFFLINE_STANDALONE',
+                    status: isOnline ? 'ONLINE' : 'OFFLINE_STANDALONE',
+                    cloudRelay: isRelayConnected ? 'CONNECTED' : 'DISCONNECTED',
                     offlinePending: window.getOfflineQueueLength()
                 });
             }
