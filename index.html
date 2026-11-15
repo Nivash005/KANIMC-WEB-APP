@@ -1562,13 +1562,13 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <!-- ================= 23. BILL REGISTER ================= -->
 <div class="modal-overlay" id="billRegister">
-<div class="modal" style="width:900px; background:#ffffe1;">
+<div class="modal" style="width:1100px; background:#ffffe1;">
 <div class="modal-title">Bill Register<span onclick="closeAll()">✖</span></div>
 <div style="padding:10px;">
     
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="display:flex; gap:10px; align-items:center;">
-            <label>From</label> <input type="date" id="billRegFromDate" style="width:100px;">
+            <label>From</label> <input type="date" id="billRegFromDate" style="width:100px; background:#ccffff;">
             <label>To</label> <input type="date" id="billRegToDate" style="width:100px;">
         </div>
         <div style="display:flex; gap:5px;">
@@ -1582,28 +1582,38 @@ Commission % <input id="commRatePct" value="10.00%">
     </div>
     
     <div style="border:1px solid #999; background:#fff; height:400px; overflow-y:auto;">
-        <table style="width:100%; border-collapse:collapse;">
+        <table style="width:100%; border-collapse:collapse; font-size:11px;">
             <thead>
                 <tr style="font-weight:bold;">
-                    <th style="width:40px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Sno</th>
-                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Date</th>
-                    <th style="width:60px; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">No</th>
-                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">Name</th>
-                    <th style="width:100px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right;">Weight</th>
-                    <th style="width:100px; border-bottom:1px solid #ccc; text-align:right;">Amount</th>
+                    <th style="width:35px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Sno</th>
+                    <th style="width:75px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">Date</th>
+                    <th style="width:50px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:center;">No</th>
+                    <th style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:left; padding-left:6px;">Merchant Name</th>
+                    <th style="width:80px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding-right:6px;">Weight</th>
+                    <th style="width:90px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding-right:6px;">Gross</th>
+                    <th style="width:75px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding-right:6px;">Freight</th>
+                    <th style="width:75px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding-right:6px;">Packing</th>
+                    <th style="width:75px; border-right:1px solid #ccc; border-bottom:1px solid #ccc; text-align:right; padding-right:6px;">Discount</th>
+                    <th style="width:100px; border-bottom:1px solid #ccc; text-align:right; padding-right:6px;">Net</th>
                 </tr>
             </thead>
             <tbody id="billRegisterBody">
                 <!-- Empty rows for UI replication -->
-                <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
-                <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+                <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
+                <tr><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;">&nbsp;</td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc;"></td><td style="border-bottom:1px solid #ccc;"></td></tr>
             </tbody>
         </table>
     </div>
     
-    <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; padding-right:20px;">
-        <input type="text" style="width:80px; text-align:right;" readonly>
-        <input type="text" style="width:80px; text-align:right;" readonly>
+    <div style="display:flex; justify-content:flex-end; gap:5px; margin-top:5px; padding-right:5px; align-items:center;">
+        <span style="font-weight:bold; font-size:12px; margin-right:5px;">Totals:</span>
+        <input type="text" id="billRegSumWeight" placeholder="Weight" style="width:80px; text-align:right; font-weight:bold;" readonly title="Total Weight">
+        <input type="text" id="billRegSumGross" placeholder="Gross" style="width:90px; text-align:right; font-weight:bold;" readonly title="Total Gross">
+        <input type="text" id="billRegSumFreight" placeholder="Freight" style="width:75px; text-align:right; font-weight:bold;" readonly title="Total Freight">
+        <input type="text" id="billRegSumPacking" placeholder="Packing" style="width:75px; text-align:right; font-weight:bold;" readonly title="Total Packing">
+        <input type="text" id="billRegSumDiscount" placeholder="Discount" style="width:75px; text-align:right; font-weight:bold;" readonly title="Total Discount">
+        <input type="text" id="billRegSumNet" placeholder="Net Total" style="width:100px; text-align:right; font-weight:bold; color:red;" readonly title="Total Net">
+        <input type="hidden" id="billRegSumAmount">
     </div>
     
 </div>
@@ -5210,7 +5220,7 @@ function applyPeriodDateDefaults(forceReset) {
     rangeInputs.forEach(pair => {
         const f = document.getElementById(pair.from);
         const t = document.getElementById(pair.to);
-        if (pair.from === 'chittaRegFromDate' || pair.from === 'itemSumFromDate') {
+        if (pair.from === 'chittaRegFromDate' || pair.from === 'itemSumFromDate' || pair.from === 'billRegFromDate') {
             if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26' || f.value === '2026-11-02' || f.value.startsWith('2026-04'))) {
                 f.value = curDate;
             }
@@ -5422,6 +5432,11 @@ function openWin(id, targetParam){
         } else if(id === 'chittaPaymentRegister') {
             loadChittaPaymentRegister();
         } else if(id === 'billRegister') {
+            const today = getTodayDateStr();
+            const fromEl = document.getElementById('billRegFromDate');
+            const toEl = document.getElementById('billRegToDate');
+            if (fromEl && (!fromEl.value || fromEl.value.startsWith('2024-') || fromEl.value === '2024-04-26' || fromEl.value.startsWith('2026-04'))) fromEl.value = today;
+            if (toEl && (!toEl.value || toEl.value.startsWith('2025-') || toEl.value === '2025-04-25')) toEl.value = today;
             loadBillRegister();
         } else if(id === 'cashPaymentRegister') {
             loadCashPaymentRegister();
@@ -9678,20 +9693,40 @@ function displayBill(index) {
     }
     
     if(b.buyerAccount) {
-        document.getElementById('buyerAccountId').value = b.buyerAccount.id || '';
-        document.getElementById('buyerName').value = b.buyerAccount.accountName || '';
-        fetchAndDisplayBillBalance(b.buyerAccount.id);
+        document.getElementById('buyerAccountId').value = b.buyerAccount.id || b.buyerAccount.partyId || '';
+        document.getElementById('buyerName').value = b.buyerAccount.accountName || b.buyerAccount.name || b.buyerName || '';
+        fetchAndDisplayBillBalance(b.buyerAccount.id || b.buyerAccount.partyId);
+    } else if (b.buyerName) {
+        document.getElementById('buyerName').value = b.buyerName;
+        if (typeof accounts !== 'undefined') {
+            const matched = accounts.find(a => (a.accountName && a.accountName.toLowerCase() === b.buyerName.toLowerCase()));
+            if (matched) {
+                document.getElementById('buyerAccountId').value = matched.id || matched.partyId || '';
+                fetchAndDisplayBillBalance(matched.id);
+            }
+        }
     }
     
     const items = b.items || [];
+    const itemInputs = document.querySelectorAll('#billGrid .b-grid-item');
+    const partInputs = document.querySelectorAll('#billGrid .b-grid-part');
     const rates = document.querySelectorAll('#billGrid .b-grid-rate');
     const qtys = document.querySelectorAll('#billGrid .b-grid-qty');
     
     for(let i=0; i<rates.length; i++) {
         if (i < items.length) {
-            rates[i].value = items[i].rate;
-            qtys[i].value = items[i].quantity;
+            if (itemInputs[i]) {
+                const itName = items[i].item ? (items[i].item.des || items[i].item.dest || items[i].item.itemName) : (items[i].itemDescription || items[i].description || '');
+                itemInputs[i].value = itName || '';
+            }
+            if (partInputs[i]) {
+                partInputs[i].value = items[i].particulars || items[i].part || '';
+            }
+            rates[i].value = items[i].rate !== undefined ? items[i].rate : '';
+            qtys[i].value = items[i].quantity !== undefined ? items[i].quantity : (items[i].weight !== undefined ? items[i].weight : '');
         } else {
+            if (itemInputs[i]) itemInputs[i].value = '';
+            if (partInputs[i]) partInputs[i].value = '';
             rates[i].value = '';
             qtys[i].value = '';
         }
@@ -9751,6 +9786,11 @@ function clearBill() {
     document.getElementById('buyerName').value = '';
     const balEl = document.getElementById('billBalance');
     if (balEl) balEl.value = '';
+    
+    const itemInputs = document.querySelectorAll('#billGrid .b-grid-item');
+    const partInputs = document.querySelectorAll('#billGrid .b-grid-part');
+    if (itemInputs) itemInputs.forEach(inp => inp.value = '');
+    if (partInputs) partInputs.forEach(inp => inp.value = '');
     
     const rates = document.querySelectorAll('#billGrid .b-grid-rate');
     const qtys = document.querySelectorAll('#billGrid .b-grid-qty');
@@ -9925,6 +9965,7 @@ async function saveBill() {
     
     grossTotal = Math.round(grossTotal * 100) / 100;
     data.grossAmount = grossTotal;
+    data.weight = Math.round(data.items.reduce((s, it) => s + (parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0), 0) * 100) / 100;
     const totalCharges = data.freightCharges + data.packingCharges + data.otherCharges + data.commissionCharges;
     data.netReceivable = Math.round((grossTotal + totalCharges - data.discount) * 100) / 100;
 
@@ -11165,79 +11206,125 @@ function loadReceiptRegister() {
 // --- SECONDARY REPORT LOADERS ---
 async function loadBillRegister() {
     const tbody = document.getElementById('billRegisterBody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading Sales Bill records...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#555; font-weight:bold;">Loading Sales Bill records...</td></tr>';
     try {
         let url = '/api/reports/bill-register?';
         let fromDate = document.getElementById('billRegFromDate')?.value;
         let toDate = document.getElementById('billRegToDate')?.value;
         let accId = null;
         
-        if (document.getElementById('advancedOption') && document.getElementById('advancedOption').style.display !== 'none') {
-            if (document.getElementById('advFromDate')?.value) fromDate = document.getElementById('advFromDate').value;
-            if (document.getElementById('advToDate')?.value) toDate = document.getElementById('advToDate').value;
-            if (document.getElementById('advAccountId')?.value) accId = document.getElementById('advAccountId').value;
+        if (document.getElementById('advAccountId')?.value) {
+            accId = document.getElementById('advAccountId').value;
         }
         
-        if (fromDate) url += 'startDate=' + fromDate + '&';
-        if (toDate) url += 'endDate=' + toDate + '&';
-        if (accId) url += 'accountId=' + accId;
+        if (fromDate) url += 'startDate=' + encodeURIComponent(fromDate) + '&';
+        if (toDate) url += 'endDate=' + encodeURIComponent(toDate) + '&';
+        if (accId) url += 'accountId=' + encodeURIComponent(accId);
         
-        fetch(url).then(res => res.json()).then(data => {
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
             if(!tbody) return;
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#888;">No Sales Bill records found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#888;">No Sales Bill records found for selected period</td></tr>';
+                const elWeight = document.getElementById('billRegSumWeight');
+                const elGross = document.getElementById('billRegSumGross');
+                const elFreight = document.getElementById('billRegSumFreight');
+                const elPacking = document.getElementById('billRegSumPacking');
+                const elDiscount = document.getElementById('billRegSumDiscount');
+                const elNet = document.getElementById('billRegSumNet');
+                const elAmt = document.getElementById('billRegSumAmount');
+                if (elWeight) elWeight.value = '';
+                if (elGross) elGross.value = '';
+                if (elFreight) elFreight.value = '';
+                if (elPacking) elPacking.value = '';
+                if (elDiscount) elDiscount.value = '';
+                if (elNet) elNet.value = '';
+                if (elAmt) elAmt.value = '';
                 return;
             }
-            let sumBags = 0, sumWeight = 0, sumGross = 0, sumNet = 0;
+
+            data.sort((a, b) => {
+                const da = String(a.billDate || '').substring(0, 10);
+                const db = String(b.billDate || '').substring(0, 10);
+                if (da !== db) return da.localeCompare(db);
+                return (parseInt(a.billNo, 10) || 0) - (parseInt(b.billNo, 10) || 0);
+            });
+
+            let sumWeight = 0, sumGross = 0, sumFreight = 0, sumPacking = 0, sumDiscount = 0, sumNet = 0;
             const rowsHtml = [];
             for (let idx = 0; idx < data.length; idx++) {
                 const b = data[idx];
-                const bags = parseFloat(b.totalBags || b.bags) || 0;
-                const weight = parseFloat(b.totalWeight || b.weight) || 0;
-                const gross = parseFloat(b.grossAmount || b.gross) || 0;
-                const net = parseFloat(b.netReceivable || b.netAmount || b.net) || 0;
+                
+                let weight = 0;
+                if (b.items && Array.isArray(b.items) && b.items.length > 0) {
+                    b.items.forEach(i => weight += (parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0));
+                } else {
+                    weight = parseFloat(b.weight || b.totalWeight) || 0;
+                }
+                weight = Math.round(weight * 100) / 100;
 
-                sumBags += bags;
-                sumWeight += weight;
-                sumGross += gross;
-                sumNet += net;
+                const gross = Math.round((parseFloat(b.grossAmount || b.gross) || 0) * 100) / 100;
+                const freight = Math.round((parseFloat(b.freightCharges || b.freight) || 0) * 100) / 100;
+                const packing = Math.round((parseFloat(b.packingCharges || b.packing) || 0) * 100) / 100;
+                const discount = Math.round((parseFloat(b.discount) || 0) * 100) / 100;
+                const net = Math.round((parseFloat(b.netReceivable || b.netAmount || b.net) || (gross + freight + packing - discount)) * 100) / 100;
 
-                const buyerName = b.buyerName || (b.buyerAccount ? b.buyerAccount.accountName : '');
+                sumWeight = Math.round((sumWeight + weight) * 100) / 100;
+                sumGross = Math.round((sumGross + gross) * 100) / 100;
+                sumFreight = Math.round((sumFreight + freight) * 100) / 100;
+                sumPacking = Math.round((sumPacking + packing) * 100) / 100;
+                sumDiscount = Math.round((sumDiscount + discount) * 100) / 100;
+                sumNet = Math.round((sumNet + net) * 100) / 100;
+
+                const buyerName = b.buyerName || (b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : '') || '';
                 const billDateStr = b.billDate ? String(b.billDate).substring(0, 10) : '';
                 const safeNo = (b.billNo || '').replace(/'/g, "\\'");
                 const safeId = (b.id || '');
 
                 rowsHtml.push(
-                    '<tr style="cursor:pointer;" onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
+                    '<tr style="cursor:pointer;" title="Click to open Bill #' + safeNo + '" ' +
+                    'onmouseover="this.style.backgroundColor=\'#e8f4e5\'" onmouseout="this.style.backgroundColor=\'\'" ' +
                     'onclick="openBillByRecordId(\'' + safeId + '\', \'' + safeNo + '\')">' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (idx + 1) + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + (b.billNo || '') + '</td>' +
-                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + billDateStr + '</td>' +
-                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold;">' + buyerName + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (bags > 0 ? bags : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (weight > 0 ? weight.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc;">' + (gross > 0 ? gross.toFixed(2) : '') + '</td>' +
-                    '<td style="text-align:right; border-bottom:1px solid #ccc; font-weight:bold;">' + (net !== 0 ? net.toFixed(2) : '') + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">' + (idx + 1) + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">' + billDateStr + '</td>' +
+                    '<td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold; padding:2px;">' + (b.billNo || '') + '</td>' +
+                    '<td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; color:#0055aa; font-weight:bold; padding:2px 8px;" title="Open Bill for ' + buyerName + '">' + buyerName + '</td>' +
+                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 6px;">' + (weight > 0 ? weight.toFixed(2) : '') + '</td>' +
+                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 6px;">' + (gross > 0 ? gross.toFixed(2) : '') + '</td>' +
+                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 6px;">' + (freight > 0 ? freight.toFixed(2) : '') + '</td>' +
+                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 6px;">' + (packing > 0 ? packing.toFixed(2) : '') + '</td>' +
+                    '<td style="text-align:right; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 6px;">' + (discount > 0 ? discount.toFixed(2) : '') + '</td>' +
+                    '<td style="text-align:right; border-bottom:1px solid #ccc; font-weight:bold; padding:2px 6px;">' + (net !== 0 ? net.toFixed(2) : '') + '</td>' +
                     '</tr>'
                 );
             }
             tbody.innerHTML = rowsHtml.join('');
 
-            const sumBagsEl = document.getElementById('billRegSumBags');
-            if (sumBagsEl) sumBagsEl.value = sumBags > 0 ? sumBags : '';
             const sumWeightEl = document.getElementById('billRegSumWeight');
             if (sumWeightEl) sumWeightEl.value = sumWeight > 0 ? sumWeight.toFixed(2) : '';
             const sumGrossEl = document.getElementById('billRegSumGross');
             if (sumGrossEl) sumGrossEl.value = sumGross > 0 ? sumGross.toFixed(2) : '';
+            const sumFreightEl = document.getElementById('billRegSumFreight');
+            if (sumFreightEl) sumFreightEl.value = sumFreight > 0 ? sumFreight.toFixed(2) : '';
+            const sumPackingEl = document.getElementById('billRegSumPacking');
+            if (sumPackingEl) sumPackingEl.value = sumPacking > 0 ? sumPacking.toFixed(2) : '';
+            const sumDiscountEl = document.getElementById('billRegSumDiscount');
+            if (sumDiscountEl) sumDiscountEl.value = sumDiscount > 0 ? sumDiscount.toFixed(2) : '';
             const sumNetEl = document.getElementById('billRegSumNet');
             if (sumNetEl) sumNetEl.value = sumNet !== 0 ? sumNet.toFixed(2) : '';
 
+            const sumAmtEl = document.getElementById('billRegSumAmount');
+            if (sumAmtEl) sumAmtEl.value = sumNet !== 0 ? sumNet.toFixed(2) : '';
+
             showToast('Sales Bill Register: ' + data.length + ' records loaded');
-        }).catch(err => {
-            console.error(err);
-            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:15px; color:#c00;">Error loading register</td></tr>';
-        });
-    } catch(e) { console.error(e); }
+        } else {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#c00;">Failed to load Bill Register: Server Error ' + res.status + '</td></tr>';
+        }
+    } catch(e) {
+        console.error('loadBillRegister error:', e);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:#c00;">Error loading register: ' + e.message + '</td></tr>';
+    }
 }
 
 async function loadDaybook() {
