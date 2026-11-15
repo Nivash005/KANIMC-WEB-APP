@@ -7645,6 +7645,10 @@ let pendingPaymentReturnIdx = -1;
 function promptPostSavePayment(chittaNo, chittaObj, returnIdx) {
     const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : 'ADMIN';
     window.awaitingNextChittaOnEnter = true;
+    setTimeout(() => {
+        const newBtn = document.getElementById('btnChittaNew');
+        if (newBtn) newBtn.focus();
+    }, 50);
     if (user !== 'ADMIN') {
         // In user login: only creation of Chitta is allowed, no payment prompt
         showToast(`✅ Chitta #${chittaNo} Saved! Press [Enter] for Next Chitta`);
@@ -7865,11 +7869,6 @@ function handleChittaArrowNavigation(e) {
             e.preventDefault();
             e.stopPropagation();
             if (activeEl === itemInp) {
-                const val = (itemInp.value || '').trim();
-                if (!val) {
-                    const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
-                    if (saveBtn) { saveBtn.focus(); return true; }
-                }
                 if (rateInp) { rateInp.focus(); if (typeof rateInp.select === 'function') rateInp.select(); }
             } else if (activeEl === rateInp) {
                 if (qtyInp) { qtyInp.focus(); if (typeof qtyInp.select === 'function') qtyInp.select(); }
@@ -8067,7 +8066,7 @@ document.addEventListener("keydown", function(e) {
                     'btnChittaPayment', 'btnChittaSMS', 'btnChittaTop',
                     'btnChittaPrev', 'btnChittaNext', 'btnChittaBottom'
                 ];
-                if (activeEl && (otherSpecificBtns.includes(activeEl.id) || activeEl.tagName === 'BUTTON')) {
+                if (activeEl && (otherSpecificBtns.includes(activeEl.id) || (activeEl.tagName === 'BUTTON' && activeEl.id !== 'btnChittaNew' && activeEl.id !== 'chittaNewBtn'))) {
                     return;
                 }
                 e.preventDefault();
