@@ -5210,6 +5210,15 @@ function applyPeriodDateDefaults(forceReset) {
     rangeInputs.forEach(pair => {
         const f = document.getElementById(pair.from);
         const t = document.getElementById(pair.to);
+        if (pair.from === 'chittaRegFromDate' || pair.from === 'itemSumFromDate') {
+            if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26' || f.value === '2026-11-02' || f.value.startsWith('2026-04'))) {
+                f.value = curDate;
+            }
+            if (t && (forceReset || !t.value || t.value.startsWith('2023-') || t.value.startsWith('2024-') || t.value === '2025-04-25' || t.value === '2026-11-02' || t.value < curDate)) {
+                t.value = curDate;
+            }
+            return;
+        }
         if (f && (forceReset || !f.value || f.value.startsWith('2023-') || f.value === '2024-04-26' || f.value === '2026-11-02')) {
             f.value = fromDate;
         }
@@ -5402,6 +5411,11 @@ function openWin(id, targetParam){
         } else if(id === 'yearCreation' && typeof loadYearCreation === 'function') {
             loadYearCreation();
         } else if(id === 'chittaRegister') {
+            const today = getTodayDateStr();
+            const fromEl = document.getElementById('chittaRegFromDate');
+            const toEl = document.getElementById('chittaRegToDate');
+            if (fromEl && (!fromEl.value || fromEl.value.startsWith('2024-') || fromEl.value === '2024-04-26' || fromEl.value.startsWith('2026-04'))) fromEl.value = today;
+            if (toEl && (!toEl.value || toEl.value.startsWith('2025-') || toEl.value === '2025-04-25')) toEl.value = today;
             loadChittaRegister();
         } else if(id === 'chittaPendingRegister') {
             loadChittaPendingRegister();
@@ -5420,6 +5434,11 @@ function openWin(id, targetParam){
         } else if(id === 'itemRegister') {
             loadItemRegister();
         } else if(id === 'itemSummaryReport') {
+            const today = getTodayDateStr();
+            const fromEl = document.getElementById('itemSumFromDate');
+            const toEl = document.getElementById('itemSumToDate');
+            if (fromEl && (!fromEl.value || fromEl.value.startsWith('2024-') || fromEl.value === '2024-04-26' || fromEl.value.startsWith('2026-04'))) fromEl.value = today;
+            if (toEl && (!toEl.value || toEl.value.startsWith('2025-') || toEl.value === '2025-04-25')) toEl.value = today;
             loadItemSummary();
         } else if(id === 'commissionRegister') {
             loadCommissionRegister();
@@ -7517,6 +7536,7 @@ async function saveChitta() {
     data.grossAmount = calcGrossTotal;
     data.commissionDeduction = commAmt;
     data.netPayable = Math.round((calcGrossTotal - commAmt - advAmt - frtAmt) * 100) / 100;
+    data.weight = Math.round(data.items.reduce((s, it) => s + (parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0), 0) * 100) / 100;
     
     // DUPLICATE CHITTA NUMBER CHECK
     if (checkChittaNoDuplicate(true)) {
@@ -10558,10 +10578,13 @@ async function loadChittaRegister() {
                 sumFreight = Math.round((sumFreight + frt) * 100) / 100;
                 sumNet = Math.round((sumNet + net) * 100) / 100;
 
-                let chittaWeight = parseFloat(c.weight) || 0;
-                if (!chittaWeight && c.items) {
-                    c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
+                let chittaWeight = 0;
+                if (c.items && Array.isArray(c.items) && c.items.length > 0) {
+                    c.items.forEach(i => chittaWeight += (parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0));
+                } else {
+                    chittaWeight = parseFloat(c.weight) || 0;
                 }
+                chittaWeight = Math.round(chittaWeight * 100) / 100;
                 sumWeight = Math.round((sumWeight + chittaWeight) * 100) / 100;
 
                 const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
@@ -10666,10 +10689,13 @@ async function loadChittaPendingRegister() {
                 sumFreight = Math.round((sumFreight + frt) * 100) / 100;
                 sumNet = Math.round((sumNet + net) * 100) / 100;
 
-                let chittaWeight = parseFloat(c.weight) || 0;
-                if (!chittaWeight && c.items) {
-                    c.items.forEach(i => chittaWeight += parseFloat(i.quantity) || 0);
+                let chittaWeight = 0;
+                if (c.items && Array.isArray(c.items) && c.items.length > 0) {
+                    c.items.forEach(i => chittaWeight += (parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0));
+                } else {
+                    chittaWeight = parseFloat(c.weight) || 0;
                 }
+                chittaWeight = Math.round(chittaWeight * 100) / 100;
                 sumWeight = Math.round((sumWeight + chittaWeight) * 100) / 100;
 
                 const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name) : (c.farmerName || '');
@@ -11496,20 +11522,11 @@ async function loadItemSummary() {
         const toInput = document.getElementById('itemSumToDate');
         const today = getTodayDateStr();
 
-        if (fromInput && (!fromInput.value || fromInput.value === '2024-04-26')) {
-            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.startDate) {
-                fromInput.value = currentFinancialPeriod.startDate;
-            } else {
-                const yr = new Date().getFullYear();
-                fromInput.value = yr + '-04-01';
-            }
+        if (fromInput && (!fromInput.value || fromInput.value.startsWith('2024-') || fromInput.value === '2024-04-26' || fromInput.value.startsWith('2026-04'))) {
+            fromInput.value = today;
         }
-        if (toInput && (!toInput.value || toInput.value === '2025-04-25')) {
-            if (typeof currentFinancialPeriod !== 'undefined' && currentFinancialPeriod && currentFinancialPeriod.endDate) {
-                toInput.value = currentFinancialPeriod.endDate;
-            } else {
-                toInput.value = today;
-            }
+        if (toInput && (!toInput.value || toInput.value.startsWith('2024-') || toInput.value.startsWith('2025-') || toInput.value === '2025-04-25' || toInput.value < today)) {
+            toInput.value = today;
         }
 
         let url = '/api/reports/item-summary?';
@@ -11532,7 +11549,7 @@ async function loadItemSummary() {
             } else {
                 data.forEach((r, idx) => {
                     const q = parseFloat(r.totalQuantity) || 0;
-                    sumQty += q;
+                    sumQty = Math.round((sumQty + q) * 100) / 100;
                     const itemName = r.itemName || '';
 
                     // Match FoxPro Image 1: Row 1 active, Row 2 light pink, Row 3 white
@@ -11558,7 +11575,7 @@ async function loadItemSummary() {
                     tr.innerHTML = `
                         <td style="text-align:center; border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px;">${idx + 1}</td>
                         <td style="border-right:1px solid #ccc; border-bottom:1px solid #ccc; padding:2px 8px; font-weight:bold;">${itemName}</td>
-                        <td style="${weightBg} border-bottom:1px solid #ccc; text-align:right; padding:2px 10px;">${q.toFixed(3)}</td>
+                        <td style="${weightBg} border-bottom:1px solid #ccc; text-align:right; padding:2px 10px;">${q.toFixed(2)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -11579,7 +11596,7 @@ async function loadItemSummary() {
             }
 
             const elQty = document.getElementById('itemSumTotalQty');
-            if (elQty) elQty.value = sumQty.toFixed(3);
+            if (elQty) elQty.value = sumQty.toFixed(2);
             showToast("Item Summary Loaded");
         }
     } catch(e) { console.error('loadItemSummary error:', e); }
