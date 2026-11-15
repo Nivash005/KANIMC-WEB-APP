@@ -253,6 +253,7 @@ public class ReportController {
             map.put("commission", b.getCommissionCharges() != null ? b.getCommissionCharges() : BigDecimal.ZERO);
             map.put("packing", b.getPackingCharges() != null ? b.getPackingCharges() : BigDecimal.ZERO);
             map.put("freight", b.getFreightCharges() != null ? b.getFreightCharges() : BigDecimal.ZERO);
+            map.put("discount", b.getDiscount() != null ? b.getDiscount() : BigDecimal.ZERO);
             map.put("netReceivable", b.getNetReceivable() != null ? b.getNetReceivable() : BigDecimal.ZERO);
             
             BigDecimal weight = BigDecimal.ZERO;

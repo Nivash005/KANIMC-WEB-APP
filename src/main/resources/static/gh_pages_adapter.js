@@ -1289,12 +1289,17 @@
                 } else if (method === 'PUT') {
                     if (idx >= 0) {
                         let gross = 0;
+                        let totalWeight = 0;
                         (reqBody.items || []).forEach(it => {
-                            const amt = Math.round((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0) * 100) / 100;
+                            const q = parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0;
+                            const r = parseFloat(it.rate) || 0;
+                            const amt = Math.round(q * r * 100) / 100;
                             it.amount = amt;
                             gross += amt;
+                            totalWeight += q;
                         });
                         gross = Math.round(gross * 100) / 100;
+                        totalWeight = Math.round(totalWeight * 100) / 100;
                         const totalCharges = (parseFloat(reqBody.freightCharges) || 0) + (parseFloat(reqBody.packingCharges) || 0) + (parseFloat(reqBody.commissionCharges) || 0) + (parseFloat(reqBody.otherCharges) || 0);
                         const net = Math.round((gross + totalCharges - (parseFloat(reqBody.discount) || 0)) * 100) / 100;
 
@@ -1303,6 +1308,7 @@
                             ...reqBody,
                             id: id,
                             grossAmount: gross,
+                            weight: totalWeight,
                             netReceivable: net,
                             updatedAt: new Date().toISOString()
                         };
@@ -1339,12 +1345,17 @@
                         createdAt: new Date().toISOString()
                     };
                     let gross = 0;
+                    let totalWeight = 0;
                     (newB.items || []).forEach(it => {
-                        const amt = Math.round((parseFloat(it.quantity) || 0) * (parseFloat(it.rate) || 0) * 100) / 100;
+                        const q = parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0;
+                        const r = parseFloat(it.rate) || 0;
+                        const amt = Math.round(q * r * 100) / 100;
                         it.amount = amt;
                         gross += amt;
+                        totalWeight += q;
                     });
                     newB.grossAmount = Math.round(gross * 100) / 100;
+                    newB.weight = Math.round(totalWeight * 100) / 100;
                     const totalCharges = (parseFloat(newB.freightCharges) || 0) + (parseFloat(newB.packingCharges) || 0) + (parseFloat(newB.commissionCharges) || 0) + (parseFloat(newB.otherCharges) || 0);
                     newB.netReceivable = Math.round((newB.grossAmount + totalCharges - (parseFloat(newB.discount) || 0)) * 100) / 100;
                     db.salesBills.push(newB);
@@ -1886,10 +1897,21 @@
                 const accountId = search.get('accountId');
                 let list = (db.salesBills || []).map(b => {
                     let weight = 0;
-                    (b.items || []).forEach(it => weight += (parseFloat(it.quantity) || 0));
+                    if (b.items && Array.isArray(b.items) && b.items.length > 0) {
+                        b.items.forEach(it => weight += (parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0));
+                    } else {
+                        weight = parseFloat(b.weight) || 0;
+                    }
+                    weight = Math.round(weight * 100) / 100;
+                    const buyerName = b.buyerName || (b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : '') || '';
                     return {
                         ...b,
-                        netReceivable: b.netReceivable !== undefined ? b.netReceivable : b.netAmount,
+                        buyerName: buyerName,
+                        grossAmount: parseFloat(b.grossAmount !== undefined ? b.grossAmount : (b.gross || 0)) || 0,
+                        freightCharges: parseFloat(b.freightCharges !== undefined ? b.freightCharges : (b.freight || 0)) || 0,
+                        packingCharges: parseFloat(b.packingCharges !== undefined ? b.packingCharges : (b.packing || 0)) || 0,
+                        discount: parseFloat(b.discount) || 0,
+                        netReceivable: parseFloat(b.netReceivable !== undefined ? b.netReceivable : (b.netAmount !== undefined ? b.netAmount : (b.net || 0))) || 0,
                         weight: weight
                     };
                 });
@@ -1999,62 +2021,6 @@
                     const db = String(b.payDate || b.chittaDate || '').substring(0, 10);
                     if (da !== db) return da.localeCompare(db);
                     return (parseInt(a.chittaNo, 10) || 0) - (parseInt(b.chittaNo, 10) || 0);
-                });
-                return jsonResponse(list);
-            }
-            if (path === '/api/reports/bill-register') {
-                const startDate = search.get('startDate');
-                const endDate = search.get('endDate');
-                const accountId = search.get('accountId');
-                let list = (db.salesBills || []).map(b => {
-                    let weight = 0;
-                    (b.items || []).forEach(it => weight += (parseFloat(it.quantity) || 0));
-                    return {
-                        ...b,
-                        netReceivable: b.netReceivable !== undefined ? b.netReceivable : b.netAmount,
-                        weight: weight
-                    };
-                });
-                if (startDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) >= startDate);
-                if (endDate) list = list.filter(b => b.billDate && String(b.billDate).substring(0, 10) <= endDate);
-                if (accountId) list = list.filter(b => b.buyerAccount && (b.buyerAccount.id == accountId || String(b.buyerAccount.partyId) == String(accountId)));
-                list.sort((a, b) => {
-                    const da = String(a.billDate || '').substring(0, 10);
-                    const db = String(b.billDate || '').substring(0, 10);
-                    if (da !== db) return da.localeCompare(db);
-                    return (parseInt(a.billNo, 10) || 0) - (parseInt(b.billNo, 10) || 0);
-                });
-                return jsonResponse(list);
-            }
-            if (path === '/api/reports/cash-payment-register') {
-                const startDate = search.get('startDate');
-                const endDate = search.get('endDate');
-                const accountId = search.get('accountId');
-                let list = (db.cashVouchers || []).slice();
-                if (startDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) >= startDate);
-                if (endDate) list = list.filter(v => v.voucherDate && String(v.voucherDate).substring(0, 10) <= endDate);
-                if (accountId) list = list.filter(v => v.account && (v.account.id == accountId || String(v.account.partyId) == String(accountId)));
-                list.sort((a, b) => {
-                    const da = String(a.voucherDate || '').substring(0, 10);
-                    const db = String(b.voucherDate || '').substring(0, 10);
-                    if (da !== db) return da.localeCompare(db);
-                    return (parseInt(a.voucherNo, 10) || 0) - (parseInt(b.voucherNo, 10) || 0);
-                });
-                return jsonResponse(list);
-            }
-            if (path === '/api/reports/receipt-register') {
-                const startDate = search.get('startDate');
-                const endDate = search.get('endDate');
-                const accountId = search.get('accountId');
-                let list = (db.receiptVouchers || []).slice();
-                if (startDate) list = list.filter(r => r.voucherDate && String(r.voucherDate).substring(0, 10) >= startDate);
-                if (endDate) list = list.filter(r => r.voucherDate && String(r.voucherDate).substring(0, 10) <= endDate);
-                if (accountId) list = list.filter(r => r.account && (r.account.id == accountId || String(r.account.partyId) == String(accountId)));
-                list.sort((a, b) => {
-                    const da = String(a.voucherDate || '').substring(0, 10);
-                    const db = String(b.voucherDate || '').substring(0, 10);
-                    if (da !== db) return da.localeCompare(db);
-                    return (parseInt(a.voucherNo, 10) || 0) - (parseInt(b.voucherNo, 10) || 0);
                 });
                 return jsonResponse(list);
             }

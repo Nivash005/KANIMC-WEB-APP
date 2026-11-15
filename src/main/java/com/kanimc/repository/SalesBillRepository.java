@@ -10,7 +10,7 @@ import java.util.List;
 
 @Repository
 public interface SalesBillRepository extends JpaRepository<SalesBill, Long> {
-    @Query("SELECT b FROM SalesBill b LEFT JOIN FETCH b.buyerAccount WHERE " +
+    @Query("SELECT DISTINCT b FROM SalesBill b LEFT JOIN FETCH b.buyerAccount LEFT JOIN FETCH b.items WHERE " +
            "(:startDate IS NULL OR b.billDate >= :startDate) AND " +
            "(:endDate IS NULL OR b.billDate <= :endDate) AND " +
            "(:accountId IS NULL OR b.buyerAccount.id = :accountId) ORDER BY b.billDate ASC, b.billNo ASC")
