@@ -1163,6 +1163,9 @@
                         const frt = parseFloat(reqBody.freightAmount) || 0;
                         const net = Math.round((gross - comm - adv - frt) * 100) / 100;
 
+                        const itemsArr = reqBody.items || db.chittas[idx].items || [];
+                        const weight = Math.round((itemsArr.reduce((s, it) => s + (parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0), 0)) * 100) / 100;
+
                         db.chittas[idx] = {
                             ...db.chittas[idx],
                             ...reqBody,
@@ -1170,6 +1173,7 @@
                             grossAmount: gross,
                             commissionDeduction: comm,
                             netPayable: net,
+                            weight: weight,
                             updatedAt: new Date().toISOString()
                         };
                         if (!db.chittas[idx].paid) {
@@ -1236,6 +1240,7 @@
                     const adv = parseFloat(newC.advanceAmount) || 0;
                     const frt = parseFloat(newC.freightAmount) || 0;
                     newC.netPayable = Math.round((newC.grossAmount - newC.commissionDeduction - adv - frt) * 100) / 100;
+                    newC.weight = Math.round(((newC.items || []).reduce((s, it) => s + (parseFloat(it.quantity !== undefined ? it.quantity : it.weight) || 0), 0)) * 100) / 100;
 
                     if (newC.farmerAccount) {
                         const acc = (db.accounts || []).find(a => 
@@ -1823,6 +1828,18 @@
                 if (startDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) >= startDate);
                 if (endDate) list = list.filter(c => c.chittaDate && String(c.chittaDate).substring(0, 10) <= endDate);
                 if (accountId) list = list.filter(c => (c.farmerAccount && (c.farmerAccount.id == accountId || String(c.farmerAccount.partyId) == String(accountId) || String(c.farmerAccount.accountName).toLowerCase() === String(accountId).toLowerCase())) || (c.farmerName && c.farmerName.toLowerCase() === String(accountId).toLowerCase()));
+                list = list.map(c => {
+                    let weight = 0;
+                    if (c.items && Array.isArray(c.items) && c.items.length > 0) {
+                        c.items.forEach(i => weight += (parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0));
+                    } else {
+                        weight = parseFloat(c.weight) || 0;
+                    }
+                    return {
+                        ...c,
+                        weight: Math.round(weight * 100) / 100
+                    };
+                });
                 list.sort((a, b) => {
                     const da = String(a.chittaDate || '').substring(0, 10);
                     const db = String(b.chittaDate || '').substring(0, 10);
@@ -2048,42 +2065,50 @@
 
                 let records = [];
 
-                // 1. Check sales bills
-                (db.salesBills || []).forEach(b => {
-                    const dt = (b.billDate || '').substring(0, 10);
+                // 1. Primary: Aggregate from Chittas (Farmer inward consignments)
+                (db.chittas || []).forEach(c => {
+                    const dt = (c.chittaDate || '').substring(0, 10);
                     if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
-                        const buyerName = b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name || '') : (b.buyerName || '');
-                        (b.items || []).forEach(i => {
-                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                        const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name || '') : (c.farmerName || '');
+                        (c.items || []).forEach(i => {
+                            let name = (i.item ? (i.item.des || i.item.itemName) : (i.itemDescription || i.description)) || 'SEDI';
+                            name = String(name).trim().toUpperCase();
+                            const qty = parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0;
+                            const rt = parseFloat(i.rate) || 0;
+                            const amt = parseFloat(i.amount) || Math.round(qty * rt * 100) / 100;
                             records.push({
                                 date: dt,
-                                docNo: b.billNo || b.id || '',
-                                partyName: buyerName,
+                                docNo: c.chittaNo || c.id || '',
+                                partyName: farmerName,
                                 itemName: name,
-                                quantity: parseFloat(i.quantity || i.weight) || 0,
-                                rate: parseFloat(i.rate) || 0,
-                                amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                                quantity: qty,
+                                rate: rt,
+                                amount: amt
                             });
                         });
                     }
                 });
 
-                // Fallback: If no sales bills, check chittas
+                // 2. Fallback: If no Chittas, check sales bills
                 if (records.length === 0) {
-                    (db.chittas || []).forEach(c => {
-                        const dt = (c.chittaDate || '').substring(0, 10);
+                    (db.salesBills || []).forEach(b => {
+                        const dt = (b.billDate || '').substring(0, 10);
                         if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
-                            const farmerName = c.farmerAccount ? (c.farmerAccount.accountName || c.farmerAccount.name || '') : (c.farmerName || '');
-                            (c.items || []).forEach(i => {
-                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
+                            const buyerName = b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name || '') : (b.buyerName || '');
+                            (b.items || []).forEach(i => {
+                                let name = (i.item ? (i.item.des || i.item.itemName) : (i.itemDescription || i.description)) || 'SEDI';
+                                name = String(name).trim().toUpperCase();
+                                const qty = parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0;
+                                const rt = parseFloat(i.rate) || 0;
+                                const amt = parseFloat(i.amount) || Math.round(qty * rt * 100) / 100;
                                 records.push({
                                     date: dt,
-                                    docNo: c.chittaNo || c.id || '',
-                                    partyName: farmerName,
+                                    docNo: b.billNo || b.id || '',
+                                    partyName: buyerName,
                                     itemName: name,
-                                    quantity: parseFloat(i.quantity || i.weight) || 0,
-                                    rate: parseFloat(i.rate) || 0,
-                                    amount: parseFloat(i.amount) || ((parseFloat(i.quantity || i.weight) || 0) * (parseFloat(i.rate) || 0))
+                                    quantity: qty,
+                                    rate: rt,
+                                    amount: amt
                                 });
                             });
                         }
@@ -2099,30 +2124,43 @@
 
                 let map = {};
 
-                // 1. Check sales bills
-                (db.salesBills || []).forEach(b => {
-                    const dt = (b.billDate || '').substring(0, 10);
+                // 1. Primary Mandi Accounting: Aggregate from Chittas (Farmer arrivals & item weights)
+                (db.chittas || []).forEach(c => {
+                    const dt = (c.chittaDate || '').substring(0, 10);
                     if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
-                        (b.items || []).forEach(i => {
-                            const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
-                            const qty = parseFloat(i.quantity || i.weight) || 0;
-                            const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                        if (c.items && Array.isArray(c.items) && c.items.length > 0) {
+                            c.items.forEach(i => {
+                                let name = (i.item ? (i.item.des || i.item.itemName) : (i.itemDescription || i.description)) || 'SEDI';
+                                name = String(name).trim().toUpperCase();
+                                const qty = parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0;
+                                const rt = parseFloat(i.rate) || 0;
+                                const amt = parseFloat(i.amount) || Math.round(qty * rt * 100) / 100;
+                                if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
+                                map[name].totalQuantity += qty;
+                                map[name].totalAmount += amt;
+                            });
+                        } else if (parseFloat(c.weight) > 0) {
+                            const name = 'GENERAL';
+                            const qty = parseFloat(c.weight) || 0;
+                            const amt = parseFloat(c.grossAmount) || 0;
                             if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
                             map[name].totalQuantity += qty;
                             map[name].totalAmount += amt;
-                        });
+                        }
                     }
                 });
 
-                // Fallback: If no sales bills, check chittas
+                // 2. Fallback: If no chittas, check sales bills
                 if (Object.keys(map).length === 0) {
-                    (db.chittas || []).forEach(c => {
-                        const dt = (c.chittaDate || '').substring(0, 10);
+                    (db.salesBills || []).forEach(b => {
+                        const dt = (b.billDate || '').substring(0, 10);
                         if ((!sDate || (dt && dt >= sDate)) && (!eDate || (dt && dt <= eDate))) {
-                            (c.items || []).forEach(i => {
-                                const name = (i.item ? (i.item.des || i.item.itemName) : i.itemDescription) || 'SEDI';
-                                const qty = parseFloat(i.quantity || i.weight) || 0;
-                                const amt = parseFloat(i.amount) || (qty * (parseFloat(i.rate) || 0));
+                            (b.items || []).forEach(i => {
+                                let name = (i.item ? (i.item.des || i.item.itemName) : (i.itemDescription || i.description)) || 'SEDI';
+                                name = String(name).trim().toUpperCase();
+                                const qty = parseFloat(i.quantity !== undefined ? i.quantity : i.weight) || 0;
+                                const rt = parseFloat(i.rate) || 0;
+                                const amt = parseFloat(i.amount) || Math.round(qty * rt * 100) / 100;
                                 if (!map[name]) map[name] = { totalQuantity: 0, totalAmount: 0 };
                                 map[name].totalQuantity += qty;
                                 map[name].totalAmount += amt;
@@ -2133,8 +2171,8 @@
 
                 const result = Object.keys(map).map(k => ({
                     itemName: k,
-                    totalQuantity: map[k].totalQuantity,
-                    totalAmount: map[k].totalAmount
+                    totalQuantity: Math.round(map[k].totalQuantity * 100) / 100,
+                    totalAmount: Math.round(map[k].totalAmount * 100) / 100
                 }));
 
                 return jsonResponse(result);
