@@ -17,19 +17,46 @@ import java.time.LocalDate;
 public class SalesBillController {
 
     private final SalesBillService salesBillService;
+    private final com.kanimc.repository.SalesBillRepository salesBillRepository;
     private final AccountRepository accountRepository;
     private final AccountMappingService accountMappingService;
 
     public SalesBillController(SalesBillService salesBillService, 
+                               com.kanimc.repository.SalesBillRepository salesBillRepository,
                                AccountRepository accountRepository, 
                                AccountMappingService accountMappingService) {
         this.salesBillService = salesBillService;
+        this.salesBillRepository = salesBillRepository;
         this.accountRepository = accountRepository;
         this.accountMappingService = accountMappingService;
     }
 
+    @GetMapping("/next-no")
+    public ResponseEntity<?> getNextBillNo(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        LocalDate targetDate = date != null ? date : LocalDate.now();
+        java.util.List<SalesBill> bills = salesBillRepository.findFiltered(targetDate, targetDate, null);
+        long max = 0;
+        for (SalesBill b : bills) {
+            try {
+                if (b.getBillNo() != null) {
+                    long n = Long.parseLong(b.getBillNo().trim());
+                    if (n > max) max = n;
+                }
+            } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(java.util.Map.of("nextNo", String.valueOf(max + 1)));
+    }
+
     @PostMapping
     public ResponseEntity<SalesBill> createSalesBill(@RequestBody SalesBill bill) {
+        if (bill.getBillNo() != null && bill.getBillDate() != null) {
+            java.util.List<SalesBill> existing = salesBillRepository.findFiltered(bill.getBillDate(), bill.getBillDate(), null);
+            boolean dup = existing.stream().anyMatch(b -> (bill.getId() == null || !b.getId().equals(bill.getId())) && 
+                    b.getBillNo() != null && b.getBillNo().trim().equalsIgnoreCase(bill.getBillNo().trim()));
+            if (dup) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
         Long salesAccountId = accountMappingService.getAccountId("SALES", null);
         if (salesAccountId == null) {
             salesAccountId = accountMappingService.getAccountId("BILL", null);

@@ -1271,10 +1271,14 @@
 
             // 3. SALES BILLS
             if (path === '/api/sales-bills/next-no' || path === '/api/bills/next-no') {
+                const dateParam = search.get('date');
                 let max = 0;
                 (db.salesBills || []).forEach(b => {
-                    const n = parseInt(b.billNo, 10);
-                    if (!isNaN(n) && n > max) max = n;
+                    const bDate = b.billDate ? String(b.billDate).substring(0, 10) : '';
+                    if (!dateParam || bDate === dateParam) {
+                        const n = parseInt(b.billNo, 10);
+                        if (!isNaN(n) && n > max) max = n;
+                    }
                 });
                 return jsonResponse({ nextNo: max + 1 });
             }
@@ -1288,6 +1292,27 @@
                     return jsonResponse({ error: 'Bill not found with ID: ' + id }, 404);
                 } else if (method === 'PUT') {
                     if (idx >= 0) {
+                        if (reqBody.billNo) {
+                            const curDate = reqBody.billDate ? String(reqBody.billDate).substring(0, 10) : (db.salesBills[idx].billDate ? String(db.salesBills[idx].billDate).substring(0, 10) : '');
+                            const dupBill = (db.salesBills || []).find(b => {
+                                if (b.id == id) return false;
+                                const bDate = b.billDate ? String(b.billDate).substring(0, 10) : '';
+                                return (!curDate || !bDate || bDate === curDate) && String(b.billNo).trim() === String(reqBody.billNo).trim();
+                            });
+                            if (dupBill) {
+                                return jsonResponse({ error: 'Duplicate Bill Number: ' + reqBody.billNo + ' already exists for date ' + curDate }, 400);
+                            }
+                        }
+                        let bName = reqBody.buyerName || (reqBody.buyerAccount ? (reqBody.buyerAccount.accountName || reqBody.buyerAccount.name) : '') || '';
+                        const bAccId = reqBody.buyerAccount ? (reqBody.buyerAccount.id || reqBody.buyerAccount) : null;
+                        if (!bName && bAccId && db.accounts) {
+                            const acc = db.accounts.find(a => a.id == bAccId || String(a.partyId) == String(bAccId));
+                            if (acc) bName = acc.accountName || acc.name || '';
+                        }
+                        if (bName && reqBody.buyerAccount) {
+                            reqBody.buyerAccount.accountName = bName;
+                        }
+
                         let gross = 0;
                         let totalWeight = 0;
                         (reqBody.items || []).forEach(it => {
@@ -1306,6 +1331,7 @@
                         db.salesBills[idx] = {
                             ...db.salesBills[idx],
                             ...reqBody,
+                            buyerName: bName || db.salesBills[idx].buyerName || '',
                             id: id,
                             grossAmount: gross,
                             weight: totalWeight,
@@ -1334,14 +1360,28 @@
                 } else if (method === 'POST') {
                     db.salesBills = db.salesBills || [];
                     if (reqBody.billNo) {
-                        const dupBill = db.salesBills.find(b => String(b.billNo) === String(reqBody.billNo));
+                        const curDate = reqBody.billDate ? String(reqBody.billDate).substring(0, 10) : '';
+                        const dupBill = db.salesBills.find(b => {
+                            const bDate = b.billDate ? String(b.billDate).substring(0, 10) : '';
+                            return (!curDate || !bDate || bDate === curDate) && String(b.billNo).trim() === String(reqBody.billNo).trim();
+                        });
                         if (dupBill) {
-                            return jsonResponse({ error: 'Duplicate Bill Number: ' + reqBody.billNo + ' already exists.' }, 400);
+                            return jsonResponse({ error: 'Duplicate Bill Number: ' + reqBody.billNo + ' already exists for date ' + curDate }, 400);
                         }
+                    }
+                    let bName = reqBody.buyerName || (reqBody.buyerAccount ? (reqBody.buyerAccount.accountName || reqBody.buyerAccount.name) : '') || '';
+                    const bAccId = reqBody.buyerAccount ? (reqBody.buyerAccount.id || reqBody.buyerAccount) : null;
+                    if (!bName && bAccId && db.accounts) {
+                        const acc = db.accounts.find(a => a.id == bAccId || String(a.partyId) == String(bAccId));
+                        if (acc) bName = acc.accountName || acc.name || '';
+                    }
+                    if (bName && reqBody.buyerAccount) {
+                        reqBody.buyerAccount.accountName = bName;
                     }
                     const newB = {
                         id: db.salesBills.length > 0 ? Math.max(...db.salesBills.map(b => b.id || 0)) + 1 : 1,
                         ...reqBody,
+                        buyerName: bName,
                         createdAt: new Date().toISOString()
                     };
                     let gross = 0;
@@ -1903,7 +1943,12 @@
                         weight = parseFloat(b.weight) || 0;
                     }
                     weight = Math.round(weight * 100) / 100;
-                    const buyerName = b.buyerName || (b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : '') || '';
+                    const buyerAccId = b.buyerAccount ? (b.buyerAccount.id || b.buyerAccount) : null;
+                    let buyerName = b.buyerName || (b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : '') || '';
+                    if (!buyerName && buyerAccId && db.accounts) {
+                        const acc = db.accounts.find(a => a.id == buyerAccId || String(a.partyId) == String(buyerAccId));
+                        if (acc) buyerName = acc.accountName || acc.name || '';
+                    }
                     return {
                         ...b,
                         buyerName: buyerName,

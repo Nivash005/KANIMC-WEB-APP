@@ -1204,9 +1204,9 @@ Commission % <input id="commRatePct" value="10.00%">
         <label style="text-align:right;">Balance</label> <input id="billBalance" readonly style="background:#eef; text-align:right; font-weight:bold; color:#0055aa;">
         
         <label>No</label> 
-        <div style="display:flex;"><input id="billNo" style="background:#ccffff;" class="b-field" data-next="bGridItem0"><button style="width:20px;padding:0;">v</button></div>
+        <div style="display:flex;"><input id="billNo" style="background:#ccffff;" class="b-field" data-next="buyerName"><button style="width:20px;padding:0;">v</button></div>
         <label>Merchant Name</label> 
-        <input id="buyerName" list="accountNamesList" onchange="onBillMerchantNameChange()" oninput="onBillMerchantNameChange()" style="grid-column:span 2; width:280px;" class="b-field" data-next="billNo">
+        <input id="buyerName" list="accountNamesList" onchange="onBillMerchantNameChange()" oninput="onBillMerchantNameChange()" style="grid-column:span 2; width:280px;" class="b-field" data-next="bGridItem0">
         <div></div>
         <div></div>
     </div>
@@ -1285,7 +1285,7 @@ Commission % <input id="commRatePct" value="10.00%">
 
 <div class="modal-footer" style="border:1px solid #fff; margin-top:2px; background:#c0c0c0; display:flex; justify-content:space-between; width:100%;">
     <div style="display:flex; gap:3px;">
-            <button style="color:#777;" onclick="clearBill()">New</button>
+            <button id="btnBillNew" style="color:#777;" onclick="clearBill()">New</button>
             <button id="btnBillFind" style="font-weight:bold;" onclick="findBill()"><u>F</u>ind</button>
             <button id="btnBillSave" style="font-weight:bold;" onclick="saveBill()"><u>S</u>ave</button>
             <button style="color:#777;">Change</button>
@@ -4273,13 +4273,6 @@ function handleFarmerNameKey(e) {
                 firstItem.focus();
                 if (typeof firstItem.select === 'function') firstItem.select();
             }
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
-            if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
-                firstItem.focus();
-                if (typeof firstItem.select === 'function') firstItem.select();
-            }
         }
         return;
     }
@@ -4535,13 +4528,6 @@ function handleFarmerCodeKey(e) {
         if (next) {
             next.focus();
             if (typeof next.select === 'function') next.select();
-        }
-    } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const firstItem = document.querySelector('#chittaGrid tbody tr:first-child .grid-item') || document.querySelector('#chittaGrid .grid-item');
-        if (firstItem && !firstItem.disabled && !firstItem.readOnly) {
-            firstItem.focus();
-            if (typeof firstItem.select === 'function') firstItem.select();
         }
     }
 }
@@ -5384,7 +5370,14 @@ function openWin(id, targetParam){
                 chittaActionNew();
             }
         }
-        const firstInput = el.querySelector('input:not([type=button]), select'); 
+        if (id === 'bill') {
+            if (typeof clearBill === 'function') clearBill();
+            setTimeout(() => {
+                const bNo = document.getElementById('billNo');
+                if (bNo) { bNo.focus(); bNo.select?.(); }
+            }, 60);
+        }
+        const firstInput = id === 'bill' ? document.getElementById('billNo') : el.querySelector('input:not([type=button]), select'); 
         if(firstInput) firstInput.focus(); 
         
         // Modal logic dispatch
@@ -5552,7 +5545,7 @@ document.addEventListener('keydown', function(e) {
         
         // Find if we are inside a visible modal
         const modal = activeEl.closest('.modal');
-        if (!modal || activeEl.closest('#openingChitta') || activeEl.closest('#purchase') || activeEl.closest('#purchaseOpeningBalance')) return;
+        if (!modal || activeEl.closest('#openingChitta') || activeEl.closest('#bill') || activeEl.closest('#purchase') || activeEl.closest('#purchaseOpeningBalance')) return;
         
         // Find all focusable elements in this modal (inputs, selects, buttons)
         const focusable = Array.from(modal.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, button'));
@@ -7823,7 +7816,7 @@ function handleChittaTableEnter(e) {
     return false;
 }
 
-// Full Arrow Key Navigation for Opening Chitta (Item, Rate, Qty & Footer Buttons)
+// Full Arrow Key Navigation for Opening Chitta (Every Single Field, Grid, Deductions & Footer Buttons)
 function handleChittaArrowNavigation(e) {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return false;
 
@@ -7859,6 +7852,12 @@ function handleChittaArrowNavigation(e) {
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             e.stopPropagation();
+            const target = document.getElementById('chittaFreight') || document.getElementById('chittaAdvance') || document.getElementById('chittaCommPct');
+            if (target) {
+                target.focus();
+                if (typeof target.select === 'function') target.select();
+                return true;
+            }
             // Move back UP into the grid
             const rows = Array.from(openingChittaModal.querySelectorAll('#chittaGrid tbody tr')).filter(r => r.querySelector('.grid-item'));
             let targetInput = null;
@@ -7881,7 +7880,76 @@ function handleChittaArrowNavigation(e) {
         }
     }
 
-    // CASE 2: Focused inside the Item Grid (#chittaGrid: Item, Rate, Qty)
+    // CASE 2: Inside totals / deduction fields (chittaCommPct, chittaAdvance, chittaFreight)
+    const totalFields = ['chittaCommPct', 'chittaAdvance', 'chittaFreight'];
+    if (totalFields.includes(activeEl.id)) {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'chittaCommPct') {
+                const adv = document.getElementById('chittaAdvance');
+                if (adv) { adv.focus(); adv.select?.(); }
+            } else if (activeEl.id === 'chittaAdvance') {
+                const frt = document.getElementById('chittaFreight');
+                if (frt) { frt.focus(); frt.select?.(); }
+            } else if (activeEl.id === 'chittaFreight') {
+                const targetBtn = document.getElementById('btnChittaSave') || document.getElementById('btnChittaNew') || footerBtns[0];
+                if (targetBtn) targetBtn.focus();
+            }
+            return true;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'chittaFreight') {
+                const adv = document.getElementById('chittaAdvance');
+                if (adv) { adv.focus(); adv.select?.(); }
+            } else if (activeEl.id === 'chittaAdvance') {
+                const comm = document.getElementById('chittaCommPct');
+                if (comm) { comm.focus(); comm.select?.(); }
+            } else if (activeEl.id === 'chittaCommPct') {
+                const rows = Array.from(openingChittaModal.querySelectorAll('#chittaGrid tbody tr')).filter(r => r.querySelector('.grid-item'));
+                const target = rows.length > 0 ? (rows[rows.length - 1].querySelector('.grid-qty') || rows[0].querySelector('.grid-item')) : null;
+                if (target) { target.focus(); target.select?.(); }
+            }
+            return true;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'chittaCommPct') {
+                const adv = document.getElementById('chittaAdvance');
+                if (adv) { adv.focus(); adv.select?.(); }
+            } else if (activeEl.id === 'chittaAdvance') {
+                const frt = document.getElementById('chittaFreight');
+                if (frt) { frt.focus(); frt.select?.(); }
+            } else if (activeEl.id === 'chittaFreight') {
+                const targetBtn = document.getElementById('btnChittaSave') || document.getElementById('btnChittaNew') || footerBtns[0];
+                if (targetBtn) targetBtn.focus();
+            }
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'chittaFreight') {
+                const adv = document.getElementById('chittaAdvance');
+                if (adv) { adv.focus(); adv.select?.(); }
+            } else if (activeEl.id === 'chittaAdvance') {
+                const comm = document.getElementById('chittaCommPct');
+                if (comm) { comm.focus(); comm.select?.(); }
+            } else if (activeEl.id === 'chittaCommPct') {
+                const rows = Array.from(openingChittaModal.querySelectorAll('#chittaGrid tbody tr')).filter(r => r.querySelector('.grid-item'));
+                if (rows.length > 0) {
+                    const lastQty = rows[rows.length - 1].querySelector('.grid-qty');
+                    if (lastQty) { lastQty.focus(); lastQty.select?.(); }
+                }
+            }
+            return true;
+        }
+    }
+
+    // CASE 3: Focused inside the Item Grid (#chittaGrid: Item, Rate, Qty)
     const isGridInput = activeEl.classList.contains('grid-item') ||
                         activeEl.classList.contains('grid-rate') ||
                         activeEl.classList.contains('grid-qty');
@@ -7912,8 +7980,12 @@ function handleChittaArrowNavigation(e) {
                     const nextItem = rows[rowIndex + 1].querySelector('.grid-item');
                     if (nextItem) { nextItem.focus(); if (typeof nextItem.select === 'function') nextItem.select(); }
                 } else {
-                    const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
-                    if (saveBtn) saveBtn.focus();
+                    const comm = document.getElementById('chittaCommPct');
+                    if (comm) { comm.focus(); comm.select?.(); }
+                    else {
+                        const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
+                        if (saveBtn) saveBtn.focus();
+                    }
                 }
             }
             return true;
@@ -7945,6 +8017,8 @@ function handleChittaArrowNavigation(e) {
             e.stopPropagation();
             const val = (itemInp?.value || '').trim();
             if (activeEl === itemInp && !val) {
+                const comm = document.getElementById('chittaCommPct');
+                if (comm) { comm.focus(); comm.select?.(); return true; }
                 const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
                 if (saveBtn) { saveBtn.focus(); return true; }
             }
@@ -7960,8 +8034,12 @@ function handleChittaArrowNavigation(e) {
                     if (typeof target.select === 'function') target.select();
                 }
             } else {
-                const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
-                if (saveBtn) saveBtn.focus();
+                const comm = document.getElementById('chittaCommPct');
+                if (comm) { comm.focus(); comm.select?.(); }
+                else {
+                    const saveBtn = document.getElementById('btnChittaSave') || footerBtns[0];
+                    if (saveBtn) saveBtn.focus();
+                }
             }
             return true;
         }
@@ -7982,19 +8060,60 @@ function handleChittaArrowNavigation(e) {
                     if (typeof target.select === 'function') target.select();
                 }
             } else {
-                const fName = document.getElementById('farmerName') || document.getElementById('farmerAccountId');
-                if (fName) {
-                    fName.focus();
-                    if (typeof fName.select === 'function') fName.select();
+                let target = null;
+                if (activeEl === itemInp) target = document.getElementById('farmerName');
+                else target = document.getElementById('chittaNo') || document.getElementById('farmerName');
+                if (target) {
+                    target.focus();
+                    if (typeof target.select === 'function') target.select();
                 }
             }
             return true;
         }
     }
 
-    // CASE 3: In header fields (chittaDate, farmerAccountId, farmerPhone, chittaNo, farmerName)
+    // CASE 4: In header fields (chittaDate, farmerAccountId, farmerPhone, chittaNo, farmerName)
     const headerFields = ['chittaDate', 'farmerAccountId', 'farmerPhone', 'chittaNo', 'farmerName'];
     if (headerFields.includes(activeEl.id)) {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'chittaDate') {
+                const el = document.getElementById('farmerAccountId');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerAccountId') {
+                const el = document.getElementById('farmerPhone');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerPhone') {
+                const el = document.getElementById('chittaNo');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'chittaNo') {
+                const el = document.getElementById('farmerName');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerName') {
+                const firstItem = openingChittaModal.querySelector('#chittaGrid tbody tr:first-child .grid-item');
+                if (firstItem) { firstItem.focus(); firstItem.select?.(); }
+            }
+            return true;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'farmerName') {
+                const el = document.getElementById('chittaNo');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'chittaNo') {
+                const el = document.getElementById('farmerPhone');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerPhone') {
+                const el = document.getElementById('farmerAccountId');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerAccountId') {
+                const el = document.getElementById('chittaDate');
+                if (el) { el.focus(); el.select?.(); }
+            }
+            return true;
+        }
         if (e.key === 'ArrowDown') {
             const box = document.getElementById('farmerNameSuggestBox');
             if (activeEl.id === 'farmerName' && box && box.style.display !== 'none') {
@@ -8002,32 +8121,506 @@ function handleChittaArrowNavigation(e) {
             }
             e.preventDefault();
             e.stopPropagation();
-            const firstItem = openingChittaModal.querySelector('#chittaGrid tbody tr:first-child .grid-item');
-            if (firstItem) {
-                firstItem.focus();
-                if (typeof firstItem.select === 'function') firstItem.select();
+            if (activeEl.id === 'chittaDate') {
+                const el = document.getElementById('chittaNo');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerAccountId' || activeEl.id === 'farmerPhone') {
+                const el = document.getElementById('farmerName');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'chittaNo' || activeEl.id === 'farmerName') {
+                const firstItem = openingChittaModal.querySelector('#chittaGrid tbody tr:first-child .grid-item');
+                if (firstItem) {
+                    firstItem.focus();
+                    if (typeof firstItem.select === 'function') firstItem.select();
+                }
             }
-            return true;
-        }
-    }
-
-    // CASE 4: In totals / deduction fields (chittaCommPct, chittaAdvance, chittaFreight)
-    const totalFields = ['chittaCommPct', 'chittaAdvance', 'chittaFreight'];
-    if (totalFields.includes(activeEl.id)) {
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            e.stopPropagation();
-            const targetBtn = document.getElementById('btnChittaNew') || footerBtns[0];
-            if (targetBtn) targetBtn.focus();
             return true;
         }
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             e.stopPropagation();
-            const rows = Array.from(openingChittaModal.querySelectorAll('#chittaGrid tbody tr')).filter(r => r.querySelector('.grid-item'));
-            if (rows.length > 0) {
-                const lastQty = rows[rows.length - 1].querySelector('.grid-qty');
-                if (lastQty) { lastQty.focus(); lastQty.select(); }
+            if (activeEl.id === 'chittaNo') {
+                const el = document.getElementById('chittaDate');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerName') {
+                const el = document.getElementById('farmerAccountId');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'farmerPhone') {
+                const el = document.getElementById('chittaDate');
+                if (el) { el.focus(); el.select?.(); }
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Dedicated Enter Key Navigation for Sales Bill (#bill)
+function handleBillTableEnter(e) {
+    if (e.key !== 'Enter') return false;
+
+    const billModal = document.getElementById('bill');
+    if (!billModal || billModal.style.display === 'none') return false;
+
+    const activeEl = document.activeElement;
+    if (!activeEl || !billModal.contains(activeEl)) return false;
+
+    // Do not interfere if Bill Find dialog or popup is open
+    const billFind = document.getElementById('billFindDialog');
+    if (billFind && billFind.style.display === 'block') return false;
+
+    // Header 1: Bill Date
+    if (activeEl.id === 'billDate') {
+        e.preventDefault();
+        e.stopPropagation();
+        const bNo = document.getElementById('billNo');
+        if (bNo) { bNo.focus(); bNo.select?.(); }
+        return true;
+    }
+
+    // Header 2: Merchant Code
+    if (activeEl.id === 'buyerAccountId') {
+        e.preventDefault();
+        e.stopPropagation();
+        onBillMerchantCodeChange();
+        const bName = document.getElementById('buyerName');
+        if (bName) { bName.focus(); bName.select?.(); }
+        return true;
+    }
+
+    // Header 3: Bill No (S.No / No) -> Enter moves to Merchant Name
+    if (activeEl.id === 'billNo') {
+        e.preventDefault();
+        e.stopPropagation();
+        const bName = document.getElementById('buyerName');
+        if (bName) {
+            bName.focus();
+            bName.select?.();
+        }
+        return true;
+    }
+
+    // Header 4: Merchant Name -> Enter moves to Item description in first row
+    if (activeEl.id === 'buyerName') {
+        e.preventDefault();
+        e.stopPropagation();
+        onBillMerchantNameChange();
+        const firstItem = document.getElementById('bGridItem0');
+        if (firstItem) {
+            firstItem.focus();
+            firstItem.select?.();
+        }
+        return true;
+    }
+
+    // Grid inputs (Item, Particulars, Rate, Qty/Weight)
+    const isGridInput = activeEl.classList.contains('b-grid-item') ||
+                        activeEl.classList.contains('b-grid-part') ||
+                        activeEl.classList.contains('b-grid-rate') ||
+                        activeEl.classList.contains('b-grid-qty');
+
+    if (isGridInput) {
+        const tr = activeEl.closest('tr');
+        const tbody = tr ? tr.closest('tbody') : null;
+        if (!tr || !tbody) return false;
+
+        const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.b-grid-item'));
+        const rowIndex = rows.indexOf(tr);
+        if (rowIndex === -1) return false;
+
+        const itemInp = tr.querySelector('.b-grid-item');
+        const partInp = tr.querySelector('.b-grid-part');
+        const rateInp = tr.querySelector('.b-grid-rate');
+        const qtyInp = tr.querySelector('.b-grid-qty');
+
+        // On Item description: If empty, move straight to Freight! Otherwise move to Particulars.
+        if (activeEl === itemInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            const val = (itemInp.value || '').trim();
+            if (!val) {
+                const frt = document.getElementById('billFreight');
+                if (frt) {
+                    frt.focus();
+                    frt.select?.();
+                }
+                return true;
+            }
+            if (partInp) {
+                partInp.focus();
+                partInp.select?.();
+            }
+            return true;
+        }
+
+        // On Particulars: Move to Rate
+        if (activeEl === partInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (rateInp) {
+                rateInp.focus();
+                rateInp.select?.();
+            }
+            return true;
+        }
+
+        // On Rate: Move to Weight/Qty
+        if (activeEl === rateInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            calcBill();
+            if (qtyInp) {
+                qtyInp.focus();
+                qtyInp.select?.();
+            }
+            return true;
+        }
+
+        // On Weight/Qty: Move to Next Row Item description, or if at end move to Freight
+        if (activeEl === qtyInp) {
+            e.preventDefault();
+            e.stopPropagation();
+            calcBill();
+            if (rowIndex < rows.length - 1) {
+                const nextItem = rows[rowIndex + 1].querySelector('.b-grid-item');
+                if (nextItem) {
+                    nextItem.focus();
+                    nextItem.select?.();
+                }
+            } else {
+                const frt = document.getElementById('billFreight');
+                if (frt) {
+                    frt.focus();
+                    frt.select?.();
+                }
+            }
+            return true;
+        }
+    }
+
+    // Deduction / Charges fields: Freight -> Packing -> Discount -> Save Button
+    if (activeEl.id === 'billFreight') {
+        e.preventDefault();
+        e.stopPropagation();
+        calcBill();
+        const pack = document.getElementById('billPacking');
+        if (pack) { pack.focus(); pack.select?.(); }
+        return true;
+    }
+    if (activeEl.id === 'billPacking') {
+        e.preventDefault();
+        e.stopPropagation();
+        calcBill();
+        const disc = document.getElementById('billDiscount');
+        if (disc) { disc.focus(); disc.select?.(); }
+        return true;
+    }
+    if (activeEl.id === 'billDiscount') {
+        e.preventDefault();
+        e.stopPropagation();
+        calcBill();
+        const saveBtn = document.getElementById('btnBillSave');
+        if (saveBtn) saveBtn.focus();
+        return true;
+    }
+
+    return false;
+}
+
+// Full Arrow Key Navigation for Sales Bill (Header, Grid, Deductions, Buttons)
+function handleBillArrowNavigation(e) {
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return false;
+
+    const billModal = document.getElementById('bill');
+    if (!billModal || billModal.style.display === 'none') return false;
+
+    const activeEl = document.activeElement;
+    if (!activeEl || !billModal.contains(activeEl)) return false;
+
+    // Do not interfere if Bill Find dialog or popup is open
+    const billFind = document.getElementById('billFindDialog');
+    if (billFind && billFind.style.display === 'block') return false;
+
+    const footerBtns = Array.from(billModal.querySelectorAll('.modal-footer button')).filter(b => b.offsetParent !== null && !b.disabled && b.style.display !== 'none');
+
+    // CASE 1: Focused on any of the footer buttons below
+    const btnIdx = footerBtns.indexOf(activeEl);
+    if (btnIdx !== -1) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextIdx = (btnIdx + 1) % footerBtns.length;
+            if (footerBtns[nextIdx]) footerBtns[nextIdx].focus();
+            return true;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            const prevIdx = (btnIdx - 1 + footerBtns.length) % footerBtns.length;
+            if (footerBtns[prevIdx]) footerBtns[prevIdx].focus();
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            const disc = document.getElementById('billDiscount') || document.getElementById('billFreight');
+            if (disc) { disc.focus(); disc.select?.(); }
+            return true;
+        }
+    }
+
+    // CASE 2: Inside Deduction / Charge fields (#billFreight, #billPacking, #billDiscount)
+    const deductionIds = ['billFreight', 'billPacking', 'billDiscount'];
+    if (deductionIds.includes(activeEl.id)) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billFreight') {
+                const p = document.getElementById('billPacking');
+                if (p) { p.focus(); p.select?.(); }
+            } else if (activeEl.id === 'billPacking') {
+                const d = document.getElementById('billDiscount');
+                if (d) { d.focus(); d.select?.(); }
+            } else if (activeEl.id === 'billDiscount') {
+                const saveBtn = document.getElementById('btnBillSave') || footerBtns[0];
+                if (saveBtn) saveBtn.focus();
+            }
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billDiscount') {
+                const p = document.getElementById('billPacking');
+                if (p) { p.focus(); p.select?.(); }
+            } else if (activeEl.id === 'billPacking') {
+                const f = document.getElementById('billFreight');
+                if (f) { f.focus(); f.select?.(); }
+            } else if (activeEl.id === 'billFreight') {
+                // Move back UP into the grid
+                const rows = Array.from(billModal.querySelectorAll('#billGrid tbody tr')).filter(r => r.querySelector('.b-grid-item'));
+                let target = null;
+                for (let i = rows.length - 1; i >= 0; i--) {
+                    const itemInp = rows[i].querySelector('.b-grid-item');
+                    const qtyInp = rows[i].querySelector('.b-grid-qty');
+                    if (itemInp && itemInp.value.trim() !== '') {
+                        target = qtyInp || itemInp;
+                        break;
+                    }
+                }
+                if (!target && rows.length > 0) {
+                    target = rows[rows.length - 1].querySelector('.b-grid-qty') || rows[0].querySelector('.b-grid-item');
+                }
+                if (target) { target.focus(); target.select?.(); }
+            }
+            return true;
+        }
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billFreight') {
+                const p = document.getElementById('billPacking');
+                if (p) { p.focus(); p.select?.(); }
+            } else if (activeEl.id === 'billPacking') {
+                const d = document.getElementById('billDiscount');
+                if (d) { d.focus(); d.select?.(); }
+            } else if (activeEl.id === 'billDiscount') {
+                const saveBtn = document.getElementById('btnBillSave') || footerBtns[0];
+                if (saveBtn) saveBtn.focus();
+            }
+            return true;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billDiscount') {
+                const p = document.getElementById('billPacking');
+                if (p) { p.focus(); p.select?.(); }
+            } else if (activeEl.id === 'billPacking') {
+                const f = document.getElementById('billFreight');
+                if (f) { f.focus(); f.select?.(); }
+            } else if (activeEl.id === 'billFreight') {
+                const rows = Array.from(billModal.querySelectorAll('#billGrid tbody tr')).filter(r => r.querySelector('.b-grid-item'));
+                const target = rows.length > 0 ? (rows[rows.length - 1].querySelector('.b-grid-qty') || rows[0].querySelector('.b-grid-item')) : null;
+                if (target) { target.focus(); target.select?.(); }
+            }
+            return true;
+        }
+    }
+
+    // CASE 3: Inside the Item Grid (#billGrid: Item, Particulars, Rate, Weight)
+    const isGridInput = activeEl.classList.contains('b-grid-item') ||
+                        activeEl.classList.contains('b-grid-part') ||
+                        activeEl.classList.contains('b-grid-rate') ||
+                        activeEl.classList.contains('b-grid-qty');
+
+    if (isGridInput) {
+        const tr = activeEl.closest('tr');
+        const tbody = tr ? tr.closest('tbody') : null;
+        if (!tr || !tbody) return false;
+
+        const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelector('.b-grid-item'));
+        const rowIndex = rows.indexOf(tr);
+        if (rowIndex === -1) return false;
+
+        const itemInp = tr.querySelector('.b-grid-item');
+        const partInp = tr.querySelector('.b-grid-part');
+        const rateInp = tr.querySelector('.b-grid-rate');
+        const qtyInp = tr.querySelector('.b-grid-qty');
+
+        // HORIZONTAL NAVIGATION: ArrowRight
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl === itemInp) {
+                if (partInp) { partInp.focus(); partInp.select?.(); }
+            } else if (activeEl === partInp) {
+                if (rateInp) { rateInp.focus(); rateInp.select?.(); }
+            } else if (activeEl === rateInp) {
+                if (qtyInp) { qtyInp.focus(); qtyInp.select?.(); }
+            } else if (activeEl === qtyInp) {
+                if (rowIndex < rows.length - 1) {
+                    const nextItem = rows[rowIndex + 1].querySelector('.b-grid-item');
+                    if (nextItem) { nextItem.focus(); nextItem.select?.(); }
+                } else {
+                    const frt = document.getElementById('billFreight');
+                    if (frt) { frt.focus(); frt.select?.(); }
+                }
+            }
+            return true;
+        }
+
+        // HORIZONTAL NAVIGATION: ArrowLeft
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl === qtyInp) {
+                if (rateInp) { rateInp.focus(); rateInp.select?.(); }
+            } else if (activeEl === rateInp) {
+                if (partInp) { partInp.focus(); partInp.select?.(); }
+            } else if (activeEl === partInp) {
+                if (itemInp) { itemInp.focus(); itemInp.select?.(); }
+            } else if (activeEl === itemInp) {
+                if (rowIndex > 0) {
+                    const prevQty = rows[rowIndex - 1].querySelector('.b-grid-qty');
+                    if (prevQty) { prevQty.focus(); prevQty.select?.(); }
+                } else {
+                    const bName = document.getElementById('buyerName') || document.getElementById('billNo');
+                    if (bName) { bName.focus(); bName.select?.(); }
+                }
+            }
+            return true;
+        }
+
+        // VERTICAL NAVIGATION: ArrowDown
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            const val = (itemInp?.value || '').trim();
+            if (activeEl === itemInp && !val) {
+                const frt = document.getElementById('billFreight');
+                if (frt) { frt.focus(); frt.select?.(); return true; }
+            }
+            if (rowIndex < rows.length - 1) {
+                const nextRow = rows[rowIndex + 1];
+                let target = null;
+                if (activeEl === itemInp) target = nextRow.querySelector('.b-grid-item');
+                else if (activeEl === partInp) target = nextRow.querySelector('.b-grid-part');
+                else if (activeEl === rateInp) target = nextRow.querySelector('.b-grid-rate');
+                else if (activeEl === qtyInp) target = nextRow.querySelector('.b-grid-qty');
+                
+                if (target) { target.focus(); target.select?.(); }
+            } else {
+                const frt = document.getElementById('billFreight');
+                if (frt) { frt.focus(); frt.select?.(); }
+            }
+            return true;
+        }
+
+        // VERTICAL NAVIGATION: ArrowUp
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (rowIndex > 0) {
+                const prevRow = rows[rowIndex - 1];
+                let target = null;
+                if (activeEl === itemInp) target = prevRow.querySelector('.b-grid-item');
+                else if (activeEl === partInp) target = prevRow.querySelector('.b-grid-part');
+                else if (activeEl === rateInp) target = prevRow.querySelector('.b-grid-rate');
+                else if (activeEl === qtyInp) target = prevRow.querySelector('.b-grid-qty');
+                
+                if (target) { target.focus(); target.select?.(); }
+            } else {
+                let target = null;
+                if (activeEl === itemInp || activeEl === partInp) target = document.getElementById('buyerName');
+                else target = document.getElementById('billNo') || document.getElementById('buyerName');
+                if (target) { target.focus(); target.select?.(); }
+            }
+            return true;
+        }
+    }
+
+    // CASE 4: Header fields (billDate, buyerAccountId, billNo, buyerName)
+    const headerFields = ['billDate', 'buyerAccountId', 'billNo', 'buyerName'];
+    if (headerFields.includes(activeEl.id)) {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billDate') {
+                const el = document.getElementById('buyerAccountId');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'buyerAccountId') {
+                const el = document.getElementById('billNo');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'billNo') {
+                const el = document.getElementById('buyerName');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'buyerName') {
+                const el = document.getElementById('bGridItem0');
+                if (el) { el.focus(); el.select?.(); }
+            }
+            return true;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'buyerName') {
+                const el = document.getElementById('billNo');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'billNo') {
+                const el = document.getElementById('buyerAccountId');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'buyerAccountId') {
+                const el = document.getElementById('billDate');
+                if (el) { el.focus(); el.select?.(); }
+            }
+            return true;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billDate') {
+                const el = document.getElementById('billNo');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'buyerAccountId') {
+                const el = document.getElementById('buyerName');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'billNo' || activeEl.id === 'buyerName') {
+                const el = document.getElementById('bGridItem0');
+                if (el) { el.focus(); el.select?.(); }
+            }
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (activeEl.id === 'billNo') {
+                const el = document.getElementById('billDate');
+                if (el) { el.focus(); el.select?.(); }
+            } else if (activeEl.id === 'buyerName') {
+                const el = document.getElementById('buyerAccountId');
+                if (el) { el.focus(); el.select?.(); }
             }
             return true;
         }
@@ -8127,6 +8720,42 @@ document.addEventListener("keydown", function(e) {
 
         // Arrow Key Navigation for Opening Chitta (Grid, Buttons, Fields)
         if (handleChittaArrowNavigation(e)) {
+            return;
+        }
+    }
+
+    const billModal = document.getElementById('bill');
+    const isBillOpen = billModal && billModal.style.display !== 'none';
+    const isInsideBill = isBillOpen && (activeId === 'bill' || (activeEl && billModal.contains(activeEl)));
+
+    if (isInsideBill) {
+        const billFindOpen = document.getElementById('billFindDialog')?.style?.display === 'block';
+        const vfpMsg = document.getElementById('vfpMessageBoxModal')?.style?.display !== 'none';
+
+        // Enter key navigation on buttons:
+        if (e.key === 'Enter' && activeEl && activeEl.tagName === 'BUTTON') {
+            if (activeEl.id === 'btnBillSave') {
+                e.preventDefault();
+                e.stopPropagation();
+                saveBill();
+                return;
+            }
+            if (activeEl.id === 'btnBillNew') {
+                e.preventDefault();
+                e.stopPropagation();
+                clearBill();
+                return;
+            }
+            return;
+        }
+
+        // Dedicated Bill Table & Field Enter Navigation
+        if (handleBillTableEnter(e)) {
+            return;
+        }
+
+        // Arrow Key Navigation for Bill (Grid, Buttons, Fields)
+        if (handleBillArrowNavigation(e)) {
             return;
         }
     }
@@ -9693,9 +10322,15 @@ function displayBill(index) {
     }
     
     if(b.buyerAccount) {
-        document.getElementById('buyerAccountId').value = b.buyerAccount.id || b.buyerAccount.partyId || '';
-        document.getElementById('buyerName').value = b.buyerAccount.accountName || b.buyerAccount.name || b.buyerName || '';
-        fetchAndDisplayBillBalance(b.buyerAccount.id || b.buyerAccount.partyId);
+        const bAccId = b.buyerAccount.id || b.buyerAccount.partyId || '';
+        document.getElementById('buyerAccountId').value = bAccId;
+        let bName = b.buyerAccount.accountName || b.buyerAccount.name || b.buyerName || '';
+        if (!bName && typeof accounts !== 'undefined' && bAccId) {
+            const matched = accounts.find(a => a.id == bAccId || String(a.partyId) == String(bAccId));
+            if (matched) bName = matched.accountName || '';
+        }
+        document.getElementById('buyerName').value = bName;
+        fetchAndDisplayBillBalance(bAccId);
     } else if (b.buyerName) {
         document.getElementById('buyerName').value = b.buyerName;
         if (typeof accounts !== 'undefined') {
@@ -9759,8 +10394,10 @@ function loadFirstBill() { displayBill(0); }
 function loadLastBill() { displayBill(bills.length - 1); }
 
 async function autoAssignNextBillNo() {
+    const billDateEl = document.getElementById('billDate');
+    const curDate = (billDateEl && billDateEl.value) ? billDateEl.value.substring(0, 10) : ((typeof getPeriodCurrentDate === 'function') ? getPeriodCurrentDate() : new Date().toISOString().substring(0, 10));
     try {
-        const res = await fetch('/api/sales-bills/next-no');
+        const res = await fetch(`/api/sales-bills/next-no?date=${curDate}`);
         if (res.ok) {
             const d = await res.json();
             if (d && d.nextNo) {
@@ -9771,8 +10408,11 @@ async function autoAssignNextBillNo() {
     } catch(e) {}
     let max = 0;
     (bills || []).forEach(b => {
-        const n = parseInt(b.billNo, 10);
-        if (!isNaN(n) && n > max) max = n;
+        const bDateStr = String(b.billDate || '').substring(0, 10);
+        if (bDateStr === curDate) {
+            const n = parseInt(b.billNo, 10);
+            if (!isNaN(n) && n > max) max = n;
+        }
     });
     document.getElementById('billNo').value = String(max + 1);
 }
@@ -9810,6 +10450,14 @@ function clearBill() {
         auditEl.innerText = '';
         auditEl.style.display = 'none';
     }
+
+    setTimeout(() => {
+        const bNo = document.getElementById('billNo');
+        if (bNo && document.getElementById('bill')?.style.display !== 'none') {
+            bNo.focus();
+            if (typeof bNo.select === 'function') bNo.select();
+        }
+    }, 50);
 }
 
 
@@ -9885,14 +10533,19 @@ async function saveBill() {
     }
 
     let buyerId = parseInt(document.getElementById('buyerAccountId')?.value) || null;
-    if (!buyerId) {
-        const bName = document.getElementById('buyerName')?.value?.trim();
-        if (bName && typeof accounts !== 'undefined') {
-            const matched = accounts.find(a => a.accountName && a.accountName.toLowerCase() === bName.toLowerCase());
-            if (matched) {
-                buyerId = matched.id;
-                document.getElementById('buyerAccountId').value = matched.id;
-            }
+    let bNameStr = (document.getElementById('buyerName')?.value || '').trim();
+    if (!buyerId && bNameStr && typeof accounts !== 'undefined') {
+        const matched = accounts.find(a => a.accountName && a.accountName.toLowerCase() === bNameStr.toLowerCase());
+        if (matched) {
+            buyerId = matched.id;
+            document.getElementById('buyerAccountId').value = matched.id;
+        }
+    }
+    if (buyerId && !bNameStr && typeof accounts !== 'undefined') {
+        const matched = accounts.find(a => a.id == buyerId || String(a.partyId) == String(buyerId));
+        if (matched) {
+            bNameStr = matched.accountName || '';
+            document.getElementById('buyerName').value = bNameStr;
         }
     }
     if (!buyerId) {
@@ -9900,13 +10553,14 @@ async function saveBill() {
         return;
     }
 
-    // DUPLICATE BILL NUMBER CHECK
+    // DUPLICATE BILL NUMBER CHECK (Scoped strictly to current date)
     const duplicateBill = (bills || []).find((b, idx) => {
         if (currentBillIndex >= 0 && idx === currentBillIndex) return false;
-        return String(b.billNo).trim() === billNoStr;
+        const bDateStr = String(b.billDate || '').substring(0, 10);
+        return bDateStr === bDate && String(b.billNo).trim() === billNoStr;
     });
     if (duplicateBill) {
-        alert(`DUPLICATE ERROR: Bill #${billNoStr} already exists!\nPlease enter a unique Bill Number.`);
+        alert(`DUPLICATE ERROR: Bill #${billNoStr} already exists for date ${bDate}!\nPlease enter a unique Bill Number.`);
         const bNoInput = document.getElementById('billNo');
         if (bNoInput) { bNoInput.focus(); bNoInput.select(); }
         return;
@@ -9918,7 +10572,8 @@ async function saveBill() {
     const data = {
         billNo: billNoStr,
         billDate: bDate,
-        buyerAccount: { id: buyerId },
+        buyerName: bNameStr,
+        buyerAccount: { id: buyerId, accountName: bNameStr },
         freightCharges: parseFloat(document.getElementById('billFreight')?.value) || 0,
         packingCharges: parseFloat(document.getElementById('billPacking')?.value) || 0,
         otherCharges: 0,
@@ -11277,7 +11932,9 @@ async function loadBillRegister() {
                 sumDiscount = Math.round((sumDiscount + discount) * 100) / 100;
                 sumNet = Math.round((sumNet + net) * 100) / 100;
 
-                const buyerName = b.buyerName || (b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : '') || '';
+                const buyerAccId = b.buyerAccount ? (b.buyerAccount.id || b.buyerAccount) : null;
+                const accObj = (typeof accounts !== 'undefined' && buyerAccId) ? accounts.find(a => a.id == buyerAccId || String(a.partyId) == String(buyerAccId)) : null;
+                const buyerName = b.buyerName || (b.buyerAccount ? (b.buyerAccount.accountName || b.buyerAccount.name) : '') || (accObj ? accObj.accountName : '') || '';
                 const billDateStr = b.billDate ? String(b.billDate).substring(0, 10) : '';
                 const safeNo = (b.billNo || '').replace(/'/g, "\\'");
                 const safeId = (b.id || '');
